@@ -24,6 +24,35 @@
 //#define INCLUDE_SMTP_AT_COMPILE_TIME
 //#define INCLUDE_QUBITRO_AT_COMPILE_TIME
 
+
+// ************** Mako Control Parameters **************
+
+bool goProButtonsPrimaryControl = true;
+
+const bool enableDigitalCompass = true;
+const bool enableTiltCompensation = true;
+const bool enableSmoothedCompass = true;
+
+const bool enableHumiditySensor = true;
+const bool enableDepthSensor = true;
+const bool enableIMUSensor = true;
+const bool enableColourSensor = true;
+
+bool enableUplinkComms = true;  // can be toggled through UI
+
+const bool enableNavigationGraphics = true;
+const bool enableNavigationTargeting = true;
+const bool enableRecentCourseCalculation = true;
+bool enableGlobalUptimeDisplay = false;    // adds a timer to compass heading display so can see if a crash/reboot has happened
+
+bool enableRealTimePublishTigerLocation=true;
+
+bool enableWifiAtStartup = false;   // set to true only if no espnow at startup
+bool enableESPNowAtStartup = true;  // set to true only if no wifi at startup
+
+bool otaActive = false; // OTA updates toggle
+bool otaFirstInit = false;       // Start OTA at boot if WiFi enabled
+
 template <typename T> struct vec
 {
   T x, y, z;
@@ -142,34 +171,6 @@ bool ESPNowScanForPeer(esp_now_peer_info_t& peer, const char* peerSSIDPrefix);
 bool pairWithPeer(esp_now_peer_info_t& peer, const char* peerSSIDPrefix, int maxAttempts);
 bool ESPNowManagePeer(esp_now_peer_info_t& peer);
 void ESPNowDeletePeer(esp_now_peer_info_t& peer);
-
-// ************** Mako Control Parameters **************
-
-bool goProButtonsPrimaryControl = true;
-
-const bool enableDigitalCompass = true;
-const bool enableTiltCompensation = true;
-const bool enableSmoothedCompass = true;
-
-const bool enableHumiditySensor = true;
-const bool enableDepthSensor = true;
-const bool enableIMUSensor = true;
-const bool enableColourSensor = true;
-
-bool enableUplinkComms = true;  // can be toggled through UI
-
-const bool enableNavigationGraphics = true;
-const bool enableNavigationTargeting = true;
-const bool enableRecentCourseCalculation = true;
-bool enableGlobalUptimeDisplay = false;    // adds a timer to compass heading display so can see if a crash/reboot has happened
-
-bool enableRealTimePublishTigerLocation=true;
-
-bool enableWifiAtStartup = false;   // set to true only if no espnow at startup
-bool enableESPNowAtStartup = true;  // set to true only if no wifi at startup
-
-bool otaActive = false; // OTA updates toggle
-bool otaFirstInit = false;       // Start OTA at boot if WiFi enabled
 
 // ************** ESPNow variables **************
 const int RESET_ESPNOW_SEND_RESULT = 0xFF;
@@ -708,6 +709,58 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 };
 */
 
+
+// Dive 1 15 Dec
+const uint8_t waypointCountDiveOne = 19;
+const uint8_t waypointExitDiveOne = 18;
+
+navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z01\n\nCafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
+  [1] = { ._label = "10N\n\nBus\n\n2m", ._lat = 51.460073, ._long = -0.548515},
+  [2] = { ._label = "04N Spitfire Car 6m", ._lat = 51.4601028571429, ._long = -0.54883835},
+  [3] = { ._label = "X02 Quarry Machine in Reeds", ._lat = 51.460434, ._long = -0.548921},
+  [4] = { ._label = "X07 Boat with Chain Links", ._lat = 51.4600385714286, ._long = -0.548724142857143},
+  [5] = { ._label = "03N Scimitar Car 5.5m", ._lat = 51.460347, ._long = -0.5489195},
+  [6] = { ._label = "05N The Lightning Boat 5.5m", ._lat = 51.4605855, ._long = -0.548901666666667},  
+  [7] = { ._label = "Sub Est. New\n4m", ._lat = 51.4609042894737, ._long = -0.549211315789474},
+  [8] = { ._label = "Est.\nCave\nBuoy", ._lat = 51.4608337, ._long = -0.54883 },
+  [9] = { ._label = "Canoe Est.New\n3m", ._lat = 51.4620416774194, ._long = -0.548974709677419},
+  [10] = { ._label = "12N\n\nCommer\nVan\n\n6m", ._lat = 51.4609042894737, ._long = -0.548469727272727},  
+  [11] = { ._label = "24N\n\nHalf\nDie\nHard\nTaxi 8m", ._lat = 51.460773, ._long = -0.547620875},
+  [12] = { ._label = "27aB\n\nWreck\nSite\n\n6m", ._lat = 51.4604300973436, ._long = -0.547383365365033},
+  [13] = { ._label = "43N\n\nThorpe\nOrange\nBoat\n\n5.5m", ._lat = 51.4602073333333, ._long = -0.546787666666667},
+  [14] = { ._label = "35N\n\nDragon\nBoat\n\n7.5m", ._lat = 51.4599636666667, ._long = -0.547154333333333},
+  [15] = { ._label = "46N\n\nPlane\n\n6m", ._lat = 51.459745, ._long = -0.546649},
+  [16] = { ._label = "50a\nSwim\nThrough\nno\ncrates\n\n6m", ._lat = 51.45914367, ._long = -0.546032333},
+  [17] = { ._label = "37N\n\nDive\nBell\n\n4m", ._lat = 51.4594757058824, ._long = -0.547087117647059},
+  [18] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
+};
+
+// Dive 2 15 Dec
+const uint8_t waypointCountDiveTwo = 15;
+const uint8_t waypointExitDiveTwo = 14;
+
+navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+{
+  [0] = { ._label = "Z02\n\nMid\nJetty", ._lat = 51.459547, ._long = -0.547461},
+  [1] = { ._label = "44N\nVW\nCamper\nVan and\nSeahors\n\n5.5m", ._lat = 51.459368, ._long = -0.546760142857143},
+  [2] = { ._label = "51B\n\nOrca\nVan\n\n5.5m", ._lat = 51.4591431428571, ._long = -0.545936857142857},
+  [3] = { ._label = "50a\nSwim\nThrough\nno\ncrates\n\n6m", ._lat = 51.45914367, ._long = -0.546032333},
+  [4] = { ._label = "49B\n\nClay-\n   more\n\n6.5m", ._lat = 51.459634435324, ._long = -0.54646635372985},
+  [5] = { ._label = "46N\n\nPlane\n\n6m", ._lat = 51.459745, ._long = -0.546649},
+  [6] = { ._label = "41N\n\nTin\nCabin\nBoat\n\n7m", ._lat = 51.459676625, ._long = -0.5468125},
+  [7] = { ._label = "39N\n\nLondon\nBlack\nCab\n\n7m", ._lat = 51.459729, ._long = -0.546992857142857},
+  [8] = { ._label = "38B\n\nLife\nBoat\n\n6.5m", ._lat = 51.459839375, ._long = -0.5469307},
+  [9] = { ._label = "35N\n\nDragon\nBoat\n\n7.5m", ._lat = 51.4599636666667, ._long = -0.547154333333333},
+  [10] = { ._label = "25N\n\nBoat In\nA Hole\n\n7m", ._lat = 51.4599545, ._long = -0.54755475},
+  [11] = { ._label = "22B\nLady of\nKent\nSearch\nLight\n\n5m", ._lat = 51.4599185714286, ._long = -0.547681},
+  [12] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.46020025, ._long = -0.5479775},
+  [13] = { ._label = "18N\n\nMilk\nFloat\n\n6.5m", ._lat = 51.4601745714286, ._long = -0.548058571428571},
+  [14] = { ._label = "10N\n\nBus\n\n2m", ._lat = 51.460073, ._long = -0.548515}
+};
+
+/*
 // Dive 1 - 3 Nov
 const uint8_t waypointCountDiveOne = 29;
 const uint8_t waypointExitDiveOne = 28;
@@ -774,7 +827,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
   [13] = { ._label = "18N\n\nMilk\nFloat\n\n6.5m", ._lat = 51.4601745714286, ._long = -0.548058571428571},
   [14] = { ._label = "10N\n\nBus\n\n2m", ._lat = 51.460073, ._long = -0.548515}
 };
-
+*/
 /*
 // Dive 1 - 24 October
 const uint8_t waypointCountDiveOne = 40;
@@ -1697,6 +1750,10 @@ void setup()
       USB_SERIAL.println("Could not init depth sensor");
       M5.Lcd.println("Could not init depth sensor");
       depthAvailable = false;
+    }
+    else
+    {
+      BlueRobotics_DepthSensor.setFluidDensityFreshWater();
     }
   }
   else
@@ -3998,7 +4055,7 @@ void getDepth(float& d, float& d_t, float& d_p, float& d_a)
 {
   if (!enableDepthSensor || !depthAvailable)
   {
-    d = d_t = d_p = d_a = 0.0;
+    d = d_t = d_p = d_a = 0.3;
     return;
   }
 
@@ -4736,6 +4793,12 @@ bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts)
   {
     const char* network = scanForKnownNetwork();
   
+    if (!network)
+    {
+      delay(1000);
+      continue;
+    }
+
     int connectToFoundNetworkAttempts = 3;
     const int repeatDelay = 1000;
   
