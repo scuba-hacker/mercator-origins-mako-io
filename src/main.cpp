@@ -2643,8 +2643,22 @@ void drawSurveyDisplay()
     else
       M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);  // shouldn't get here.
       
-    M5.Lcd.printf("%2hu'\n", minutesDurationDiving);
+    M5.Lcd.printf("%2hu'", minutesDurationDiving);
 
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
+    M5.Lcd.printf("\n\n\n\n   %.1f", water_temperature);
+
+    // print degrees sign
+    int16_t x = M5.Lcd.getCursorX(), y = M5.Lcd.getCursorY();
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setCursor(x+2, y-4);
+    M5.Lcd.print("o");
+    M5.Lcd.setCursor(x, y);
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.printf("\n\n");
+
+    // print GPS status, humidity and Qubitro upload status
     M5.Lcd.setTextSize(3);
 
     if (isGPSStreamOk())
@@ -2655,7 +2669,7 @@ void drawSurveyDisplay()
     else
       M5.Lcd.setTextColor(TFT_WHITE, TFT_RED);
 
-    M5.Lcd.print("\nG");
+    M5.Lcd.print("G");
 
     M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
 
@@ -4250,22 +4264,22 @@ void toggleESPNowActive()
         if (writeLogToSerial)
           USB_SERIAL.println("Wifi\nDisabled\nESPNow\nEnabled");
 
-        int peeringAttempts = 3;
-        isPairedWithAudioPod = pairWithPeer(ESPNow_audio_pod_peer,"AudioPod",peeringAttempts);
-        
-        if (isPairedWithAudioPod)
-        {
-          // set Silky volume to default.
-          publishToSilkySetVolume(defaultSilkyVolume);
-        }
-
-        peeringAttempts = 5;
+        int peeringAttempts = 5;
         isPairedWithTiger = pairWithPeer(ESPNow_tiger_peer,"Tiger",peeringAttempts);
 
         if (isPairedWithTiger)
         {
           // send message to tiger to give first target
           publishToTigerCurrentTarget(nextWaypoint->_label);
+        }
+        
+        peeringAttempts = 3;
+        isPairedWithAudioPod = pairWithPeer(ESPNow_audio_pod_peer,"AudioPod",peeringAttempts);
+        
+        if (isPairedWithAudioPod)
+        {
+          // set Silky volume to default.
+          publishToSilkySetVolume(defaultSilkyVolume);
         }
       }
       else
