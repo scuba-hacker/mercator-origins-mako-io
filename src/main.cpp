@@ -4263,23 +4263,23 @@ void toggleESPNowActive()
         M5.Lcd.println("  ESPNow\nSearching\n");
         if (writeLogToSerial)
           USB_SERIAL.println("Wifi\nDisabled\nESPNow\nEnabled");
-
-        int peeringAttempts = 5;
-        isPairedWithTiger = pairWithPeer(ESPNow_tiger_peer,"Tiger",peeringAttempts);
-
-        if (isPairedWithTiger)
-        {
-          // send message to tiger to give first target
-          publishToTigerCurrentTarget(nextWaypoint->_label);
-        }
         
-        peeringAttempts = 3;
+        int peeringAttempts = 3;
         isPairedWithAudioPod = pairWithPeer(ESPNow_audio_pod_peer,"AudioPod",peeringAttempts);
         
         if (isPairedWithAudioPod)
         {
           // set Silky volume to default.
           publishToSilkySetVolume(defaultSilkyVolume);
+        }
+
+        peeringAttempts = 5;
+        isPairedWithTiger = pairWithPeer(ESPNow_tiger_peer,"Tiger",peeringAttempts);
+
+        if (isPairedWithTiger)
+        {
+          // send message to tiger to give first target
+          publishToTigerCurrentTarget(nextWaypoint->_label);
         }
       }
       else
