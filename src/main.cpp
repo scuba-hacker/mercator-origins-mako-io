@@ -8,6 +8,7 @@
 //possible fix to deepSleep with timer #31 - https://github.com/m5stack/M5StickC-Plus/pull/31
 //Sleep causing unresponsive device #13 https://github.com/m5stack/M5StickC-Plus/issues/13
 //AXP192.cpp SetSleep() is different than the one for M5StickC #1 https://github.com/m5stack/M5StickC-Plus/issues/1
+
 #include <Arduino.h>
 
 #include <M5StickCPlus.h>
@@ -21,6 +22,7 @@
 #include <memory.h>
 
 //#define INCLUDE_TWITTER_AT_COMPILE_TIME
+
 //#define INCLUDE_SMTP_AT_COMPILE_TIME
 //#define INCLUDE_QUBITRO_AT_COMPILE_TIME
 
@@ -28,12 +30,17 @@
 // ************** Mako Control Parameters **************
 
 bool goProButtonsPrimaryControl = true;
+bool goProButtonsPrimaryControl = false;
 
 const bool enableDigitalCompass = true;
 const bool enableTiltCompensation = true;
 const bool enableSmoothedCompass = true;
+const bool enableDigitalCompass = false;
+const bool enableTiltCompensation = false;
+const bool enableSmoothedCompass = false;
 
 const bool enableHumiditySensor = true;
+const bool enableHumiditySensor = false;
 const bool enableDepthSensor = true;
 const bool enableIMUSensor = true;
 const bool enableColourSensor = true;
@@ -52,6 +59,9 @@ bool enableESPNowAtStartup = true;  // set to true only if no wifi at startup
 
 bool otaActive = false; // OTA updates toggle
 bool otaFirstInit = false;       // Start OTA at boot if WiFi enabled
+
+const uint8_t RED_LED_GPIO = 10;
+int redLEDStatus = HIGH;
 
 template <typename T> struct vec
 {
@@ -84,7 +94,7 @@ bool getMagHeadingNotTiltCompensated(double& heading);
 bool getSmoothedMagHeading(double& b);
 std::string getCardinal(float b);
 void getTempAndHumidityAndAirPressureBME280(float& h, float& t, float& p, float& p_a);
-void getDepth(float& d, float& d_t, float& d_p, float& d_a);
+void getDepth(float& d, float& d_t, float& d_p, float& d_a, bool original_read);
 bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a);
 void goBlackout();
 void goAhead();
@@ -285,6 +295,9 @@ uint8_t initialTextSize = 2;
 #include "TinyGPSPlus.h"
 
 // OTA updates start
+#define MERCATOR_ELEGANTOTA_MAKO_BANNER
+#define MERCATOR_OTA_DEVICE_LABEL "MAKO-IO"
+
 #include <WiFi.h>
 #include <Update.h>
 #include <AsyncTCP.h>
@@ -1429,8 +1442,6 @@ void switchToNextDisplayToShow()
   lastWayMarkerChangeTimestamp = 0;
 }
 
-const uint8_t RED_LED_GPIO = 10;
-
 const bool writeLogToSerial = false;
 
 TinyGPSPlus gps;
@@ -1592,6 +1603,10 @@ void setup()
 {
   M5.begin();
 
+  redLEDStatus = HIGH;
+  pinMode(RED_LED_GPIO, OUTPUT); // Red LED - the interior LED to M5 Stick
+  digitalWrite(RED_LED_GPIO, redLEDStatus); // switch off
+
   ssid_connected = ssid_not_connected;
 
   msgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
@@ -1610,7 +1625,7 @@ void setup()
 
   if (enableIMUSensor)
   {
-    M5.Imu.Init();
+    imuAvailable = !M5.Imu.Init();
   }
   else
   {
@@ -1745,10 +1760,10 @@ void setup()
   
   if (enableDepthSensor)
   {
-    if (!BlueRobotics_DepthSensor.init())
+    if (!BlueRobotics_DepthSensor.begin())
     {
-      USB_SERIAL.println("Could not init depth sensor");
-      M5.Lcd.println("Could not init depth sensor");
+      USB_SERIAL.println("Could not begin depth sensor");
+      M5.Lcd.println("Could not begin depth sensor");
       depthAvailable = false;
     }
     else
@@ -1831,7 +1846,7 @@ void loop_no_gps()
 
   getTempAndHumidityAndAirPressureBME280(humidity, temperature, air_pressure, pressure_altitude);
 
-  getDepth(depth, water_temperature, water_pressure, depth_altitude);
+  getDepth(depth, water_temperature, water_pressure, depth_altitude,true);
 
   getMagHeadingTiltCompensated(magnetic_heading);
 
@@ -2219,10 +2234,14 @@ void acquireAllSensorReadings()
   if (millis() > s_lastTempHumidityDisplayRefresh + s_tempHumidityUpdatePeriod)
   {
     s_lastTempHumidityDisplayRefresh = millis();
-    //           getTempAndHumidity(humidity, temperature);
+
     getTempAndHumidityAndAirPressureBME280(humidity, temperature, air_pressure, pressure_altitude);
+
     if (!useGetDepthAsync)
-      getDepth(depth, water_temperature, water_pressure, depth_altitude);
+    {
+      bool read_original_algorithm = (display_to_show == SURVEY_DISPLAY ? true : false);
+      getDepth(depth, water_temperature, water_pressure, depth_altitude, read_original_algorithm);
+    }
 
     getM5ImuSensorData(&imu_gyro_vector.x, &imu_gyro_vector.y, &imu_gyro_vector.z,
                      &imu_lin_acc_vector.x, &imu_lin_acc_vector.y, &imu_lin_acc_vector.z,
@@ -2329,7 +2348,7 @@ void checkForButtonPresses()
       {
         toggleUptimeGlobalDisplay();
       }
-      else if (p_secondButton->wasReleasefor(1000)) // Journey Course Display: toggle uptime
+      else if (p_secondButton->wasReleasefor(1000)) // Journey Course Display: toggle async/sync mode for getting depth
       {
         toggleAsyncDepthDisplay();
       }
@@ -4065,7 +4084,7 @@ bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a)
 }
 
 // depth in metres, temperature in C, water pressure in Bar, Altitude in m
-void getDepth(float& d, float& d_t, float& d_p, float& d_a)
+void getDepth(float& d, float& d_t, float& d_p, float& d_a, bool original_read)
 {
   if (!enableDepthSensor || !depthAvailable)
   {
@@ -4073,7 +4092,17 @@ void getDepth(float& d, float& d_t, float& d_p, float& d_a)
     return;
   }
 
-  BlueRobotics_DepthSensor.read();
+/*
+  bool result = BlueRobotics_DepthSensor.read_original();
+
+  if (result)
+  {
+      redLEDStatus = !redLEDStatus;
+      digitalWrite(RED_LED_GPIO, redLEDStatus);
+  }
+*/
+
+  original_read ? BlueRobotics_DepthSensor.read_original() : BlueRobotics_DepthSensor.read();
 
   float temp_d = BlueRobotics_DepthSensor.depth();
 
@@ -4403,6 +4432,7 @@ void toggleOTAActive()
           request->send(200, "text/plain", "To upload firmware use /update");
         });
 
+        AsyncElegantOTA.setID(MERCATOR_OTA_DEVICE_LABEL);
         AsyncElegantOTA.begin(&asyncWebServer);    // Start AsyncElegantOTA
         asyncWebServer.begin();
       }
@@ -4907,6 +4937,7 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
       if (writeLogToSerial)
         USB_SERIAL.println("setupOTAWebServer: calling AsyncElegantOTA.begin");
 
+      AsyncElegantOTA.setID(MERCATOR_OTA_DEVICE_LABEL);
       AsyncElegantOTA.begin(&asyncWebServer);    // Start AsyncElegantOTA
 
       if (writeLogToSerial)
