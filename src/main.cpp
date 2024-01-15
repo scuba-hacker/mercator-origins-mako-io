@@ -30,17 +30,11 @@
 // ************** Mako Control Parameters **************
 
 bool goProButtonsPrimaryControl = true;
-bool goProButtonsPrimaryControl = false;
 
 const bool enableDigitalCompass = true;
 const bool enableTiltCompensation = true;
 const bool enableSmoothedCompass = true;
-const bool enableDigitalCompass = false;
-const bool enableTiltCompensation = false;
-const bool enableSmoothedCompass = false;
-
 const bool enableHumiditySensor = true;
-const bool enableHumiditySensor = false;
 const bool enableDepthSensor = true;
 const bool enableIMUSensor = true;
 const bool enableColourSensor = true;
