@@ -31,15 +31,16 @@
 
 bool goProButtonsPrimaryControl = true;
 
-const bool enableDigitalCompass = true;
-const bool enableTiltCompensation = true;
-const bool enableSmoothedCompass = true;
-const bool enableHumiditySensor = true;
-const bool enableDepthSensor = true;
-const bool enableIMUSensor = true;
-const bool enableColourSensor = true;
+bool enableDigitalCompass = true;
+bool enableTiltCompensation = true;
+bool enableSmoothedCompass = true;
+bool enableHumiditySensor = true;
+bool enableDepthSensor = true;
+bool enableIMUSensor = true;
+bool enableColourSensor = true;
 
-bool enableUplinkComms = true;  // can be toggled through UI
+bool enableDownlinkComms = true; // enable reading the feed from Lemon at surface
+bool enableUplinkComms = true;  // enable writing of feed to Lemon. Can be toggled through UI
 
 const bool enableNavigationGraphics = true;
 const bool enableNavigationTargeting = true;
@@ -54,8 +55,35 @@ bool enableESPNowAtStartup = true;  // set to true only if no wifi at startup
 bool otaActive = false; // OTA updates toggle
 bool otaFirstInit = false;       // Start OTA at boot if WiFi enabled
 
+bool compassAvailable = true;
+bool humidityAvailable = true;
+bool colourSensorAvailable = true;
+bool depthAvailable = true;
+bool imuAvailable = true;
+
 const uint8_t RED_LED_GPIO = 10;
 int redLEDStatus = HIGH;
+
+void disableFeaturesForOTA(bool active)
+{
+  if (active)
+  {
+    enableDigitalCompass = enableTiltCompensation = enableSmoothedCompass = enableHumiditySensor = false;
+    enableDepthSensor = enableIMUSensor = enableColourSensor = enableDownlinkComms = enableUplinkComms = enableDepthSensor = false;
+    compassAvailable = imuAvailable = colourSensorAvailable =  depthAvailable = false;
+
+    redLEDStatus = LOW;   // turn on Red LED
+    digitalWrite(RED_LED_GPIO, redLEDStatus);
+  }
+  else
+  {
+    enableDigitalCompass = enableTiltCompensation = enableSmoothedCompass = enableHumiditySensor = true;
+    enableDepthSensor = enableIMUSensor = enableColourSensor = enableDownlinkComms = enableUplinkComms = enableDepthSensor = true;
+    compassAvailable = imuAvailable = colourSensorAvailable =  depthAvailable = true;
+    redLEDStatus = HIGH;   // turn off Red LED
+    digitalWrite(RED_LED_GPIO, redLEDStatus);
+  }
+}
 
 template <typename T> struct vec
 {
@@ -1504,12 +1532,6 @@ void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
 }
 
 
-bool compassAvailable = true;
-bool humidityAvailable = true;
-bool colourSensorAvailable = true;
-bool depthAvailable = true;
-bool imuAvailable = true;
-
 
 // Magnetic Compass averaging and refresh rate control
 const uint8_t s_smoothedCompassBufferSize = 10;
@@ -1929,7 +1951,7 @@ void loop()
     }
   }
 
-  bool msgProcessed = processGPSMessageIfAvailable();
+  bool msgProcessed = enableDownlinkComms ? processGPSMessageIfAvailable() : false;
   
   if (useGetDepthAsync)
     getDepthAsync(depth, water_temperature, water_pressure, depth_altitude);
@@ -4458,6 +4480,9 @@ void toggleOTAActive()
     
     delay (2000);
   }
+  
+  disableFeaturesForOTA(otaActive);
+
 
   M5.Lcd.fillScreen(TFT_BLACK);
 }
