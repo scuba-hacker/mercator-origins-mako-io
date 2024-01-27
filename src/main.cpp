@@ -48,6 +48,7 @@ const bool enableRecentCourseCalculation = true;
 bool enableGlobalUptimeDisplay = false;    // adds a timer to compass heading display so can see if a crash/reboot has happened
 
 bool enableRealTimePublishTigerLocation=true;
+bool enableRealTimePublishOceanicLocation=true;
 
 bool enableWifiAtStartup = false;   // set to true only if no espnow at startup
 bool enableESPNowAtStartup = true;  // set to true only if no wifi at startup
@@ -218,15 +219,20 @@ uint16_t ESPNowMessagesFailedToDeliver = 0;
 
 esp_now_peer_info_t ESPNow_audio_pod_peer;
 esp_now_peer_info_t ESPNow_tiger_peer;
+esp_now_peer_info_t ESPNow_oceanic_peer;
 
 QueueHandle_t msgsReceivedQueue;
 
 char tigerMessage[16]="";
 char tigerReeds[16]="";
+char oceanicMessage[16]="";
+char oceanicButtons[16]="";
 char silkyMessage[16]="";
 
 bool refreshTigerMsgShown = false;
 bool refreshTigerReedsShown = false;
+bool refreshOceanicMsgShown = false;
+bool refreshOceanicButtonsShown = false;
 bool refreshSilkyMsgShown = false;
 
 // ************** Silky / Sounds variables **************
@@ -350,6 +356,7 @@ bool enableESPNow = true;       //
 bool ESPNowActive = false;       // will be set to true on startup if set above - can be toggled through interface.
 bool isPairedWithAudioPod = false;
 bool isPairedWithTiger = false;
+bool isPairedWithOceanic = false;
 
 void OnESPNowDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
 
@@ -1941,6 +1948,18 @@ void loop()
         {
           strncpy(silkyMessage,rxQueueItemBuffer+1,sizeof(silkyMessage));
           refreshSilkyMsgShown = true;
+          break;
+        }
+        case 'O':   // Button status from Oceanic
+        {
+          strncpy(oceanicButtons,rxQueueItemBuffer+1,sizeof(oceanicButtons));
+          refreshOceanicButtonsShown = true;
+          break;
+        }
+        case 'B':   // Test message from Oceanic
+        {
+          strncpy(oceanicMessage,rxQueueItemBuffer+1,sizeof(oceanicMessage));
+          refreshOceanicMsgShown = true;
           break;
         }
         default:
@@ -4321,7 +4340,10 @@ void toggleESPNowActive()
         peeringAttempts = 5;
         isPairedWithTiger = pairWithPeer(ESPNow_tiger_peer,"Tiger",peeringAttempts);
 
-        if (isPairedWithTiger)
+        peeringAttempts = 5;
+        isPairedWithOceanic = pairWithPeer(ESPNow_oceanic_peer,"Oceanic",peeringAttempts);
+
+        if (isPairedWithTiger || isPairedWithOceanic)
         {
           // send message to tiger to give first target
           publishToTigerCurrentTarget(nextWaypoint->_label);
@@ -4331,9 +4353,10 @@ void toggleESPNowActive()
       {
         isPairedWithAudioPod = false;
         isPairedWithTiger = false;
+        isPairedWithOceanic = false;
       }
 
-      if (!isPairedWithAudioPod && !isPairedWithTiger)
+      if (!isPairedWithAudioPod && !isPairedWithTiger && !isPairedWithOceanic)
       {
         TeardownESPNow();
         ESPNowActive = false;
@@ -4351,6 +4374,7 @@ void toggleESPNowActive()
       ESPNowActive = false;
       isPairedWithAudioPod = false;
       isPairedWithTiger = false;
+      isPairedWithOceanic = false;
 
       M5.Lcd.println("ESPNow Disabled");
       
@@ -4601,6 +4625,11 @@ void publishToTigerCurrentTarget(const char* currentTarget)
     tiger_espnow_buffer[1] = '\0';
     strncpy(tiger_espnow_buffer+1,currentTarget,sizeof(tiger_espnow_buffer)-2);
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+1);
+
+    if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
+    {
+      ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+1);
+    }
   }
 }
 
@@ -4634,12 +4663,16 @@ void publishToTigerLocationAndTarget(const char* currentTarget)
 
     strncpy(tiger_espnow_buffer+currentTargetOffset,currentTarget,sizeof(tiger_espnow_buffer)-2-currentTargetOffset);
 
-//    ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, 40+strlen(tiger_espnow_buffer+32)+1);
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
+
+    if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
+    {
+      ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
+    }
   }
 }
 
-// *************************** Silky / Sound ESPNow Send Functions ******************
+// *************************** Silky Sound Send Functions ******************
 
 void toggleSound()
 {
@@ -4735,6 +4768,8 @@ void notifySoundsOnOffChanged()
     audioAction = AUDIO_ACTION_SOUNDS_TOGGLE;
   }
 }
+
+// *************************** ESP Now Functions ******************
 
 bool connectESPNow()
 {
