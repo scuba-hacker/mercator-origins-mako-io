@@ -24,7 +24,6 @@
 //#define INCLUDE_TWITTER_AT_COMPILE_TIME
 
 //#define INCLUDE_SMTP_AT_COMPILE_TIME
-//#define INCLUDE_QUBITRO_AT_COMPILE_TIME
 
 
 // ************** Mako Control Parameters **************
@@ -390,18 +389,6 @@ bool setTweetEmergencyNowFlag = false;
     SMTPSession smtp;
     bool connectToSMTP = true;
   // SMTP Email END
-#endif
-
-#ifdef INCLUDE_QUBITRO_AT_COMPILE_TIME
-  // QUBITRO START
-    #include <QubitroMqttClient.h>
-    const bool connectToQubitro = true;
-    float qubitro_upload_duty_ms = 0;
-    uint32_t last_qubitro_upload = 0;
-    
-    WiFiClient wifiClient;
-    QubitroMqttClient qubitro_mqttClient(wifiClient);
-  // QUBITRO END
 #endif
 
 uint8_t telemetry_message_count = 0;
@@ -1851,13 +1838,6 @@ void setup()
 #endif
 
 
-#ifdef INCLUDE_QUBITRO_AT_COMPILE_TIME
-  if (connectToQubitro && WiFi.status() == WL_CONNECTED)
-  {
-    qubitro_connect();
-  }
-#endif
-
 }
 
 void loop_no_gps()
@@ -2019,11 +1999,6 @@ void loop()
 
   refreshDiveTimer();
 
-#ifdef INCLUDE_QUBITRO_AT_COMPILE_TIME
-// This isn't included in the build or enabled in production.
-  if (connectToQubitro)
-    uploadTelemetryToQubitro();
-#endif
 }
 
 bool isGPSStreamOk()
@@ -2712,7 +2687,6 @@ void drawSurveyDisplay()
     M5.Lcd.setTextSize(2);
     M5.Lcd.printf("\n\n");
 
-    // print GPS status, humidity and Qubitro upload status
     M5.Lcd.setTextSize(3);
 
     if (isGPSStreamOk())
@@ -5118,150 +5092,6 @@ bool isMagnetPresentHallSensor()
   }
   return result;
 }
-
-
-#ifdef INCLUDE_QUBITRO_AT_COMPILE_TIME
-bool qubitro_connect()
-{
-  bool success = true;
-
-  if (connectToQubitro && WiFi.status() == WL_CONNECTED)
-  {
-    qubitro_mqttClient.setId(qubitro_device_id);
-    qubitro_mqttClient.setDeviceIdToken(qubitro_device_id, qubitro_device_token);
-
-    if (writeLogToSerial)
-      USB_SERIAL.println("Connecting to Qubitro...");
-
-    if (!qubitro_mqttClient.connect(qubitro_host, qubitro_port))
-    {
-      if (writeLogToSerial)
-      {
-        USB_SERIAL.print("Connection failed. Error code: ");
-        USB_SERIAL.println(qubitro_mqttClient.connectError());
-        USB_SERIAL.println("Visit docs.qubitro.com or create a new issue on github.com/qubitro");
-      }
-      success = false;
-    }
-    else
-    {
-      if (writeLogToSerial)
-        USB_SERIAL.println("Connected to Qubitro.");
-    }
-
-    qubitro_mqttClient.subscribe(qubitro_device_id);
-  }
-  else
-  {
-    success = false;
-  }
-
-  return success;
-}
-
-void buildBasicTelemetryMessage(char* payload)
-{
-  sprintf(payload, "{\"lat\":%f,\"lng\":%f}",  gps.location.lat(), gps.location.lng());
-}
-
-void buildFullFatBonzaTelemetryMessage(char* payload)
-{
-  // lat long as coordinates
-  sprintf(payload, "{\"UTC time\":\"%02d:%02d:%02d\",\"UTC date\":\"%02d:%02d:%02d\",\"on_seconds\":%hu,\"coordinates\":[%f,%f],\"alt\":%f,\"sats\":%lu,\"hdop\":%u,\"gps_course\":%f,\"speed\":%f,\"temp\":%f,\"humid\":%f,\"pressure\":%f,\"heading_to_target\":%f,\"distance_to_target\":%f,\"magnetic_heading_comp\":%f,\"course_heading\":%f,\"course_distance\":%f,\"mag_x\":%f,\"mag_y\":%f,\"mag_z\":%f,\"acc_x\":%f,\"acc_y\":%f,\"acc_z\":%f,\"fix_count\":%u,\"side_count\":%u,\"top_count\":%u,\"usb_v\":%f,\"usb_i\":%f}",
-          gps.time.hour(), gps.time.minute(), gps.time.second(),
-          gps.date.day(), gps.date.month(), gps.date.year(),
-          millis() / 1000,
-          gps.location.lat(),
-          gps.location.lng(),
-          gps.altitude.meters(),
-          gps.satellites.value(),
-          gps.hdop.hdop(),
-          gps.course.deg(),
-          gps.speed.mph(),
-          temperature,
-          humidity,
-          water_pressure,
-          heading_to_target,
-          distance_to_target,
-          magnetic_heading,
-          journey_course,
-          journey_distance,
-          magnetometer_vector.x,
-          magnetometer_vector.y,
-          magnetometer_vector.z,
-          accelerometer_vector.x,
-          accelerometer_vector.y,
-          accelerometer_vector.z,
-          fixCount,
-          sideCount,
-          topCount,
-          M5.Axp.GetVBusVoltage(),
-          M5.Axp.GetVBusCurrent()
-         );
-
-}
-
-bool uploadTelemetryToQubitro()
-{
-  bool success = false;
-
-  if (millis() < last_qubitro_upload + qubitro_upload_duty_ms)
-  {
-    return true;
-  }
-  else
-  {
-    last_qubitro_upload = millis();
-  }
-
-  if (connectToQubitro)
-  {
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      if (qubitro_mqttClient.connectError() == SUCCESS)
-      {
-        char qubitro_payload[4096];
-        buildFullFatBonzaTelemetryMessage(qubitro_payload);
-        //USB_SERIAL.println(qubitro_payload);
-
-        qubitro_mqttClient.poll();
-        qubitro_mqttClient.beginMessage(qubitro_device_id);
-        qubitro_mqttClient.print(qubitro_payload);
-        int endMessageResult = qubitro_mqttClient.endMessage();
-        if (endMessageResult == 1)
-        {
-          success = true;
-          if (writeLogToSerial)
-            USB_SERIAL.printf("Qubitro Client sent message %s\n", qubitro_payload);
-        }
-        else
-        {
-          if (writeLogToSerial)
-            USB_SERIAL.printf("Qubitro Client failed to send message, EndMessage error: %d\n", endMessageResult);
-        }
-      }
-      else
-      {
-        if (writeLogToSerial)
-          USB_SERIAL.printf("Qubitro Client error status %d\n", qubitro_mqttClient.connectError());
-      }
-    }
-    else
-    {
-      if (writeLogToSerial)
-       USB_SERIAL.printf("Q No Wifi\n");
-    }
-  }
-  else
-  {
-    if (writeLogToSerial)
-      USB_SERIAL.printf("Q Not On\n");
-  }
-
-  return success;
-}
-#endif
-
 
 #ifdef INCLUDE_SMTP_AT_COMPILE_TIME
 void sendTestByEmail()
