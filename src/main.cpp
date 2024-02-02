@@ -21,6 +21,8 @@
 
 #include <memory.h>
 
+#include <NavigationWaypoints.h>
+
 //#define INCLUDE_TWITTER_AT_COMPILE_TIME
 
 //#define INCLUDE_SMTP_AT_COMPILE_TIME
@@ -479,21 +481,27 @@ uint32_t recordHighlightExpireTime = 0;
 uint32_t recordHighlightDisplayDuration = 10000;
 bool     recordSurveyHighlight = false;
 
-class navigationWaypoint
+/*
+class NavigationWaypoint
 {
-//    static const uint8_t maxLabelLength = 24;
-
   public:
     const char*  _label;
+    const char*  _m5label;
+
     double _lat;
     double _long;
 
-    navigationWaypoint() = delete;
-    navigationWaypoint(const char*  label, double latitude, double longitude) : _label(label), _lat(latitude), _long(longitude)
+    NavigationWaypoint() = delete;
+
+    NavigationWaypoint(const char*  label, const char*  m5label, double latitude, double longitude) : _label(label), _m5label(m5label),_lat(latitude), _long(longitude)
+    {
+    }
+
+    NavigationWaypoint(const char*  label, double latitude, double longitude) : _label(label), _m5label(nullptr),_lat(latitude), _long(longitude)
     {
     }
 };
-
+*/
 
 
 /*
@@ -502,7 +510,7 @@ const uint8_t waypointExit = 0;
 
 // TBC means location to be confirmed by navigating to the feature on another dive
 // ^ means confirmed feature location
-navigationWaypoint diveOneWaypoints[waypointCount] =
+NavigationWaypoint diveOneWaypoints[waypointCount] =
 {
   [0] =  { ._label = "Mid\nJetty^\n", ._lat = 51.459547, ._long = -0.547461},  // from Bing or google - TBC
   [1] =  { ._label = "Search\nLight\nBoat^\n", ._lat = 51.459919, ._long = -0.547681},  // Lady of Kent, from Neo-6M - Dive 2 on 21 July -  TBC
@@ -533,7 +541,7 @@ navigationWaypoint diveOneWaypoints[waypointCount] =
 const uint8_t waypointCount = 22;
 const uint8_t waypointExit = 0;
 
-navigationWaypoint diveOneWaypoints[waypointCount] =
+NavigationWaypoint diveOneWaypoints[waypointCount] =
 {
   [0] =  { ._label = "-0Mid\nJetty^\n", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "--Old\nJetty\n(TBC)",  ._lat = 51.459280, ._long = -0.547084},
@@ -564,7 +572,7 @@ navigationWaypoint diveOneWaypoints[waypointCount] =
 const uint8_t waypointCount = 20;
 const uint8_t waypointExit = 19;
 
-navigationWaypoint diveOneWaypoints[waypointCount] =
+NavigationWaypoint diveOneWaypoints[waypointCount] =
 {
   [0] = { ._label = "Start", ._lat = 51.3915287, ._long = -0.2874116},
   [1] = { ._label = "Manor-Pine", ._lat = 51.3914433, ._long = -0.2868819},
@@ -595,7 +603,7 @@ navigationWaypoint diveOneWaypoints[waypointCount] =
 const uint8_t waypointCount = 16;
 const uint8_t waypointExit = 15;
 
-navigationWaypoint diveOneWaypoints[waypointCount] =
+NavigationWaypoint diveOneWaypoints[waypointCount] =
 {
   [0] = { ._label = "Post at\nPine/Chiltern", ._lat = 51.3920722, ._long = -0.2845362},
   [1] = { ._label = "Tree\ngreen\nhouse", ._lat = 51.3919567, ._long = -0.2840520},
@@ -622,7 +630,7 @@ navigationWaypoint diveOneWaypoints[waypointCount] =
 const uint8_t waypointCountDiveOne = 24;
 const uint8_t waypointExitDiveOne = 23;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "*1 Mid Jetty ", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "a P31 6m", ._lat = 51.459766, ._long = -0.547347},
@@ -653,7 +661,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 22;
 const uint8_t waypointExitDiveTwo = 21;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "*2 Cafe Jetty ", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "a 10 Bus", ._lat = 51.460073, ._long = -0.548515},
@@ -684,7 +692,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 20;
 const uint8_t waypointExitDiveOne = 19;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Cafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "Est.\nCave\nBuoy", ._lat = 51.4608337, ._long = -0.54883 },
@@ -713,7 +721,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 20;
 const uint8_t waypointExitDiveTwo = 19;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Cafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "Est.\nCave\nBuoy", ._lat = 51.4608337, ._long = -0.54883 },
@@ -743,7 +751,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 19;
 const uint8_t waypointExitDiveOne = 18;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01\n\nCafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "10N\n\nBus\n\n2m", ._lat = 51.460073, ._long = -0.548515},
@@ -770,7 +778,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 15;
 const uint8_t waypointExitDiveTwo = 14;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Z02\n\nMid\nJetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "44N\nVW\nCamper\nVan and\nSeahors\n\n5.5m", ._lat = 51.459368, ._long = -0.546760142857143},
@@ -794,7 +802,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 29;
 const uint8_t waypointExitDiveOne = 28;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
 [0] = { ._label = "Z01\n\nCafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
 
@@ -838,7 +846,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 15;
 const uint8_t waypointExitDiveTwo = 14;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Z02\n\nMid\nJetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "44N\nVW\nCamper\nVan and\nSeahors\n\n5.5m", ._lat = 51.459368, ._long = -0.546760142857143},
@@ -862,7 +870,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 40;
 const uint8_t waypointExitDiveOne = 39;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01\n\nCafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.46020025, ._long = -0.5479775},
@@ -911,7 +919,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 26;
 const uint8_t waypointExitDiveTwo = 25;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Z02\n\nMid\nJetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "Z03\n\nOld\nJetty", ._lat = 51.459166, ._long = -0.546999333333333},
@@ -952,7 +960,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 30;
 const uint8_t waypointExitDiveOne = 29;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01\n\nCafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.46020025, ._long = -0.5479775},
@@ -991,7 +999,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 26;
 const uint8_t waypointExitDiveTwo = 25;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Z02\n\nMid\nJetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "Z03\n\nOld\nJetty", ._lat = 51.459166, ._long = -0.546999333333333},
@@ -1028,7 +1036,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 18;
 const uint8_t waypointExitDiveOne = 17;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "31P 6m", ._lat = 51.459766, ._long = -0.547347},
@@ -1055,7 +1063,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 17;
 const uint8_t waypointExitDiveTwo = 16;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "13B White Boat 7m", ._lat = 51.4605198169044, ._long = -0.548421667307919},
@@ -1083,7 +1091,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 17;
 const uint8_t waypointExitDiveOne = 16;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "14P? Cargo 8m North of 15P", ._lat = 51.4602986, ._long = -0.5483127},
@@ -1109,7 +1117,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 17;
 const uint8_t waypointExitDiveTwo = 16;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "14P? Cargo 8m North of 15P", ._lat = 51.4602986, ._long = -0.5483127},
@@ -1136,7 +1144,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 26;
 const uint8_t waypointExitDiveOne = 25;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "14P? Cargo 8m North of 15P", ._lat = 51.4602986, ._long = -0.5483127},
@@ -1171,7 +1179,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 14;
 const uint8_t waypointExitDiveTwo = 13;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "30B White boat by platform", ._lat = 51.4598131428572, ._long = -0.547380285714286},
@@ -1196,7 +1204,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 20;
 const uint8_t waypointExitDiveOne = 19;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "04N Spitfire", ._lat = 51.4601028571429, ._long = -0.54883835},
@@ -1225,7 +1233,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 14;
 const uint8_t waypointExitDiveTwo = 13;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "30B White boat by platform", ._lat = 51.4598131428572, ._long = -0.547380285714286},
@@ -1250,7 +1258,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 14;
 const uint8_t waypointExitDiveOne = 13;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316},
   [1] = { ._label = "?17P 115d, 2m", ._lat = 51, ._long = 1},
@@ -1273,7 +1281,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 13;
 const uint8_t waypointExitDiveTwo = 12;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "*1 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "29B Dive/Spike Boat 7m", ._lat = 51.4601315714286, ._long = -0.547417857142857},
@@ -1298,7 +1306,7 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 const uint8_t waypointCountDiveOne = 23;
 const uint8_t waypointExitDiveOne = 22;
 
-navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "*1 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "a 34P Cargo 6m", ._lat = 51.460312, ._long = -0.547165},
@@ -1328,7 +1336,7 @@ navigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 const uint8_t waypointCountDiveTwo = 18;
 const uint8_t waypointExitDiveTwo = 17;
 
-navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
   [0] = { ._label = "*2 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
   [1] = { ._label = "a X08 Thorpe Boat 5.5m", ._lat = 51.4602073333333, ._long = -0.546787666666667},
@@ -1353,9 +1361,9 @@ navigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 
 const uint8_t* p_currentDiveWaypointCount = nullptr;
 const uint8_t* p_currentDiveWaypointExit = nullptr;
-navigationWaypoint* currentDiveWaypoints = nullptr;
+NavigationWaypoint* currentDiveWaypoints = nullptr;
 
-navigationWaypoint* nextWaypoint = nullptr;
+NavigationWaypoint* nextWaypoint = nullptr;
 
 void switchDivePlan()
 {
@@ -1374,7 +1382,7 @@ void switchDivePlan()
     nextWaypoint = currentDiveWaypoints;
   }
   
-  publishToTigerCurrentTarget(nextWaypoint->_label);
+  publishToTigerCurrentTarget(nextWaypoint->_m5label);
 }
 
 enum e_way_marker {BLACKOUT_MARKER, GO_ANTICLOCKWISE_MARKER, GO_AHEAD_MARKER, GO_CLOCKWISE_MARKER, GO_TURN_AROUND_MARKER, UNKNOWN_MARKER};
@@ -1989,7 +1997,7 @@ void loop()
   if (millis() > nextMapScreenRefresh || requestMapScreenRefresh)
   {
     if (enableRealTimePublishTigerLocation)   // enable by entering the show lat/long screen
-      publishToTigerLocationAndTarget(nextWaypoint->_label);
+      publishToTigerLocationAndTarget(nextWaypoint->_m5label);
 
     nextMapScreenRefresh = millis() + map_screen_refresh_minimum_interval;
     requestMapScreenRefresh = false;
@@ -2965,16 +2973,16 @@ void drawNextTarget()
     M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
     M5.Lcd.setCursor(0, 5);
   
-    M5.Lcd.printf ("Next:\n\n%i) %s", nextWaypoint-currentDiveWaypoints+1, nextWaypoint->_label);
+    M5.Lcd.printf ("Next:\n\n%i) %s", nextWaypoint-currentDiveWaypoints+1, nextWaypoint->_m5label);
   
-    publishToTigerCurrentTarget(nextWaypoint->_label);
+    publishToTigerCurrentTarget(nextWaypoint->_m5label);
   }
     
   if (millis() > showTempDisplayEndTime)
   {
     showTempDisplayEndTime = disabledTempDisplayEndTime;
     display_to_show = display_to_revert_to;
-    publishToTigerCurrentTarget(nextWaypoint->_label);
+    publishToTigerCurrentTarget(nextWaypoint->_m5label);
     M5.Lcd.fillScreen(TFT_BLACK);
   }
 }
@@ -2989,14 +2997,14 @@ void drawThisTarget()
     M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
     M5.Lcd.setCursor(0, 5);
   
-    M5.Lcd.printf ("Towards\n\n%i) %s", nextWaypoint-currentDiveWaypoints+1, nextWaypoint->_label);
+    M5.Lcd.printf ("Towards\n\n%i) %s", nextWaypoint-currentDiveWaypoints+1, nextWaypoint->_m5label);
   }
   
   if (millis() > showTempDisplayEndTime)
   {
     showTempDisplayEndTime = disabledTempDisplayEndTime;
     display_to_show = display_to_revert_to;
-    publishToTigerCurrentTarget(nextWaypoint->_label);
+    publishToTigerCurrentTarget(nextWaypoint->_m5label);
     M5.Lcd.fillScreen(TFT_BLACK);
   }
 }
@@ -3102,7 +3110,7 @@ void drawLatLong()
   M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
   if (millis() > showTempDisplayEndTime)
   {
-    publishToTigerLocationAndTarget(nextWaypoint->_label);
+    publishToTigerLocationAndTarget(nextWaypoint->_m5label);
 
     if (enableRealTimePublishTigerLocation)
     {
@@ -3171,7 +3179,7 @@ void drawLocationStats()
   M5.Lcd.setCursor(5, 102);
   M5.Lcd.printf("Silky: %s",silkyMessage);
   
-//  M5.Lcd.printf("T: (%d)\n%s", (int)(nextWaypoint - currentDiveWaypoints)+1, nextWaypoint->_label);
+//  M5.Lcd.printf("T: (%d)\n%s", (int)(nextWaypoint - currentDiveWaypoints)+1, nextWaypoint->_m5label);
 }
 
 void drawJourneyStats()
@@ -4320,7 +4328,7 @@ void toggleESPNowActive()
         if (isPairedWithTiger || isPairedWithOceanic)
         {
           // send message to tiger to give first target
-          publishToTigerCurrentTarget(nextWaypoint->_label);
+          publishToTigerCurrentTarget(nextWaypoint->_m5label);
         }
       }
       else
