@@ -332,6 +332,8 @@ uint8_t initialTextSize = 2;
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncElegantOTA.h>
+AsyncElegantOtaClass AsyncElegantOTA;
+
 
 const int SCREEN_LENGTH = 240;
 const int SCREEN_WIDTH = 135;
