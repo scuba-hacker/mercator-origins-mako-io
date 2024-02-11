@@ -1398,7 +1398,6 @@ float mag_tesla_x = 0, mag_tesla_y = 0, mag_tesla_z = 0;
 float humidity = 0, temperature = 0, air_pressure = 0, pressure_altitude = 0, depth = 0, water_temperature = 0, water_pressure = 0, depth_altitude = 0;
 uint16_t red_sensor = 0, green_sensor = 0, blue_sensor = 0, clear_sensor = 0;
 const float pressure_correction = 0;  // mbar, calibrated against Braggs Wunderground - not used now
-const float depth_correction = 0;
 
 uint32_t next_global_status_display_update = 0;
 const uint32_t global_status_display_update_period = 250;   // ms
@@ -1423,8 +1422,6 @@ uint32_t newPassedChecksum = 0;
 uint32_t newFailedChecksum = 0;
 uint32_t uplinkMessageCount = 0;
 uint32_t passedChecksumCount = 0;
-
-uint8_t graphicsCount = 0;
 
 char activity_indicator[] = "\\|/-";
 
@@ -1585,7 +1582,7 @@ template <typename T> double calculateTiltCompensatedHeading(vec<T> from);
 template <typename Ta, typename Tb, typename To> void vector_cross(const vec<Ta> *a, const vec<Tb> *b, vec<To> *out);
 template <typename Ta, typename Tb> float vector_dot(const vec<Ta> *a, const vec<Tb> *b);
 void vector_normalize(vec<double> *a);
-bool useGetDepthAsync = false;
+bool useGetDepthAsync = true;
 
 const float minimumUSBVoltage = 2.0;
 long USBVoltageDropTime = 0;
@@ -1593,8 +1590,6 @@ long milliSecondsToWaitForShutDown = 3000;    // When reduced to 500 there were 
 bool autoShutdownOnNoUSBPower = true;
 
 bool enableButtonTestMode = false;
-
-
 
 float hallOffset = 0;  // Store the initial value of magnetic force
 const float magnetHallReadingForReset = -50;
@@ -2218,8 +2213,10 @@ void refreshAndCalculatePositionalAttributes()
 
 void acquireAllSensorReadings()
 {        
-  const uint32_t minimum_sensor_read_time = 75; // ms
+//  const uint32_t minimum_sensor_read_time = 75; // ms
   
+  const uint32_t minimum_sensor_read_time = 40; // ms
+
   uint32_t start_time = millis();
   uint32_t forced_standardised_sensor_read_time = start_time+minimum_sensor_read_time;
   
@@ -2630,9 +2627,9 @@ void drawSurveyDisplay()
     M5.Lcd.setTextSize(6);
 
     if (useGetDepthAsync)
-      M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+      M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
     else
-     M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
+      M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
 
     // Display Cyan Depth
     M5.Lcd.printf("%.1f\n", depth);
