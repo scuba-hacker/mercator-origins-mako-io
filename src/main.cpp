@@ -185,6 +185,7 @@ void publishToTigerBrightLightEvent();
 void publishToTigerLocationAndTarget(const char* currentTarget);
 void publishToTigerCurrentTarget(const char* currentTarget);
 void publishToOceanicBreadCrumbRecord(const bool record);
+void publishToOceanicPinPlaced(double latitude, double longitude, double heading, double depth);
 void toggleSound();
 void publishToSilkyPlayAudioGuidance(enum e_soundFX sound);
 void publishToSilkySkipToNextTrack();
@@ -2651,6 +2652,7 @@ void drawSurveyDisplay()
       {
         recordHighlightExpireTime = 0;
         M5.Lcd.print("     \n");
+        publishToOceanicPinPlaced(Lat,Lng,magnetic_heading,depth);
       }
     }
     else if (recordBreadCrumbTrail)
@@ -4677,6 +4679,21 @@ void publishToOceanicBreadCrumbRecord(const bool record)
     if (writeLogToSerial)
     {
       USB_SERIAL.println("Sending ESP B msg to Oceanic...");
+      USB_SERIAL.println(oceanic_espnow_buffer);
+    }
+
+    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, reinterpret_cast<uint8_t*>(oceanic_espnow_buffer), strlen(oceanic_espnow_buffer)+1);
+  }
+}
+
+void publishToOceanicPinPlaced(double latitude, double longitude, double heading, double depth)
+{
+  if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
+  {
+    snprintf(oceanic_espnow_buffer,sizeof(oceanic_espnow_buffer),"P%.7f %.7f %.0f %.1f",latitude,longitude,heading,depth);
+    if (writeLogToSerial)
+    {
+      USB_SERIAL.println("Sending ESP P msg to Oceanic...");
       USB_SERIAL.println(oceanic_espnow_buffer);
     }
 
