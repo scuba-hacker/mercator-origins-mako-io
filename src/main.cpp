@@ -116,7 +116,7 @@ void testForDualButtonPressAutoShutdownChange();
 bool getMagHeadingTiltCompensated(double& tiltCompensatedHeading);
 bool getMagHeadingNotTiltCompensated(double& heading);
 bool getSmoothedMagHeading(double& b);
-std::string getCardinal(float b);
+std::string getCardinal(float b, bool surveyScreen = false);
 void getTempAndHumidityAndAirPressureBME280(float& h, float& t, float& p, float& p_a);
 void getDepth(float& d, float& d_t, float& d_p, float& d_a, bool original_read);
 bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a);
@@ -184,6 +184,7 @@ void fadeToBlackAndShutdown();
 void publishToTigerBrightLightEvent();
 void publishToTigerLocationAndTarget(const char* currentTarget);
 void publishToTigerCurrentTarget(const char* currentTarget);
+void publishToOceanicBreadCrumbRecord(const bool record);
 void toggleSound();
 void publishToSilkyPlayAudioGuidance(enum e_soundFX sound);
 void publishToSilkySkipToNextTrack();
@@ -218,7 +219,7 @@ const uint8_t ESPNOW_DELETEBEFOREPAIR = 0;
 uint16_t ESPNowMessagesDelivered = 0;
 uint16_t ESPNowMessagesFailedToDeliver = 0;
 
-esp_now_peer_info_t ESPNow_audio_pod_peer;
+esp_now_peer_info_t ESPNow_silky_peer;
 esp_now_peer_info_t ESPNow_tiger_peer;
 esp_now_peer_info_t ESPNow_oceanic_peer;
 
@@ -232,7 +233,6 @@ char silkyMessage[16]="";
 
 bool refreshTigerMsgShown = false;
 bool refreshTigerReedsShown = false;
-bool refreshOceanicMsgShown = false;
 bool refreshOceanicButtonsShown = false;
 bool refreshSilkyMsgShown = false;
 
@@ -357,7 +357,7 @@ uint16_t max_sensor_acquisition_time = 0;
 
 bool enableESPNow = true;       //
 bool ESPNowActive = false;       // will be set to true on startup if set above - can be toggled through interface.
-bool isPairedWithAudioPod = false;
+bool isPairedWithSilky = false;
 bool isPairedWithTiger = false;
 bool isPairedWithOceanic = false;
 
@@ -1431,6 +1431,7 @@ uint16_t       minutesDurationDiving = 0;
 uint16_t       whenToStopTimerDueToLackOfDepth = 0;
 uint16_t       minsToTriggerStopDiveTimer = 10;
 
+bool recordBreadCrumbTrail = false;
 
 enum  e_mako_displays 
   {
@@ -1941,10 +1942,13 @@ void loop()
           refreshOceanicButtonsShown = true;
           break;
         }
-        case 'B':   // Test message from Oceanic
+        case 'B':   // Breadcrumb Trail record on/off message from Oceanic
         {
           strncpy(oceanicMessage,rxQueueItemBuffer+1,sizeof(oceanicMessage));
-          refreshOceanicMsgShown = true;
+          if (oceanicMessage[0] == 'Y')
+            recordBreadCrumbTrail = true;
+          else
+            recordBreadCrumbTrail = false;
           break;
         }
         default:
@@ -2649,6 +2653,10 @@ void drawSurveyDisplay()
         M5.Lcd.print("     \n");
       }
     }
+    else if (recordBreadCrumbTrail)
+    {
+        M5.Lcd.print("-REC-\n");
+    }
     else
     {
       if  (millis() - journey_clear_period > last_journey_commit_time || journey_distance == 0)
@@ -2657,7 +2665,8 @@ void drawSurveyDisplay()
       }
       else
       {
-        M5.Lcd.printf(" %3s \n", getCardinal(journey_course).c_str());
+        const bool surveyScreen = true;
+        M5.Lcd.printf("%s\n", getCardinal(journey_course,surveyScreen).c_str());
       }
     }
         
@@ -3255,9 +3264,9 @@ void drawAudioTest()
   else
     M5.Lcd.println("Off");
 
-  M5.Lcd.println(isPairedWithAudioPod ? "Audio Paired" : "Not Paired");
+  M5.Lcd.println(isPairedWithSilky ? "Audio Paired" : "Not Paired");
 
-  if (isPairedWithAudioPod && soundsOn)
+  if (isPairedWithSilky && soundsOn)
   {
     M5.Lcd.printf("Sounds On (%i)",silkyVolume);
   }
@@ -3356,7 +3365,7 @@ void sendFullUplinkTelemetryMessage()
   sendUplinkTelemetryMessageV5();
 }
 
-enum e_user_action{NO_USER_ACTION=0x0000, HIGHLIGHT_USER_ACTION=0x0001};
+enum e_user_action{NO_USER_ACTION=0x0000, HIGHLIGHT_USER_ACTION=0x0001,RECORD_BREADCRUMB_TRAIL_USER_ACTION=0x0002};
 
 uint16_t getOneShotUserActionForUplink()
 {
@@ -3367,6 +3376,11 @@ uint16_t getOneShotUserActionForUplink()
     // log the highlight in all messages for the time the highlight is shown on the screen (5 seconds)
     recordSurveyHighlight = false;
     userAction |= HIGHLIGHT_USER_ACTION;
+  }
+
+  if (recordBreadCrumbTrail)
+  {
+    userAction |= RECORD_BREADCRUMB_TRAIL_USER_ACTION;
   }
 
   return (uint16_t)userAction;
@@ -4038,24 +4052,24 @@ bool getMagHeadingNotTiltCompensated(double& newHeading)
   return true;
 }
 
-std::string getCardinal(float b)
+std::string getCardinal(float b, bool surveyScreen) 
 {
   std::string result = "---";
 
-  if      (b > 337.5 || b <= 22.5) result = "N  ";  // 0
-  else if (b > 22.5 && b <= 67.5) result = "NE ";  // 45
-  else if (b > 67.5 && b <= 112.5) result = "E  ";  // 90
-  else if (b > 112.5 && b <= 157.5) result = "SE "; // 135
-  else if (b > 157.5 && b <= 202.5) result = "S  "; // 180
-  else if (b > 202.5 && b <= 247.5) result = "SW "; // 225
-  else if (b > 247.5 && b <= 292.5) result = "W  "; // 270
-  else if (b > 292.5 && b <= 337.5) result = "NW "; // 315
+  if      (b > 337.5 || b <= 22.5) result = (surveyScreen ? "North" : "N  ");  // 0
+  else if (b > 22.5 && b <= 67.5) result = (surveyScreen ? "  NE" : "NE ");  // 45
+  else if (b > 67.5 && b <= 112.5) result = (surveyScreen ? "East" : "E  ");  // 90
+  else if (b > 112.5 && b <= 157.5) result = (surveyScreen ? "  SE" : "SE "); // 135
+  else if (b > 157.5 && b <= 202.5) result = (surveyScreen ? "South" : "S  "); // 180
+  else if (b > 202.5 && b <= 247.5) result = (surveyScreen ? "  SW" : "SW "); // 225
+  else if (b > 247.5 && b <= 292.5) result = (surveyScreen ? "West" : "W  "); // 270
+  else if (b > 292.5 && b <= 337.5) result = (surveyScreen ? "  NW" : "NW "); // 315
 
   return result;
 }
 
 uint32_t nextDepthReadCompleteTime = 0xFFFFFFFF;
-const uint32_t depthReadCompletePeriod = 10000;
+const uint32_t depthReadCompletePeriod = 1000;
 
 bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a)
 {
@@ -4308,9 +4322,9 @@ void toggleESPNowActive()
           USB_SERIAL.println("Wifi\nDisabled\nESPNow\nEnabled");
         
         int peeringAttempts = 3;
-        isPairedWithAudioPod = pairWithPeer(ESPNow_audio_pod_peer,"AudioPod",peeringAttempts);
+        isPairedWithSilky = pairWithPeer(ESPNow_silky_peer,"AudioPod",peeringAttempts);
         
-        if (isPairedWithAudioPod)
+        if (isPairedWithSilky)
         {
           // set Silky volume to default.
           publishToSilkySetVolume(defaultSilkyVolume);
@@ -4322,20 +4336,20 @@ void toggleESPNowActive()
         peeringAttempts = 5;
         isPairedWithOceanic = pairWithPeer(ESPNow_oceanic_peer,"Oceanic",peeringAttempts);
 
-        if (isPairedWithTiger || isPairedWithOceanic)
-        {
-          // send message to tiger to give first target
-          publishToTigerCurrentTarget(nextWaypoint->_m5label);
-        }
+        // send message to tiger and oceanic to give first target
+        publishToTigerCurrentTarget(nextWaypoint->_m5label);
+
+        bool recordBreadCrumbTrail = false; // ensure trail not being record after pairing to get mako/oceanic in sync
+        publishToOceanicBreadCrumbRecord(recordBreadCrumbTrail);
       }
       else
       {
-        isPairedWithAudioPod = false;
+        isPairedWithSilky = false;
         isPairedWithTiger = false;
         isPairedWithOceanic = false;
       }
 
-      if (!isPairedWithAudioPod && !isPairedWithTiger && !isPairedWithOceanic)
+      if (!isPairedWithSilky && !isPairedWithTiger && !isPairedWithOceanic)
       {
         TeardownESPNow();
         ESPNowActive = false;
@@ -4351,7 +4365,7 @@ void toggleESPNowActive()
       TeardownESPNow();
  
       ESPNowActive = false;
-      isPairedWithAudioPod = false;
+      isPairedWithSilky = false;
       isPairedWithTiger = false;
       isPairedWithOceanic = false;
 
@@ -4651,6 +4665,25 @@ void publishToTigerLocationAndTarget(const char* currentTarget)
   }
 }
 
+// *************************** Oceanic Send Functions ******************
+
+char oceanic_espnow_buffer[256];
+
+void publishToOceanicBreadCrumbRecord(const bool record)
+{
+  if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
+  {
+    snprintf(oceanic_espnow_buffer,sizeof(oceanic_espnow_buffer),"B%c",(record ? 'Y' : 'N'));
+    if (writeLogToSerial)
+    {
+      USB_SERIAL.println("Sending ESP B msg to Oceanic...");
+      USB_SERIAL.println(oceanic_espnow_buffer);
+    }
+
+    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, reinterpret_cast<uint8_t*>(oceanic_espnow_buffer), strlen(oceanic_espnow_buffer)+1);
+  }
+}
+
 // *************************** Silky Sound Send Functions ******************
 
 void toggleSound()
@@ -4663,11 +4696,11 @@ void toggleSound()
 
 void publishToSilkyPlayAudioGuidance(enum e_soundFX sound)
 {
-  if (isPairedWithAudioPod && soundsOn && ESPNow_audio_pod_peer.channel == ESPNOW_CHANNEL && sound != SFX_NONE)
+  if (isPairedWithSilky && soundsOn && ESPNow_silky_peer.channel == ESPNOW_CHANNEL && sound != SFX_NONE)
   {
-    uint8_t ESPNow_AudioPod_data_to_send = (uint8_t)sound;
-    const uint8_t *peer_addr = ESPNow_audio_pod_peer.peer_addr;
-    ESPNowSendResult = esp_now_send(peer_addr, &ESPNow_AudioPod_data_to_send, sizeof(ESPNow_AudioPod_data_to_send));
+    uint8_t ESPNow_Silky_data_to_send = (uint8_t)sound;
+    const uint8_t *peer_addr = ESPNow_silky_peer.peer_addr;
+    ESPNowSendResult = esp_now_send(peer_addr, &ESPNow_Silky_data_to_send, sizeof(ESPNow_Silky_data_to_send));
 
     audioAction = AUDIO_ACTION_NONE;
   }
@@ -4675,12 +4708,12 @@ void publishToSilkyPlayAudioGuidance(enum e_soundFX sound)
 
 void publishToSilkySkipToNextTrack()
 {
-  if (isPairedWithAudioPod && soundsOn && ESPNow_audio_pod_peer.channel == ESPNOW_CHANNEL)
+  if (isPairedWithSilky && soundsOn && ESPNow_silky_peer.channel == ESPNOW_CHANNEL)
   {
     // Send byte command to Silky to say skip to next track
-    uint8_t ESPNow_AudioPod_data_to_send = SILKY_ESPNOW_COMMAND_NEXT_TRACK;
-    const uint8_t *peer_addr = ESPNow_audio_pod_peer.peer_addr;
-    ESPNowSendResult = esp_now_send(peer_addr, &ESPNow_AudioPod_data_to_send, sizeof(ESPNow_AudioPod_data_to_send));
+    uint8_t ESPNow_Silky_data_to_send = SILKY_ESPNOW_COMMAND_NEXT_TRACK;
+    const uint8_t *peer_addr = ESPNow_silky_peer.peer_addr;
+    ESPNowSendResult = esp_now_send(peer_addr, &ESPNow_Silky_data_to_send, sizeof(ESPNow_Silky_data_to_send));
 
     audioAction = AUDIO_ACTION_NEXT_SOUND;
   }
@@ -4688,7 +4721,7 @@ void publishToSilkySkipToNextTrack()
 
 void publishToSilkyCycleVolumeUp()
 {
-  if (isPairedWithAudioPod && soundsOn && ESPNow_audio_pod_peer.channel == ESPNOW_CHANNEL)
+  if (isPairedWithSilky && soundsOn && ESPNow_silky_peer.channel == ESPNOW_CHANNEL)
   {
     if (silkyVolume == maxSilkyVolume)
       silkyVolume = minSilkyVolume;
@@ -4703,13 +4736,13 @@ void publishToSilkyCycleVolumeUp()
 
 void publishToSilkySetVolume(const uint8_t newVolume)
 {
-  if (isPairedWithAudioPod && ESPNow_audio_pod_peer.channel == ESPNOW_CHANNEL)
+  if (isPairedWithSilky && ESPNow_silky_peer.channel == ESPNOW_CHANNEL)
   {
     silkyVolume = newVolume;
       
     // Send byte command to Silky to say set volume to silkyVolume
     uint16_t ESPNow_word_to_send = ((uint16_t)silkyVolume << 8) | (uint16_t)SILKY_ESPNOW_COMMAND_SET_VOLUME;
-    const uint8_t *peer_addr = ESPNow_audio_pod_peer.peer_addr;
+    const uint8_t *peer_addr = ESPNow_silky_peer.peer_addr;
     ESPNowSendResult = esp_now_send(peer_addr, (uint8_t*)&ESPNow_word_to_send, sizeof(ESPNow_word_to_send));
     audioAction = AUDIO_ACTION_NONE;  // done on startup and no screen change needed.
   }
@@ -4717,31 +4750,31 @@ void publishToSilkySetVolume(const uint8_t newVolume)
 
 void publishToSilkyTogglePlayback()
 {
-  if (isPairedWithAudioPod && soundsOn && ESPNow_audio_pod_peer.channel == ESPNOW_CHANNEL)
+  if (isPairedWithSilky && soundsOn && ESPNow_silky_peer.channel == ESPNOW_CHANNEL)
   {
     // Send byte command to Silky to say skip to next track
-    uint8_t ESPNow_AudioPod_data_to_send = SILKY_ESPNOW_COMMAND_TOGGLE_PLAYBACK;
-    const uint8_t *peer_addr = ESPNow_audio_pod_peer.peer_addr;
-    ESPNowSendResult = esp_now_send(peer_addr, &ESPNow_AudioPod_data_to_send, sizeof(ESPNow_AudioPod_data_to_send));
+    uint8_t ESPNow_Silky_data_to_send = SILKY_ESPNOW_COMMAND_TOGGLE_PLAYBACK;
+    const uint8_t *peer_addr = ESPNow_silky_peer.peer_addr;
+    ESPNowSendResult = esp_now_send(peer_addr, &ESPNow_Silky_data_to_send, sizeof(ESPNow_Silky_data_to_send));
     audioAction = AUDIO_ACTION_PLAYBACK_TOGGLE;
   }
 }
 
 void publishToSilkyStopPlayback()
 {
-  if (isPairedWithAudioPod && !soundsOn && ESPNow_audio_pod_peer.channel == ESPNOW_CHANNEL)
+  if (isPairedWithSilky && !soundsOn && ESPNow_silky_peer.channel == ESPNOW_CHANNEL)
   {
     // Send byte command to Silky to say skip to next track
-    uint8_t ESPNow_AudioPod_data_to_send  = SILKY_ESPNOW_COMMAND_STOP_PLAYBACK;
-    const uint8_t *peer_addr = ESPNow_audio_pod_peer.peer_addr;
-    ESPNowSendResult = esp_now_send(peer_addr, &ESPNow_AudioPod_data_to_send, sizeof(ESPNow_AudioPod_data_to_send));
+    uint8_t ESPNow_Silky_data_to_send  = SILKY_ESPNOW_COMMAND_STOP_PLAYBACK;
+    const uint8_t *peer_addr = ESPNow_silky_peer.peer_addr;
+    ESPNowSendResult = esp_now_send(peer_addr, &ESPNow_Silky_data_to_send, sizeof(ESPNow_Silky_data_to_send));
     audioAction = AUDIO_ACTION_STOP_PLAYBACK;
   }
 }
 
 void notifySoundsOnOffChanged()
 {
-  if (isPairedWithAudioPod && ESPNow_audio_pod_peer.channel == ESPNOW_CHANNEL)
+  if (isPairedWithSilky && ESPNow_silky_peer.channel == ESPNOW_CHANNEL)
   {
     ESPNowSendResult = ESP_OK;
     audioAction = AUDIO_ACTION_SOUNDS_TOGGLE;
