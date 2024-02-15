@@ -1808,7 +1808,7 @@ void setup()
   else
   {
     float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
   }
   updateButtonsAndBuzzer();
   // cannot use Pin 0 for receive of GPS (resets on startup), can use Pin 36, can use 26
