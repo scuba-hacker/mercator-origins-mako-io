@@ -3414,6 +3414,7 @@ void sendUplinkTelemetryMessageV5()
 
     uint16_t uplink_heading = magnetic_heading * 10.0;
 
+    const char*    uplink_target_code = nextWaypoint->_label;
     uint16_t uplink_heading_to_target = heading_to_target * 10.0;
     uint16_t uplink_distance_to_target = (distance_to_target < 6499 ? distance_to_target * 10.0 : 64999);
     uint16_t uplink_journey_course = journey_course * 10.0;
@@ -3422,14 +3423,11 @@ void sendUplinkTelemetryMessageV5()
     uint16_t uplink_mako_seconds_on = millis() / 1000.0 / 60.0;
     uint16_t uplink_mako_user_action = getOneShotUserActionForUplink();
 
-//    uint16_t uplink_mako_AXP192_temp = M5.Axp.GetTempInAXP192() * 10.0;     /// changed to number of bad lemon msg uint16_t
     uint16_t uplink_mako_bad_checksum_msgs = newFailedChecksum;
 
     uint16_t uplink_mako_usb_voltage = M5.Axp.GetVBusVoltage() * 1000.0;
     uint16_t uplink_mako_usb_current = M5.Axp.GetVBusCurrent() * 100.0;
 
-    uint16_t uplink_mako_bat_voltage = M5.Axp.GetBatVoltage() * 1000.0;
-    uint16_t uplink_mako_bat_charge_current = M5.Axp.GetBatChargeCurrent() * 100.0;
 
     float uplink_mako_lsm_mag_x = magnetometer_vector.x;
     float uplink_mako_lsm_mag_y = magnetometer_vector.y;
@@ -3450,7 +3448,6 @@ void sendUplinkTelemetryMessageV5()
     float uplink_mako_imu_rot_acc_y = imu_rot_acc_vector.y;
     float uplink_mako_imu_rot_acc_z = imu_rot_acc_vector.z;
 
-//    float uplink_mako_imu_temperature = imu_temperature * 10.0;    /// changed to number of good lemon msg uint16_t
     uint16_t uplink_mako_good_checksum_msgs = newPassedChecksum;
 
     uint16_t uplink_flags = setTweetLocationNowFlag | (setTweetEmergencyNowFlag << 1);
@@ -3495,9 +3492,10 @@ void sendUplinkTelemetryMessageV5()
     *(nextMetric++) = uplink_mako_bad_checksum_msgs;
     *(nextMetric++) = uplink_mako_usb_voltage;
     *(nextMetric++) = uplink_mako_usb_current;
-    *(nextMetric++) = uplink_mako_bat_voltage;
-    *(nextMetric++) = uplink_mako_bat_charge_current;
 
+    *(nextMetric++) = (uint16_t)(uplink_target_code[0]) + (((uint16_t)(uplink_target_code[1])) << 8);
+    *(nextMetric++) = (uint16_t)(uplink_target_code[2]) + (((uint16_t)(uplink_target_code[3])) << 8);
+    
     char* p = NULL;
 
     // 6x32 bit words (floats) - (12 x 2 byte metrics)
