@@ -2219,8 +2219,8 @@ void refreshAndCalculatePositionalAttributes()
 
 void acquireAllSensorReadings()
 {        
-  uint32_t start_time = millis();
-  uint32_t forced_standardised_sensor_read_time = start_time+minimum_sensor_read_time;
+  uint32_t start_time_millis = millis();
+  uint32_t forced_standardised_sensor_read_time = start_time_millis+minimum_sensor_read_time;
   
   if (millis() > s_lastCompassNotSmoothedDisplayRefresh + s_compassNotSmoothedHeadingUpdateRate)
   {
@@ -2300,7 +2300,7 @@ void acquireAllSensorReadings()
     }
   }
 
-  actual_sensor_acquisition_time = (uint16_t)(millis() - start_time);
+  actual_sensor_acquisition_time = (uint16_t)(millis() - start_time_millis);
 
   if (actual_sensor_acquisition_time > max_actual_sensor_acquisition_time)
     max_actual_sensor_acquisition_time = actual_sensor_acquisition_time;
@@ -2308,7 +2308,7 @@ void acquireAllSensorReadings()
   // equalise acquisition time to be set to a minimum - BLOCKING - later make this asynchronous, and use quietTimeMsBeforeUplink
   while (millis() < forced_standardised_sensor_read_time);
   
-  sensor_acquisition_time = (uint16_t)(millis() - start_time);
+  sensor_acquisition_time = (uint16_t)(millis() - start_time_millis);
   if (sensor_acquisition_time > max_sensor_acquisition_time)
     max_sensor_acquisition_time = sensor_acquisition_time;
 }
@@ -3434,9 +3434,6 @@ void sendUplinkTelemetryMessageV5()
     uint16_t uplink_mako_usb_current = M5.Axp.GetVBusCurrent() * 100.0;
 
 
-    float uplink_mako_lsm_mag_x = magnetometer_vector.x;
-    float uplink_mako_lsm_mag_y = magnetometer_vector.y;
-    float uplink_mako_lsm_mag_z = magnetometer_vector.z;
     float uplink_mako_lsm_acc_x = accelerometer_vector.x;
     float uplink_mako_lsm_acc_y = accelerometer_vector.y;
     float uplink_mako_lsm_acc_z = accelerometer_vector.z;
@@ -3501,11 +3498,6 @@ void sendUplinkTelemetryMessageV5()
     *(nextMetric++) = (uint16_t)(uplink_target_code[0]) + (((uint16_t)(uplink_target_code[1])) << 8);
     *(nextMetric++) = (uint16_t)(uplink_target_code[2]) + (((uint16_t)(uplink_target_code[3])) << 8);
     
-    char* p = NULL;
-
-    p = (char*) &uplink_mako_lsm_mag_x;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_lsm_mag_y;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_lsm_mag_z;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
 
     *(nextMetric++) = minimum_sensor_read_time;
     *(nextMetric++) = quietTimeMsBeforeUplink;
@@ -3513,6 +3505,8 @@ void sendUplinkTelemetryMessageV5()
     *(nextMetric++) = max_sensor_acquisition_time;
     *(nextMetric++) = actual_sensor_acquisition_time;
     *(nextMetric++) = max_actual_sensor_acquisition_time;
+
+    char* p = NULL;
 
     // 3x32 bit words (floats) - (6 x 2 byte metrics)
     p = (char*) &uplink_mako_lsm_acc_x;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
