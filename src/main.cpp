@@ -39,6 +39,7 @@ bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
 bool enableIMUSensor = true;
 bool enableColourSensor = true;
+const uint32_t minimum_sensor_read_time = 75; // (ms) regulates upload of responses to lemon by normalising the time to process sensor readings. This contributes most to the round-trip latency.
 
 bool enableDownlinkComms = true; // enable reading the feed from Lemon at surface
 bool enableUplinkComms = true;  // enable writing of feed to Lemon. Can be toggled through UI
@@ -353,8 +354,10 @@ void sendFullUplinkTelemetryMessage();
 const e_display_brightness ScreenBrightness = BRIGHTEST_DISPLAY;
 const e_uplinkMode uplinkMode = SEND_FULL_UPLINK_MSG;
 
-uint16_t sensor_acquisition_time = 0;
-uint16_t max_sensor_acquisition_time = 0;
+uint16_t sensor_acquisition_time = 0;         // how long the acquireSensorReadings function took to run (including forced wait)
+uint16_t max_sensor_acquisition_time = 0;     // maximum sensor acquistion time (including forced wait)
+uint16_t actual_sensor_acquisition_time = 0;  // actual sensor acquisition time without forced wait
+uint16_t max_actual_sensor_acquisition_time = 0;  // max val of above.
 
 bool enableESPNow = true;       //
 bool ESPNowActive = false;       // will be set to true on startup if set above - can be toggled through interface.
@@ -440,18 +443,15 @@ const uint32_t minimumExpectedTimeBetweenFix = 1000;  // 1 second
 #include <Adafruit_APDS9960.h>      // colour sensor
 #include <MS5837.h>                 // water pressure sensor
 
-const uint16_t SEALEVELPRESSURE_HPA = 1000.00;
+const uint16_t SEALEVELPRESSURE_HPA = 1000.00;    // could get Lemon to check atmospheric pressure from weather website and send to Mako to calibrate this
 
 #include <math.h>
 
 enum gpsStatus {GPS_NO_GPS_LIVE_IN_FLOAT, GPS_NO_FIX_FROM_FLOAT, GPS_FIX_FROM_FLOAT};
 gpsStatus GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
 
-// lat/long of the compost bin in the garden
-double ref_lat = 51.391231;
-double ref_lng = -0.287616;
-
-uint16_t telemetryMessage[100]; // 200 bytes
+const int maxSizeTelemetryMessageToMakoInBytes = 200;
+uint16_t telemetryMessage[maxSizeTelemetryMessageToMakoInBytes/sizeof(uint16_t)];
 
 char shortBlackOut[] = "BL";
 char shortAntiClockwise[] = "AC";
@@ -1428,6 +1428,7 @@ char activity_indicator[] = "\\|/-";
 
 bool           diveTimerRunning = false;
 const float    minimumDivingDepthToRunTimer = 1.0;  // in metres
+const float    minimumDivingDepthToActivateLightSensor = 1.0; // in metres
 uint16_t       minutesDurationDiving = 0;
 uint16_t       whenToStopTimerDueToLackOfDepth = 0;
 uint16_t       minsToTriggerStopDiveTimer = 10;
@@ -2218,8 +2219,6 @@ void refreshAndCalculatePositionalAttributes()
 
 void acquireAllSensorReadings()
 {        
-  const uint32_t minimum_sensor_read_time = 75; // ms
-
   uint32_t start_time = millis();
   uint32_t forced_standardised_sensor_read_time = start_time+minimum_sensor_read_time;
   
@@ -2269,7 +2268,8 @@ void acquireAllSensorReadings()
                      &imu_temperature);
   }
 
-  if (millis() > s_lastColourDisplayRefresh + s_colourUpdatePeriod && millis() > nextLightReadTime)
+  if (depth > minimumDivingDepthToActivateLightSensor &&
+      millis() > s_lastColourDisplayRefresh + s_colourUpdatePeriod && millis() > nextLightReadTime)
   {
     s_lastColourDisplayRefresh = millis();
     if (colourSensorAvailable && Adafruit_ColourSensor.colorDataReady())
@@ -2300,7 +2300,12 @@ void acquireAllSensorReadings()
     }
   }
 
-  // equalise acquisition time to be set to a minimum
+  actual_sensor_acquisition_time = (uint16_t)(millis() - start_time);
+
+  if (actual_sensor_acquisition_time > max_actual_sensor_acquisition_time)
+    max_actual_sensor_acquisition_time = actual_sensor_acquisition_time;
+
+  // equalise acquisition time to be set to a minimum - BLOCKING - later make this asynchronous, and use quietTimeMsBeforeUplink
   while (millis() < forced_standardised_sensor_read_time);
   
   sensor_acquisition_time = (uint16_t)(millis() - start_time);
@@ -3498,10 +3503,18 @@ void sendUplinkTelemetryMessageV5()
     
     char* p = NULL;
 
-    // 6x32 bit words (floats) - (12 x 2 byte metrics)
     p = (char*) &uplink_mako_lsm_mag_x;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
     p = (char*) &uplink_mako_lsm_mag_y;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
     p = (char*) &uplink_mako_lsm_mag_z;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
+
+    *(nextMetric++) = minimum_sensor_read_time;
+    *(nextMetric++) = quietTimeMsBeforeUplink;
+    *(nextMetric++) = sensor_acquisition_time;
+    *(nextMetric++) = max_sensor_acquisition_time;
+    *(nextMetric++) = actual_sensor_acquisition_time;
+    *(nextMetric++) = max_actual_sensor_acquisition_time;
+
+    // 3x32 bit words (floats) - (6 x 2 byte metrics)
     p = (char*) &uplink_mako_lsm_acc_x;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
     p = (char*) &uplink_mako_lsm_acc_y;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
     p = (char*) &uplink_mako_lsm_acc_z;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
