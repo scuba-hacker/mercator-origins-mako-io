@@ -113,7 +113,6 @@ bool isMagnetPresentHallSensor();
 const char* scanForKnownNetwork();
 bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts);
 bool setupOTAWebServer(const char* _ssid, const char* _password, const char* label, uint32_t timeout, bool wifiOnly);
-void testForDualButtonPressAutoShutdownChange();
 bool getMagHeadingTiltCompensated(double& tiltCompensatedHeading);
 bool getMagHeadingNotTiltCompensated(double& heading);
 bool getSmoothedMagHeading(double& b);
@@ -180,8 +179,6 @@ void toggleOTAActive();
 void toggleUptimeGlobalDisplay();
 void toggleAsyncDepthDisplay();
 void toggleUplinkMessageProcessAndSend();
-void shutdownIfUSBPowerOff();
-void fadeToBlackAndShutdown();
 void publishToTigerBrightLightEvent();
 void publishToTigerLocationAndTarget(const char* currentTarget);
 void publishToTigerCurrentTarget(const char* currentTarget);
@@ -1569,6 +1566,9 @@ Button BtnGoProTop = Button(BUTTON_GOPRO_TOP_PIN, true, MERCATOR_DEBOUNCE_MS);  
 Button BtnGoProSide = Button(BUTTON_GOPRO_SIDE_PIN, true, MERCATOR_DEBOUNCE_MS); // from utility/Button.h for M5 Stick C Plus
 uint16_t sideCount = 0, topCount = 0;
 
+bool topGoProButtonActiveAtStartup = false;
+bool sideGoProButtonActiveAtStartup = false;
+
 Button* p_primaryButton = NULL;
 Button* p_secondButton = NULL;
 void updateButtonsAndBuzzer();
@@ -1586,11 +1586,6 @@ template <typename Ta, typename Tb, typename To> void vector_cross(const vec<Ta>
 template <typename Ta, typename Tb> float vector_dot(const vec<Ta> *a, const vec<Tb> *b);
 void vector_normalize(vec<double> *a);
 bool useGetDepthAsync = true;
-
-const float minimumUSBVoltage = 2.0;
-long USBVoltageDropTime = 0;
-long milliSecondsToWaitForShutDown = 3000;    // When reduced to 500 there were spurious shutdowns
-bool autoShutdownOnNoUSBPower = true;
 
 bool enableButtonTestMode = false;
 
@@ -1617,6 +1612,26 @@ void dumpHeapUsage(const char* msg)
   }
 }
 
+void showOTARecoveryScreen()
+{
+  M5.Lcd.fillScreen(TFT_GREEN);
+  M5.Lcd.setCursor(5,5);
+  M5.Lcd.setTextColor(TFT_WHITE,TFT_GREEN);
+  M5.Lcd.setTextSize(3);
+
+  if (otaActive)
+  {
+    M5.Lcd.printf("OTA\nRecover\nActive\n\n%s",WiFi.localIP().toString());
+  }
+  else
+  {
+    M5.Lcd.print("OTA\nRecover\nNo WiFi\n\n");
+  }
+
+  while (true)
+    delay(1000);
+}
+
 void setup()
 {
   M5.begin();
@@ -1626,6 +1641,39 @@ void setup()
   digitalWrite(RED_LED_GPIO, redLEDStatus); // switch off
 
   ssid_connected = ssid_not_connected;
+
+  if (writeLogToSerial)
+    USB_SERIAL.begin(115200);
+
+  uint32_t start = millis();
+  while(millis() < start + 1000)
+  {
+    if (digitalRead(BUTTON_GOPRO_TOP_PIN) == false)
+    {
+      topGoProButtonActiveAtStartup = true;
+      break;
+    }
+
+    if (digitalRead(BUTTON_GOPRO_SIDE_PIN) == false)
+    {
+      sideGoProButtonActiveAtStartup = true;
+      // no function currently - could be used for show test track
+      break;
+    }
+  }
+
+  if (topGoProButtonActiveAtStartup)
+  {
+    M5.Lcd.fillScreen(TFT_BLACK);
+    M5.Lcd.setCursor(5,5);
+    M5.Lcd.setTextSize(3);
+    M5.Lcd.println("Start\nOTA\n\n");
+    delay(1000);
+    const bool wifiOnly = false;
+    const int maxWifiScanAttempts = 3;
+    otaActive = connectToWiFiAndInitOTA(wifiOnly,maxWifiScanAttempts);
+    showOTARecoveryScreen();
+  }
 
   msgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
 
@@ -1852,9 +1900,6 @@ void loop_no_gps()
 {
   M5.Axp.ScreenBreath(HALF_BRIGHT_DISPLAY);
 
-  if (autoShutdownOnNoUSBPower)
-    shutdownIfUSBPowerOff();
-
   getTempAndHumidityAndAirPressureBME280(humidity, temperature, air_pressure, pressure_altitude);
 
   getDepth(depth, water_temperature, water_pressure, depth_altitude,true);
@@ -1888,11 +1933,6 @@ void loop_no_gps()
   M5.Lcd.setTextSize(3);
   M5.Lcd.printf("%.2fV %.1fmA \n", M5.Axp.GetBatVoltage(), M5.Axp.GetBatCurrent());
 
-  if (autoShutdownOnNoUSBPower)
-  {
-    shutdownIfUSBPowerOff();
-  }
-
   sleep(250);
 }
 
@@ -1911,9 +1951,6 @@ void sendTestSerialBytesWhenReady()
 
 void loop()
 {
-  if (autoShutdownOnNoUSBPower)
-    shutdownIfUSBPowerOff();
-
   if (msgsReceivedQueue)
   {
     if (xQueueReceive(msgsReceivedQueue,&(rxQueueItemBuffer),(TickType_t)0))
@@ -4565,40 +4602,6 @@ void toggleUplinkMessageProcessAndSend()
   M5.Lcd.fillScreen(TFT_BLACK);
 }
 
-void shutdownIfUSBPowerOff()
-{
-  if (M5.Axp.GetVBusVoltage() < minimumUSBVoltage)
-  {
-    if (USBVoltageDropTime == 0)
-      USBVoltageDropTime = millis();
-    else
-    {
-      if (millis() > USBVoltageDropTime + milliSecondsToWaitForShutDown)
-      {
-        // initiate shutdown after 500ms.
-        delay(500);
-        fadeToBlackAndShutdown();
-      }
-    }
-  }
-  else
-  {
-    if (USBVoltageDropTime != 0)
-      USBVoltageDropTime = 0;
-  }
-}
-
-void fadeToBlackAndShutdown()
-{
-  for (int i = 90; i > 0; i=i-15)
-  {
-    M5.Axp.ScreenBreath(i);             // fade to black
-    delay(100);
-  }
-
-  M5.Axp.PowerOff();
-}
-
 // *************************** Tiger ESPNow Send Functions ******************
 
 char tiger_espnow_buffer[256];
@@ -4994,14 +4997,6 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
   int count = timeout / 500;
   while (WiFi.status() != WL_CONNECTED && --count > 0)
   {
-    // check for cancellation button - top button.
-    updateButtonsAndBuzzer();
-
-    if (p_primaryButton->isPressed()) // cancel connection attempts
-    {
-      forcedCancellation = true;
-      break;
-    }
 
     M5.Lcd.print(".");
     delay(500);
@@ -5053,14 +5048,6 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
       delay(2000);
 
       connected = true;
-  
-      updateButtonsAndBuzzer();
-  
-      if (p_secondButton->isPressed())
-      {
-        M5.Lcd.print("\n\n20\nsecond pause");
-        delay(20000);
-      }
     }
   }
   else
