@@ -235,6 +235,8 @@ bool refreshTigerReedsShown = false;
 bool refreshOceanicButtonsShown = false;
 bool refreshSilkyMsgShown = false;
 
+bool sendLeakDetectedToLemon = false;
+
 // ************** Silky / Sounds variables **************
 
 bool soundsOn = true;
@@ -1969,6 +1971,11 @@ void loop()
           refreshTigerReedsShown = true;
           break;
         }        
+        case 'L':   // Leak alarm detected from Tiger
+        {
+          sendLeakDetectedToLemon = true;
+          break;
+        }        
         case 'S':   // Test message from Silky
         {
           strncpy(silkyMessage,rxQueueItemBuffer+1,sizeof(silkyMessage));
@@ -2138,8 +2145,29 @@ bool processGPSMessageIfAvailable()
               
             result = true;
           }
-          else
+          else if (GPS_status != GPS_FIX_FROM_FLOAT && gps.isSentenceRMC())
           {
+            if (gps.date.year() == 2000)  // fake data received from float for No GPS.
+            {
+              if (GPS_status != GPS_NO_GPS_LIVE_IN_FLOAT)
+              {
+                GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
+              }
+            }
+            else if (gps.date.year() == 2012) // fake data received from float for No Fix yet.
+            {
+              if (GPS_status != GPS_NO_FIX_FROM_FLOAT)
+              {
+                GPS_status = GPS_NO_FIX_FROM_FLOAT;
+              }
+            }
+            else
+            {
+              if (GPS_status != GPS_FIX_FROM_FLOAT)
+              {
+                GPS_status = GPS_FIX_FROM_FLOAT;
+              }
+            }
             result = false;
           }
         }
@@ -2224,33 +2252,6 @@ void refreshAndCalculatePositionalAttributes()
   {
     heading_to_target = 1.0;
     distance_to_target = 1.1;
-  }
-
-  if (distance_to_target > 10000000.0)  // fake data received from float for No GPS.
-  {
-    // NO GPS Fake data from M5 53
-    if (GPS_status != GPS_NO_GPS_LIVE_IN_FLOAT)
-    {
-      GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
-      M5.Lcd.fillScreen(TFT_BLACK);
-    }
-  }
-  else if (distance_to_target > 7000000.0) // fake data received from float for No fix yet.
-  {
-    // NO Fix Fake data from M5 53
-    if (GPS_status != GPS_NO_FIX_FROM_FLOAT)
-    {
-      GPS_status = GPS_NO_FIX_FROM_FLOAT;
-      M5.Lcd.fillScreen(TFT_BLACK);
-    }
-  }
-  else
-  {
-    if (GPS_status != GPS_FIX_FROM_FLOAT)
-    {
-      GPS_status = GPS_FIX_FROM_FLOAT;
-      M5.Lcd.fillScreen(TFT_BLACK);
-    }
   }
 }
 
@@ -3409,7 +3410,7 @@ void sendFullUplinkTelemetryMessage()
   sendUplinkTelemetryMessageV5();
 }
 
-enum e_user_action{NO_USER_ACTION=0x0000, HIGHLIGHT_USER_ACTION=0x0001,RECORD_BREADCRUMB_TRAIL_USER_ACTION=0x0002};
+enum e_user_action{NO_USER_ACTION=0x0000, HIGHLIGHT_USER_ACTION=0x0001,RECORD_BREADCRUMB_TRAIL_USER_ACTION=0x0002,LEAK_DETECTED_USER_ACTION=0x0004};
 
 uint16_t getOneShotUserActionForUplink()
 {
@@ -3425,6 +3426,11 @@ uint16_t getOneShotUserActionForUplink()
   if (recordBreadCrumbTrail)
   {
     userAction |= RECORD_BREADCRUMB_TRAIL_USER_ACTION;
+  }
+
+  if (sendLeakDetectedToLemon)
+  {
+    userAction |= LEAK_DETECTED_USER_ACTION;
   }
 
   return (uint16_t)userAction;
