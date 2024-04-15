@@ -1747,9 +1747,15 @@ void setup()
 //  magnetometer_min = (vec<double>) { -45.3, -60.6, 15.3};
 //  magnetometer_max = (vec<double>) { 49.8, 31.95, 110.25};
 
-  // re-calibrated on 5th Oct 2023 in situ
-  magnetometer_min = (vec<double>) { -29.25, -48.3, 27.3};
-  magnetometer_max = (vec<double>) { 58.65, 32.55, 115.350};
+  // re-calibrated on 5th Oct 2023 in situ (with three speaker audio pod on rear of reel)
+//  magnetometer_min = (vec<double>) { -29.25, -48.3, 27.3};
+//  magnetometer_max = (vec<double>) { 58.65, 32.55, 115.350};
+
+  // re-calibrated on 15th Apr 2024 in situ without audio pod or mapping pod.
+  magnetometer_min = (vec<double>) { -51.9, -54.300, -10.350};
+  magnetometer_max = (vec<double>) { 31.050, 28.0500, 97.050};
+
+
 
   M5.Lcd.setCursor(0, 0);
 
