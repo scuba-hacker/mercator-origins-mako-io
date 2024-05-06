@@ -516,7 +516,7 @@ NavigationWaypoint diveOneWaypoints[waypointCount] =
 {
   [0] =  { ._label = "Mid\nJetty^\n", ._lat = 51.459547, ._long = -0.547461},  // from Bing or google - TBC
   [1] =  { ._label = "Search\nLight\nBoat^\n", ._lat = 51.459919, ._long = -0.547681},  // Lady of Kent, from Neo-6M - Dive 2 on 21 July -  TBC
-  [2] =  { ._label = "Cement\nMixer^\n", ._lat = 51.460038, ._long = -0.547882},  // from Neo-6M - Dive 2 on 21 July - TBC
+  [2] = { ._label = "X13 Cement Mixer", ._lat = 51.46020025, ._long = -0.5479775},
   [3] =  { ._label = "Tyre^\n", ._lat = 51.460053, ._long = -0.548184},  // from Neo-6M Dive 2 on 21 July - TBC
   [4] =  { ._label = "Cafe\nJetty^\n", ._lat = 51.460015, ._long = -0.548316},    // from Bing or google - jetty near dive centre - TBC
   [5] =  { ._label = "Container\nRusty^\n8m", ._lat = 51.460192, ._long = -0.548283},  // from Neo-6M Dive 2 on 21 July - TBC
@@ -794,7 +794,7 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
   [9] = { ._label = "35N\n\nDragon\nBoat\n\n7.5m", ._lat = 51.4599636666667, ._long = -0.547154333333333},
   [10] = { ._label = "25N\n\nBoat In\nA Hole\n\n7m", ._lat = 51.4599545, ._long = -0.54755475},
   [11] = { ._label = "22B\nLady of\nKent\nSearch\nLight\n\n5m", ._lat = 51.4599185714286, ._long = -0.547681},
-  [12] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.46020025, ._long = -0.5479775},
+  [12] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.4600375, ._long = -0.5478815},
   [13] = { ._label = "18N\n\nMilk\nFloat\n\n6.5m", ._lat = 51.4601745714286, ._long = -0.548058571428571},
   [14] = { ._label = "10N\n\nBus\n\n2m", ._lat = 51.460073, ._long = -0.548515}
 };
@@ -862,7 +862,7 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
   [9] = { ._label = "35N\n\nDragon\nBoat\n\n7.5m", ._lat = 51.4599636666667, ._long = -0.547154333333333},
   [10] = { ._label = "25N\n\nBoat In\nA Hole\n\n7m", ._lat = 51.4599545, ._long = -0.54755475},
   [11] = { ._label = "22B\nLady of\nKent\nSearch\nLight\n\n5m", ._lat = 51.4599185714286, ._long = -0.547681},
-  [12] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.46020025, ._long = -0.5479775},
+  [12] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.4600375, ._long = -0.5478815},
   [13] = { ._label = "18N\n\nMilk\nFloat\n\n6.5m", ._lat = 51.4601745714286, ._long = -0.548058571428571},
   [14] = { ._label = "10N\n\nBus\n\n2m", ._lat = 51.460073, ._long = -0.548515}
 };
@@ -875,7 +875,7 @@ const uint8_t waypointExitDiveOne = 39;
 NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01\n\nCafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
-  [1] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.46020025, ._long = -0.5479775},
+  [1] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.4600375, ._long = -0.5478815},
   [2] = { ._label = "21B\n\nSticky\nUp Boat\n\n5m", ._lat = 51.4602514070597, ._long = -0.54789158281982},
   [3] = { ._label = "19N\n\nChicken\nHutch\nBoat\n\n6.5m", ._lat = 51.4604027142857, ._long = -0.54804},
   [4] = { ._label = "13B\n\nWhite\nBoat\n\n7m", ._lat = 51.4605198169044, ._long = -0.548421667307919},
@@ -965,7 +965,7 @@ const uint8_t waypointExitDiveOne = 29;
 NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
   [0] = { ._label = "Z01\n\nCafe\nJetty", ._lat = 51.460015, ._long = -0.548316},
-  [1] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.46020025, ._long = -0.5479775},
+  [1] = { ._label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._lat = 51.4600375, ._long = -0.5478815},
   [2] = { ._label = "21B\n\nSticky\nUp Boat\n\n5m", ._lat = 51.4602514070597, ._long = -0.54789158281982},
   [3] = { ._label = "19N\n\nChicken\nHutch\nBoat\n\n6.5m", ._lat = 51.4604027142857, ._long = -0.54804},
   [4] = { ._label = "13B\n\nWhite\nBoat\n\n7m", ._lat = 51.4605198169044, ._long = -0.548421667307919},
@@ -1348,7 +1348,7 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
   [5] = { ._label = "e 38B Lifeboat", ._lat = 51.4598136301389, ._long = -0.546991890449386},
   [6] = { ._label = "f X05 4 crates", ._lat = 51.4599018571429, ._long = -0.547141285714286},
   [7] = { ._label = "g X04 Metal Grated Box", ._lat = 51.4599582857143, ._long = -0.547648571428571},
-  [8] = { ._label = "h X14 Cement Mixer", ._lat = 51.4600375, ._long = -0.5478815},
+  [8] = { ._label = "X13 Cement Mixer", ._lat = 51.46020025, ._long = -0.5479775},
   [9] = { ._label = "i X03 Cement Mixer & Wheel", ._lat = 51.46020025, ._long = -0.5479775},
   [10] = { ._label = "j 18N Milk Float", ._lat = 51.4601745714286, ._long = -0.548058571428571},
   [11] = { ._label = "k X15 Tyre", ._lat = 51.4600531428571, ._long = -0.548183857142857},
@@ -1632,6 +1632,13 @@ void showOTARecoveryScreen()
 
   while (true)
     delay(1000);
+}
+
+bool haltAllProcessingDuringOTAUpload = false;
+
+void uploadOTABeginCallback(AsyncElegantOtaClass* originator)
+{
+  haltAllProcessingDuringOTAUpload = true;   // prevent LCD call due to separate thread calling this
 }
 
 void setup()
@@ -1957,8 +1964,21 @@ void sendTestSerialBytesWhenReady()
   }
 }
 
+void toggleRedLED()
+{
+  redLEDStatus = (redLEDStatus == HIGH ? LOW : HIGH );
+  digitalWrite(RED_LED_GPIO, redLEDStatus);
+}
+
 void loop()
 {
+  if (haltAllProcessingDuringOTAUpload)
+  {
+    delay(500);
+    toggleRedLED();
+    return;
+  }
+
   if (msgsReceivedQueue)
   {
     if (xQueueReceive(msgsReceivedQueue,&(rxQueueItemBuffer),(TickType_t)0))
@@ -4522,6 +4542,7 @@ void toggleOTAActive()
         });
 
         AsyncElegantOTA.setID(MERCATOR_OTA_DEVICE_LABEL);
+        AsyncElegantOTA.setUploadBeginCallback(uploadOTABeginCallback);
         AsyncElegantOTA.begin(&asyncWebServer);    // Start AsyncElegantOTA
         asyncWebServer.begin();
       }
@@ -5002,6 +5023,9 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
   M5.Lcd.setTextSize(2);
   bool connected = false;
   WiFi.mode(WIFI_STA);
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
+  WiFi.setHostname("mako");
+
   WiFi.begin(_ssid, _password);
 
   // Wait for connection for max of timeout/1000 seconds
