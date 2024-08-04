@@ -254,10 +254,10 @@ const uint8_t SILKY_ESPNOW_COMMAND_STOP_PLAYBACK = (uint8_t)'D';   // 10000 ms
 const uint8_t SILKY_ESPNOW_COMMAND_SET_VOLUME = (uint8_t)'E';
 
 
-e_soundFX SFX_AHEAD = SFX_PIANO_AHEAD;
-e_soundFX SFX_TURN_AROUND = SFX_PIANO_BEHIND;
-e_soundFX SFX_ANTICLOCKWISE = SFX_PIANO_LEFT;
-e_soundFX SFX_CLOCKWISE = SFX_PIANO_RIGHT;
+e_soundFX SFX_AHEAD = SFX_NONE;   // default to no sounds, originally set to SFX_PIANO_AHEAD
+e_soundFX SFX_TURN_AROUND = SFX_NONE;
+e_soundFX SFX_ANTICLOCKWISE = SFX_NONE;
+e_soundFX SFX_CLOCKWISE = SFX_NONE;
 e_soundFX SFX_UNKNOWN = SFX_NONE;
 
 const char *soundSets[] = {"Piano Sounds", "Organ Sounds", "Pad Sounds","No Sounds",""};
