@@ -38,7 +38,7 @@ bool enableSmoothedCompass = true;
 bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
 bool enableIMUSensor = true;
-bool enableColourSensor = true;
+bool enableColourSensor = false;
 const uint32_t minimum_sensor_read_time = 75; // (ms) regulates upload of responses to lemon by normalising the time to process sensor readings. This contributes most to the round-trip latency.
 
 bool enableDownlinkComms = true; // enable reading the feed from Lemon at surface
@@ -60,7 +60,7 @@ bool otaFirstInit = false;       // Start OTA at boot if WiFi enabled
 
 bool compassAvailable = true;
 bool humidityAvailable = true;
-bool colourSensorAvailable = true;
+bool colourSensorAvailable = false;
 bool depthAvailable = true;
 bool imuAvailable = true;
 
@@ -80,6 +80,8 @@ void disableFeaturesForOTA(bool active)
   }
   else
   {
+    // These need to be reviewed - they should not all go back to true.
+    // However, once OTA mode is entered there is no exiting except for upload of new firmware or reboot
     enableDigitalCompass = enableTiltCompensation = enableSmoothedCompass = enableHumiditySensor = true;
     enableDepthSensor = enableIMUSensor = enableColourSensor = enableDownlinkComms = enableUplinkComms = enableDepthSensor = true;
     compassAvailable = imuAvailable = colourSensorAvailable =  depthAvailable = true;
@@ -2333,11 +2335,11 @@ void acquireAllSensorReadings()
                      &imu_temperature);
   }
 
-  if (depth > minimumDivingDepthToActivateLightSensor &&
+  if (colourSensorAvailable && depth > minimumDivingDepthToActivateLightSensor &&
       millis() > s_lastColourDisplayRefresh + s_colourUpdatePeriod && millis() > nextLightReadTime)
   {
     s_lastColourDisplayRefresh = millis();
-    if (colourSensorAvailable && Adafruit_ColourSensor.colorDataReady())
+    if (Adafruit_ColourSensor.colorDataReady())
     {
       Adafruit_ColourSensor.getColorData(&red_light, &green_light, &blue_light, &clear_light);
     }
