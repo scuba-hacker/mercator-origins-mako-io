@@ -2981,11 +2981,18 @@ void drawCompassSection()
     if (GPS_status == GPS_FIX_FROM_FLOAT)
       refreshDirectionGraphic(directionOfTravel, heading_to_target);
 
-    M5.Lcd.setCursor(30, 146);
+//    M5.Lcd.setCursor(30, 146);  // position before AXP power shown in magenta
+    M5.Lcd.setCursor(40, 146);
     M5.Lcd.setTextSize(3);
     M5.Lcd.setTextFont(0);
     M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
     M5.Lcd.printf("%4.1fm", depth);
+
+    M5.Lcd.setCursor(0, 151);
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.setTextFont(0);
+    M5.Lcd.setTextColor(TFT_MAGENTA, TFT_BLACK);
+    M5.Lcd.printf("%.1f", M5.Axp.GetTempInAXP192());
 
     blackout_journey_no_movement = false;
 }
