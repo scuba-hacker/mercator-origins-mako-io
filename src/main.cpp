@@ -184,6 +184,7 @@ void toggleUplinkMessageProcessAndSend();
 void publishToTigerBrightLightEvent();
 void publishToTigerLocationAndTarget(const char* currentTarget);
 void publishToTigerCurrentTarget(const char* currentTarget);
+void publishToOceanicLightLevel();
 void publishToOceanicBreadCrumbRecord(const bool record);
 void publishToOceanicPinPlaced(double latitude, double longitude, double heading, double depth);
 void toggleSound();
@@ -1503,6 +1504,8 @@ const uint32_t readLightTimeWait = 6000;
 uint32_t nextLightReadTime = 0;
 uint8_t brightLightEvents = 0;
 bool sendBrightLightEventToTiger = false;
+bool sendLightLevelToOceanic = false;
+uint16_t currentLightLevel = 0;
 
 MS5837 BlueRobotics_DepthSensor;
 
@@ -4648,6 +4651,20 @@ void toggleUplinkMessageProcessAndSend()
 // *************************** Tiger ESPNow Send Functions ******************
 
 char tiger_espnow_buffer[256];
+
+void publishToOceanicLightLevel()
+{
+  if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
+  {
+    memset(ocenaic_espnow_buffer,0,sizeof(oceanic_espnow_buffer));
+    oceanic_espnow_buffer[0] = 'D';  // command D = Toggle Light Level
+    oceanic_espnow_buffer[1] = currentLightLevel;
+    oceanic_espnow_buffer[2] = '\0';
+    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)oceanic_espnow_buffer, strlen(oceanic_espnow_buffer)+1);
+  }
+
+  sendLightLevelToOceanic = false;
+}
 
 void publishToTigerBrightLightEvent()
 {
