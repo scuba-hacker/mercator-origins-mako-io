@@ -182,8 +182,8 @@ void toggleUptimeGlobalDisplay();
 void toggleAsyncDepthDisplay();
 void toggleUplinkMessageProcessAndSend();
 void publishToTigerBrightLightEvent();
-void publishToTigerLocationAndTarget(const char* currentTarget);
-void publishToTigerCurrentTarget(const char* currentTarget);
+void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget);
+void publishToTigerAndOceanicCurrentTarget(const char* currentTarget);
 void publishToOceanicLightLevel();
 void publishToOceanicBreadCrumbRecord(const bool record);
 void publishToOceanicPinPlaced(double latitude, double longitude, double heading, double depth);
@@ -1388,7 +1388,7 @@ void switchDivePlan()
     nextWaypoint = currentDiveWaypoints;
   }
   
-  publishToTigerCurrentTarget(nextWaypoint->_m5label);
+  publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);
 }
 
 enum e_way_marker {BLACKOUT_MARKER, GO_ANTICLOCKWISE_MARKER, GO_AHEAD_MARKER, GO_CLOCKWISE_MARKER, GO_TURN_AROUND_MARKER, UNKNOWN_MARKER};
@@ -3065,14 +3065,14 @@ void drawNextTarget()
   
     M5.Lcd.printf ("Next:\n\n%i) %s", nextWaypoint-currentDiveWaypoints+1, nextWaypoint->_m5label);
   
-    publishToTigerCurrentTarget(nextWaypoint->_m5label);
+    publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);
   }
     
   if (millis() > showTempDisplayEndTime)
   {
     showTempDisplayEndTime = disabledTempDisplayEndTime;
     display_to_show = display_to_revert_to;
-    publishToTigerCurrentTarget(nextWaypoint->_m5label);
+    publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);
     M5.Lcd.fillScreen(TFT_BLACK);
   }
 }
@@ -3094,7 +3094,7 @@ void drawThisTarget()
   {
     showTempDisplayEndTime = disabledTempDisplayEndTime;
     display_to_show = display_to_revert_to;
-    publishToTigerCurrentTarget(nextWaypoint->_m5label);
+    publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);
     M5.Lcd.fillScreen(TFT_BLACK);
   }
 }
@@ -3200,7 +3200,7 @@ void drawLatLong()
   M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
   if (millis() > showTempDisplayEndTime)
   {
-    publishToTigerLocationAndTarget(nextWaypoint->_m5label);
+    publishToTigerAndOceanicLocationAndTarget(nextWaypoint->_m5label);
 
     if (enableRealTimePublishTigerLocation)
     {
@@ -4426,7 +4426,7 @@ void toggleESPNowActive()
         isPairedWithOceanic = pairWithPeer(ESPNow_oceanic_peer,"Oceanic",peeringAttempts);
 
         // send message to tiger and oceanic to give first target
-        publishToTigerCurrentTarget(nextWaypoint->_m5label);
+        publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);
 
         bool recordBreadCrumbTrail = false; // ensure trail not being record after pairing to get mako/oceanic in sync
         publishToOceanicBreadCrumbRecord(recordBreadCrumbTrail);
@@ -4680,59 +4680,60 @@ void publishToTigerBrightLightEvent()
   sendBrightLightEventToTiger = false;
 }
 
-void publishToTigerCurrentTarget(const char* currentTarget)
+void publishToTigerAndOceanicCurrentTarget(const char* currentTarget)
 {     
+  memset(tiger_espnow_buffer,0,sizeof(tiger_espnow_buffer));
+  tiger_espnow_buffer[0] = 'c';  // command c= current target
+  tiger_espnow_buffer[1] = '\0';
+  strncpy(tiger_espnow_buffer+1,currentTarget,sizeof(tiger_espnow_buffer)-2);
+
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
   {
-    memset(tiger_espnow_buffer,0,sizeof(tiger_espnow_buffer));
-    tiger_espnow_buffer[0] = 'c';  // command c= current target
-    tiger_espnow_buffer[1] = '\0';
-    strncpy(tiger_espnow_buffer+1,currentTarget,sizeof(tiger_espnow_buffer)-2);
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+1);
+  }
 
-    if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
-    {
-      ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+1);
-    }
+  if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
+  {
+    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+1);
   }
 }
 
-void publishToTigerLocationAndTarget(const char* currentTarget)
+void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
 {     
+  memset(tiger_espnow_buffer,0,sizeof(tiger_espnow_buffer));
+  
+  tiger_espnow_buffer[0] = 'X';  // command c=target code, location, heading, target
+
+  const int maxCodeLength = 6;
+
+  const int targetCodeOffset = 1;
+  const int latitudeOffset = 8;
+  const int longitudeOffset = 16;
+  const int headingOffset = 24;
+  const int currentTargetOffset = 32;
+        
+  const char* endOfCode=currentTarget;
+  while (endOfCode - currentTarget < maxCodeLength && std::isalnum(*endOfCode++));
+
+  if (endOfCode != currentTarget)
+    memcpy(tiger_espnow_buffer+targetCodeOffset,currentTarget,endOfCode - currentTarget - 1);
+
+  tiger_espnow_buffer[endOfCode - currentTarget + 1] = '\0';
+
+  memcpy(tiger_espnow_buffer+latitudeOffset,&Lat,sizeof(Lat));
+  memcpy(tiger_espnow_buffer+longitudeOffset,&Lng,sizeof(Lng));
+  memcpy(tiger_espnow_buffer+headingOffset,&magnetic_heading,sizeof(magnetic_heading));
+
+  strncpy(tiger_espnow_buffer+currentTargetOffset,currentTarget,sizeof(tiger_espnow_buffer)-2-currentTargetOffset);
+
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
   {
-    memset(tiger_espnow_buffer,0,sizeof(tiger_espnow_buffer));
-    
-    tiger_espnow_buffer[0] = 'X';  // command c=target code, location, heading, target
-
-    const int maxCodeLength = 6;
-
-    const int targetCodeOffset = 1;
-    const int latitudeOffset = 8;
-    const int longitudeOffset = 16;
-    const int headingOffset = 24;
-    const int currentTargetOffset = 32;
-          
-    const char* endOfCode=currentTarget;
-    while (endOfCode - currentTarget < maxCodeLength && std::isalnum(*endOfCode++));
-
-    if (endOfCode != currentTarget)
-      memcpy(tiger_espnow_buffer+targetCodeOffset,currentTarget,endOfCode - currentTarget - 1);
-  
-    tiger_espnow_buffer[endOfCode - currentTarget + 1] = '\0';
-
-    memcpy(tiger_espnow_buffer+latitudeOffset,&Lat,sizeof(Lat));
-    memcpy(tiger_espnow_buffer+longitudeOffset,&Lng,sizeof(Lng));
-    memcpy(tiger_espnow_buffer+headingOffset,&magnetic_heading,sizeof(magnetic_heading));
-
-    strncpy(tiger_espnow_buffer+currentTargetOffset,currentTarget,sizeof(tiger_espnow_buffer)-2-currentTargetOffset);
-
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
+  }
 
-    if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
-    {
-      ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
-    }
+  if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
+  {
+    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
   }
 }
 
