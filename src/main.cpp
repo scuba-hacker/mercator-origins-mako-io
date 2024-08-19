@@ -38,7 +38,7 @@ bool enableSmoothedCompass = true;
 bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
 bool enableIMUSensor = true;
-bool enableColourSensor = false;
+bool enableColourSensor = true;
 const uint32_t minimum_sensor_read_time = 75; // (ms) regulates upload of responses to lemon by normalising the time to process sensor readings. This contributes most to the round-trip latency.
 
 bool enableDownlinkComms = true; // enable reading the feed from Lemon at surface
@@ -48,9 +48,6 @@ const bool enableNavigationGraphics = true;
 const bool enableNavigationTargeting = true;
 const bool enableRecentCourseCalculation = true;
 bool enableGlobalUptimeDisplay = false;    // adds a timer to compass heading display so can see if a crash/reboot has happened
-
-bool enableRealTimePublishTigerLocation=true;
-bool enableRealTimePublishOceanicLocation=true;
 
 bool enableWifiAtStartup = false;   // set to true only if no espnow at startup
 bool enableESPNowAtStartup = true;  // set to true only if no wifi at startup
@@ -184,7 +181,7 @@ void toggleUplinkMessageProcessAndSend();
 void publishToTigerBrightLightEvent();
 void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget);
 void publishToTigerAndOceanicCurrentTarget(const char* currentTarget);
-void publishToOceanicLightLevel();
+void publishToOceanicLightLevel(uint16_t lightLevel);
 void publishToOceanicBreadCrumbRecord(const bool record);
 void publishToOceanicPinPlaced(double latitude, double longitude, double heading, double depth);
 void toggleSound();
@@ -1500,12 +1497,12 @@ const uint8_t maxColourMeasurements=20;
 uint16_t colourMeasurements[maxColourMeasurements];
 uint8_t colourIndex=0;
 
-const uint32_t readLightTimeWait = 6000;
+const uint32_t readLightTimeWait = 10000;
 uint32_t nextLightReadTime = 0;
 uint8_t brightLightEvents = 0;
+uint16_t currentLightLevel = 0;
 bool sendBrightLightEventToTiger = false;
 bool sendLightLevelToOceanic = false;
-uint16_t currentLightLevel = 0;
 
 MS5837 BlueRobotics_DepthSensor;
 
@@ -2064,6 +2061,11 @@ void loop()
     publishToTigerBrightLightEvent();
   }
 
+  if (sendLightLevelToOceanic)
+  {
+    publishToOceanicLightLevel(currentLightLevel);
+  }
+
   checkForButtonPresses();
 
   if (requestConsoleScreenRefresh)
@@ -2075,8 +2077,7 @@ void loop()
 
   if (millis() > nextMapScreenRefresh || requestMapScreenRefresh)
   {
-    if (enableRealTimePublishTigerLocation)   // enable by entering the show lat/long screen
-      publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);
+      publishToTigerAndOceanicLocationAndTarget(nextWaypoint->_m5label);
 
     nextMapScreenRefresh = millis() + map_screen_refresh_minimum_interval;
     requestMapScreenRefresh = false;
@@ -2338,6 +2339,17 @@ void acquireAllSensorReadings()
                      &imu_temperature);
   }
 
+  if (colourSensorAvailable &&
+      millis() > nextLightReadTime && 
+      Adafruit_ColourSensor.colorDataReady())
+  {
+    Adafruit_ColourSensor.getColorData(&red_light, &green_light, &blue_light, &clear_light);
+    currentLightLevel = clear_light;
+    nextLightReadTime = millis() + readLightTimeWait;
+    sendLightLevelToOceanic = true;
+  }
+
+/*
   if (colourSensorAvailable && depth > minimumDivingDepthToActivateLightSensor &&
       millis() > s_lastColourDisplayRefresh + s_colourUpdatePeriod && millis() > nextLightReadTime)
   {
@@ -2369,6 +2381,7 @@ void acquireAllSensorReadings()
       nextLightReadTime = millis() + readLightTimeWait;
     }
   }
+*/
 
   actual_sensor_acquisition_time = (uint16_t)(millis() - start_time_millis);
 
@@ -3202,24 +3215,6 @@ void drawLatLong()
   {
     publishToTigerAndOceanicLocationAndTarget(nextWaypoint->_m5label);
 
-    if (enableRealTimePublishTigerLocation)
-    {
-      if (map_screen_refresh_minimum_interval == 1000)
-      {
-        map_screen_refresh_minimum_interval = 3000;   // on 1st time through, switch from 1 sec to 3 secs
-      }
-      else    // on 2nd time through, disable real time publish
-      {
-        enableRealTimePublishTigerLocation = false;
-      }
-    }
-    else
-    {
-      // revert back to original settings
-      enableRealTimePublishTigerLocation=true;
-      map_screen_refresh_minimum_interval = 1000;
-    }
-    
     showTempDisplayEndTime = disabledTempDisplayEndTime;
     display_to_show = display_to_revert_to;
     M5.Lcd.fillScreen(TFT_BLACK);
@@ -4726,14 +4721,14 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
 
 char oceanic_espnow_buffer[256];
 
-void publishToOceanicLightLevel()
+void publishToOceanicLightLevel(uint16_t lightLevel)
 {
   if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
   {
     memset(oceanic_espnow_buffer,0,sizeof(oceanic_espnow_buffer));
-    oceanic_espnow_buffer[0] = 'D';  // command D = Toggle Light Level
-    oceanic_espnow_buffer[1] = currentLightLevel & 0xFF;
-    oceanic_espnow_buffer[2] = (currentLightLevel >> 8);
+    oceanic_espnow_buffer[0] = 'D';  // command D = send light level to oceanic
+    oceanic_espnow_buffer[1] = lightLevel & 0xFF;
+    oceanic_espnow_buffer[2] = (lightLevel >> 8);
     oceanic_espnow_buffer[3] = '\0';
     ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)oceanic_espnow_buffer, strlen(oceanic_espnow_buffer)+1);
   }
