@@ -2076,7 +2076,7 @@ void loop()
   if (millis() > nextMapScreenRefresh || requestMapScreenRefresh)
   {
     if (enableRealTimePublishTigerLocation)   // enable by entering the show lat/long screen
-      publishToTigerLocationAndTarget(nextWaypoint->_m5label);
+      publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);
 
     nextMapScreenRefresh = millis() + map_screen_refresh_minimum_interval;
     requestMapScreenRefresh = false;
@@ -4652,21 +4652,6 @@ void toggleUplinkMessageProcessAndSend()
 
 char tiger_espnow_buffer[256];
 
-void publishToOceanicLightLevel()
-{
-  if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
-  {
-    memset(ocenaic_espnow_buffer,0,sizeof(oceanic_espnow_buffer));
-    oceanic_espnow_buffer[0] = 'D';  // command D = Toggle Light Level
-    oceanic_espnow_buffer[1] = currentLightLevel & 0xFF;
-    oceanic_espnow_buffer[2] = (currentLightLevel >> 8);
-    oceanic_espnow_buffer[3] = '\0';
-    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)oceanic_espnow_buffer, strlen(oceanic_espnow_buffer)+1);
-  }
-
-  sendLightLevelToOceanic = false;
-}
-
 void publishToTigerBrightLightEvent()
 {
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
@@ -4740,6 +4725,21 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
 // *************************** Oceanic Send Functions ******************
 
 char oceanic_espnow_buffer[256];
+
+void publishToOceanicLightLevel()
+{
+  if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
+  {
+    memset(oceanic_espnow_buffer,0,sizeof(oceanic_espnow_buffer));
+    oceanic_espnow_buffer[0] = 'D';  // command D = Toggle Light Level
+    oceanic_espnow_buffer[1] = currentLightLevel & 0xFF;
+    oceanic_espnow_buffer[2] = (currentLightLevel >> 8);
+    oceanic_espnow_buffer[3] = '\0';
+    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)oceanic_espnow_buffer, strlen(oceanic_espnow_buffer)+1);
+  }
+
+  sendLightLevelToOceanic = false;
+}
 
 void publishToOceanicBreadCrumbRecord(const bool record)
 {
