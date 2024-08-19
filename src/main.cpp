@@ -4658,8 +4658,9 @@ void publishToOceanicLightLevel()
   {
     memset(ocenaic_espnow_buffer,0,sizeof(oceanic_espnow_buffer));
     oceanic_espnow_buffer[0] = 'D';  // command D = Toggle Light Level
-    oceanic_espnow_buffer[1] = currentLightLevel;
-    oceanic_espnow_buffer[2] = '\0';
+    oceanic_espnow_buffer[1] = currentLightLevel & 0xFF;
+    oceanic_espnow_buffer[2] = (currentLightLevel >> 8);
+    oceanic_espnow_buffer[3] = '\0';
     ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)oceanic_espnow_buffer, strlen(oceanic_espnow_buffer)+1);
   }
 
