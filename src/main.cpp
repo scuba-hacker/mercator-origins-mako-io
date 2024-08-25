@@ -1697,7 +1697,7 @@ void setup()
   switchDivePlan();   // initialise to dive one
 
   pinMode(IR_LED_GPS_TX_PIN, OUTPUT);
-  digitalWrite(IR_LED_GPS_TX_PIN, HIGH); // switch off
+  digitalWrite(IR_LED_GPS_TX_PIN, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
 
   M5.Lcd.setTextSize(initialTextSize);
 
@@ -1877,8 +1877,10 @@ void setup()
   else
   {
     float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+    const bool invert = false; // IR LED lighting defaults to off when not sending
+    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
   }
+
   updateButtonsAndBuzzer();
   // cannot use Pin 0 for receive of GPS (resets on startup), can use Pin 36, can use 26
   // cannot use Pin 0 for transmit of GPS (resets on startup), only Pin 26 can be used for transmit.
