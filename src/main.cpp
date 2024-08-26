@@ -1773,7 +1773,9 @@ void setup()
   {
     if (!Adafruit_TempHumidityPressure.begin())
     {
-      USB_SERIAL.println("Could not find BME280 Barometer");
+      if (writeLogToSerial)
+        USB_SERIAL.println("Could not find BME280 Barometer");
+  
       M5.Lcd.println("BE280 T/H/P bad");
       delay(5000);
       humidityAvailable = false;
@@ -1781,7 +1783,8 @@ void setup()
   }
   else
   {
-    USB_SERIAL.println("BME280 Humidity Off");
+    if (writeLogToSerial)
+      USB_SERIAL.println("BME280 Humidity Off");
     M5.Lcd.println("BME280 Humidity Off");
     humidityAvailable = false;
     temperature = 0.1;
@@ -1793,7 +1796,8 @@ void setup()
   {
     if (!mag.begin())
     {
-      USB_SERIAL.println("Could not find LIS2MDL Magnetometer. Check wiring");
+      if (writeLogToSerial)
+        USB_SERIAL.println("Could not find LIS2MDL Magnetometer. Check wiring");
       M5.Lcd.println("LIS2MDL Magnetometer bad");
       delay(5000);
       compassAvailable = false;
@@ -1801,7 +1805,8 @@ void setup()
   }
   else
   {
-    USB_SERIAL.println("LSM303 Compass off");
+    if (writeLogToSerial)
+      USB_SERIAL.println("LSM303 Compass off");
     M5.Lcd.println("LSM303 Compass off");
     compassAvailable = false;
   }
@@ -1822,7 +1827,8 @@ void setup()
   }
   else
   {
-    USB_SERIAL.println("LSM303 Accel off");
+    if (writeLogToSerial)
+      USB_SERIAL.println("LSM303 Accel off");
     M5.Lcd.println("LSM303 Accel off");
     compassAvailable = false;
   }
@@ -1831,7 +1837,8 @@ void setup()
   {
     if (!Adafruit_ColourSensor.begin())
     {
-      USB_SERIAL.println("Unable to init APDS9960 colour");
+      if (writeLogToSerial)
+        USB_SERIAL.println("Unable to init APDS9960 colour");
       M5.Lcd.println("APDS9960 colour bad");
       colourSensorAvailable=false;
     }
@@ -1846,7 +1853,8 @@ void setup()
   {
     if (!BlueRobotics_DepthSensor.begin())
     {
-      USB_SERIAL.println("Could not begin depth sensor");
+      if (writeLogToSerial)
+        USB_SERIAL.println("Could not begin depth sensor");
       M5.Lcd.println("Could not begin depth sensor");
       depthAvailable = false;
     }
@@ -1857,7 +1865,8 @@ void setup()
   }
   else
   {
-    USB_SERIAL.println("Depth Sensor Off");
+    if (writeLogToSerial)
+      USB_SERIAL.println("Depth Sensor Off");
     M5.Lcd.println("Depth Sensor Off");
     depthAvailable = false;
     depth = 0;
@@ -1878,7 +1887,7 @@ void setup()
   {
     float_serial.setRxBufferSize(512); // was 256 - must set before begin called
     const bool invert = false; // IR LED lighting defaults to off when not sending
-    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
   }
 
   updateButtonsAndBuzzer();
