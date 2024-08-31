@@ -1566,8 +1566,11 @@ const uint32_t MERCATOR_DEBOUNCE_MS = 0;
 const uint8_t GROVE_GPS_RX_PIN = 33;
 const uint8_t GROVE_GPS_TX_PIN = 32;
 
+const bool useIRLEDforTx = true;   // setting to true currently interferes with I2C (flashing green light) and Tx not functional
+
 const uint8_t HAT_GPS_RX_PIN = 26;
 const uint8_t IR_LED_GPS_TX_PIN = 9;
+const uint8_t HAT_GPS_TX_PIN = 2;
 
 Button BtnGoProTop = Button(BUTTON_GOPRO_TOP_PIN, true, MERCATOR_DEBOUNCE_MS);    // from utility/Button.h for M5 Stick C Plus
 Button BtnGoProSide = Button(BUTTON_GOPRO_SIDE_PIN, true, MERCATOR_DEBOUNCE_MS); // from utility/Button.h for M5 Stick C Plus
@@ -1603,7 +1606,7 @@ void updateButtonsAndBuzzer()
 {
   p_primaryButton->read();
   p_secondButton->read();
-  M5.Beep.update();
+//  M5.Beep.update(); // commented out in anticipation of using GPIO 2 for Tx
 }
 
 char rxQueueItemBuffer[256];
@@ -1648,7 +1651,7 @@ void uploadOTABeginCallback(AsyncElegantOtaClass* originator)
 
 void setup()
 {
-  M5.begin();
+  M5.begin(true, true, true, false);
 
   redLEDStatus = HIGH;
   pinMode(RED_LED_GPIO, OUTPUT); // Red LED - the interior LED to M5 Stick
@@ -1698,8 +1701,16 @@ void setup()
 
   switchDivePlan();   // initialise to dive one
 
-  pinMode(IR_LED_GPS_TX_PIN, OUTPUT);
-  digitalWrite(IR_LED_GPS_TX_PIN, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
+  if (useIRLEDforTx)
+  {
+    pinMode(IR_LED_GPS_TX_PIN, OUTPUT);
+    digitalWrite(IR_LED_GPS_TX_PIN, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
+  }
+  else
+  {
+    pinMode(HAT_GPS_TX_PIN, OUTPUT);
+    digitalWrite(HAT_GPS_TX_PIN, LOW); // switch off Tx pin with 0V out, satisfies boot strapping requirement
+  }
 
   M5.Lcd.setTextSize(initialTextSize);
 
@@ -1888,8 +1899,21 @@ void setup()
   else
   {
     float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    const bool invert = false; // IR LED lighting defaults to off when not sending
-    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+    if (useIRLEDforTx)
+    {
+      const bool invert = false;
+      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+    }
+    else
+    {
+      // when invert=false receive works ok, but i2c light is flashing and something wrong as very slow response.
+      // when invert=true, receive does not work.
+      // when invert=false and invert of rx only is true: Receive works, I2C light still flashing and without the GPIO connected
+      const bool invert = false; 
+      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+//      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+//      float_serial.setRxInvert(false);
+    }
   }
 
   updateButtonsAndBuzzer();
