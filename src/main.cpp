@@ -340,6 +340,8 @@ const int SCREEN_LENGTH = 240;
 const int SCREEN_WIDTH = 135;
 
 const int UPLINK_BAUD_RATE = 9600;
+// const int UPLINK_BAUD_RATE = 19200;  // max baudrate for mako Tx due to mako phototransistor being 15 uS rise time.
+// const int UPLINK_BAUD_RATE = 460800;  // max baudrate for mako Rx as Lemon Tx is using a real GPIO pin and this is Lemon Max that Mako can decode.
 
 enum e_display_brightness {OFF_DISPLAY = 0, DIM_DISPLAY = 25, HALF_BRIGHT_DISPLAY = 50, BRIGHTEST_DISPLAY = 100};
 enum e_uplinkMode {SEND_NO_UPLINK_MSG, SEND_TEST_UPLINK_MSG, SEND_FULL_UPLINK_MSG};
