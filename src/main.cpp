@@ -1547,6 +1547,7 @@ double Lat, Lng;
 String  lat_str , lng_str;
 int satellites = 0;
 char internetUploadStatusGood = false;
+int  overrideTarget = -1;
 double b, c = 0;
 int power_up_no_fix_byte_loop_count = 0;
 
@@ -2342,7 +2343,23 @@ void refreshAndCalculatePositionalAttributes()
   lng_str = String(Lng , 7);
   satellites = gps.satellites.value();
   internetUploadStatusGood = (gps.altitudeUnitsGeoid.value() == 'M');
-  
+  overrideTarget = gps.altitudeUnits.value();
+
+  if (overrideTarget == 'M')
+  {
+    overrideTarget = -1;
+  }
+  else if (overrideTarget >= 0)
+  {
+    overrideTarget -= 33;
+    nextWaypoint = const_cast<NavigationWaypoint*>(&WraysburyWaypoints::waypoints[overrideTarget]);
+  }
+  else if (overrideTarget == -2)
+  {
+    overrideTarget = 'M' - 33;
+    nextWaypoint = const_cast<NavigationWaypoint*>(&WraysburyWaypoints::waypoints[overrideTarget]);
+  }
+
   if (enableRecentCourseCalculation)
   {
     if (millis() - last_journey_commit_time > journey_calc_period)
@@ -3348,6 +3365,7 @@ void drawLocationStats()
 
   M5.Lcd.setCursor(5, 34);
   M5.Lcd.printf("Depth:%.0f m s:%hu ^%hu  ", depth,sensor_acquisition_time, max_sensor_acquisition_time);
+//  M5.Lcd.printf("OverTgt:%d s:%hu ^%hu  ", overrideTarget,sensor_acquisition_time, max_sensor_acquisition_time);
 
   M5.Lcd.setCursor(5, 51);
   if (WiFi.status() == WL_CONNECTED)
@@ -5049,8 +5067,6 @@ const char* scanForKnownNetwork() // return first known network found
     {
       // Print SSID and RSSI for each device found
       String SSID = WiFi.SSID(i);
-
-      delay(10);
       
       // Check if the current device starts with the peerSSIDPrefix
       if (strcmp(SSID.c_str(), ssid_1) == 0)
@@ -5504,8 +5520,6 @@ bool ESPNowScanForPeer(esp_now_peer_info_t& peer, const char* peerSSIDPrefix)
         USB_SERIAL.print(")");
         USB_SERIAL.println("");
       }
-      
-      delay(10);
       
       // Check if the current device starts with the peerSSIDPrefix
       if (SSID.indexOf(peerSSIDPrefix) == 0) 
