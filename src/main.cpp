@@ -31,6 +31,7 @@
 // ************** Mako Control Parameters **************
 
 bool goProButtonsPrimaryControl = true;
+bool usingSDP8600OptoSchmittDetector = true; // alternative is SDP8406 phototransistor which was the original detector
 
 bool enableDigitalCompass = true;
 bool enableTiltCompensation = true;
@@ -1773,7 +1774,16 @@ void setup()
   if (useIRLEDforTx)
   {
     pinMode(IR_LED_GPS_TX_PIN, OUTPUT);
-    digitalWrite(IR_LED_GPS_TX_PIN, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
+    if (usingSDP8600OptoSchmittDetector)
+    {
+      // if using SDP8600 phototransistor - logic not inverted on TX
+      digitalWrite(IR_LED_GPS_TX_PIN, LOW); // switch off - sets TX high on input to RS485 which is correct for no data being sent  }
+    }
+    else
+    {
+      // if using original phototransistor SDP8406 - uses inverted logic
+      digitalWrite(IR_LED_GPS_TX_PIN, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
+    }
   }
   else
   {
@@ -1826,6 +1836,41 @@ void setup()
   if (enableESPNowAtStartup)
   {
     toggleESPNowActive();
+  }
+
+ if (useGrovePortForGPS)
+  {
+    float_serial.setRxBufferSize(512); // was 256 - must set before begin called
+    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, GROVE_GPS_RX_PIN, GROVE_GPS_TX_PIN);   // pin 33=rx (white M5), pin 32=tx (yellow M5), specifies the grove SCL/SDA pins for Rx/Tx
+  }
+  else
+  {
+    float_serial.setRxBufferSize(512); // was 256 - must set before begin called
+    if (useIRLEDforTx)
+    {
+      if (usingSDP8600OptoSchmittDetector)
+      {
+        const bool invert = true;         // need tx inverted (which inverts both Rx and Tx on .begin call)
+        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+        float_serial.setRxInvert( false);   // but need rx not inverted (must be done after begin)
+      }
+      else
+      {
+        // original phototransistor has inverting logic
+        const bool invert = false;      
+        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
+      }
+    }
+    else
+    {
+      // when invert=false receive works ok, but i2c light is flashing and something wrong as very slow response.
+      // when invert=true, receive does not work.
+      // when invert=false and invert of rx only is true: Receive works, I2C light still flashing and without the GPIO connected
+      const bool invert = false; 
+      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+//      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+//      float_serial.setRxInvert(false);
+    }
   }
 
   // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
@@ -1959,31 +2004,6 @@ void setup()
   M5.Lcd.setTextSize(2);
   M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
   M5.Lcd.setCursor(0, 0);
-
-  if (useGrovePortForGPS)
-  {
-    float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, GROVE_GPS_RX_PIN, GROVE_GPS_TX_PIN);   // pin 33=rx (white M5), pin 32=tx (yellow M5), specifies the grove SCL/SDA pins for Rx/Tx
-  }
-  else
-  {
-    float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    if (useIRLEDforTx)
-    {
-      const bool invert = false;
-      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
-    }
-    else
-    {
-      // when invert=false receive works ok, but i2c light is flashing and something wrong as very slow response.
-      // when invert=true, receive does not work.
-      // when invert=false and invert of rx only is true: Receive works, I2C light still flashing and without the GPIO connected
-      const bool invert = false; 
-      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
-//      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
-//      float_serial.setRxInvert(false);
-    }
-  }
 
   updateButtonsAndBuzzer();
   // cannot use Pin 0 for receive of GPS (resets on startup), can use Pin 36, can use 26
