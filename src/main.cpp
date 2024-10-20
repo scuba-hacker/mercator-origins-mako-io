@@ -40,7 +40,7 @@ bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
 bool enableIMUSensor = true;
 bool enableColourSensor = true;
-const uint32_t minimum_sensor_read_time = 75; // (ms) regulates upload of responses to lemon by normalising the time to process sensor readings. This contributes most to the round-trip latency.
+const uint32_t minimum_sensor_read_time = 0; // (ms) regulates upload of responses to lemon by normalising the time to process sensor readings. This contributes most to the round-trip latency.
 
 bool enableDownlinkComms = true; // enable reading the feed from Lemon at surface
 bool enableUplinkComms = true;  // enable writing of feed to Lemon. Can be toggled through UI
@@ -174,7 +174,7 @@ void resetRealTimeClock();
 void notifyESPNowNotActive();
 void displayESPNowSendDataResult(const esp_err_t result);
 void toggleESPNowActive();
-void toggleWiFiActive();
+void toggleWiFiActive(bool wait=true);
 void toggleOTAActive();
 void toggleUptimeGlobalDisplay();
 void toggleAsyncDepthDisplay();
@@ -340,8 +340,8 @@ AsyncElegantOtaClass AsyncElegantOTA;
 const int SCREEN_LENGTH = 240;
 const int SCREEN_WIDTH = 135;
 
-const int UPLINK_BAUD_RATE = 9600;
-// const int UPLINK_BAUD_RATE = 19200;  // max baudrate for mako Tx due to mako phototransistor being 15 uS rise time.
+// const int UPLINK_BAUD_RATE = 9600;
+const int UPLINK_BAUD_RATE = 57600;  // 57600 115200 max baudrate for mako Tx due to mako phototransistor being 15 uS rise time.
 // const int UPLINK_BAUD_RATE = 460800;  // max baudrate for mako Rx as Lemon Tx is using a real GPIO pin and this is Lemon Max that Mako can decode.
 
 enum e_display_brightness {OFF_DISPLAY = 0, DIM_DISPLAY = 25, HALF_BRIGHT_DISPLAY = 50, BRIGHTEST_DISPLAY = 100};
@@ -361,7 +361,7 @@ uint16_t max_sensor_acquisition_time = 0;     // maximum sensor acquistion time 
 uint16_t actual_sensor_acquisition_time = 0;  // actual sensor acquisition time without forced wait
 uint16_t max_actual_sensor_acquisition_time = 0;  // max val of above.
 
-bool enableESPNow = true;       //
+bool enableESPNow = false;       //
 bool ESPNowActive = false;       // will be set to true on startup if set above - can be toggled through interface.
 bool isPairedWithSilky = false;
 bool isPairedWithTiger = false;
@@ -1719,6 +1719,33 @@ void uploadOTABeginCallback(AsyncElegantOtaClass* originator)
   haltAllProcessingDuringOTAUpload = true;   // prevent LCD call due to separate thread calling this
 }
 
+bool enableOTAAtStartupIfTopButtonHeld()
+{
+  if (digitalRead(BUTTON_GOPRO_TOP_PIN) == false)
+  {
+    // enable OTA mode immediately at startup
+    topGoProButtonActiveAtStartup = true;
+    return true;
+  }
+  else
+    return false;
+}
+
+bool disableESPNowIfSideButtonHeld()
+{
+  if (digitalRead(BUTTON_GOPRO_SIDE_PIN) == false)
+  {
+    sideGoProButtonActiveAtStartup = true;
+    // disable espnow to speedup startup time when testing
+    enableESPNowAtStartup = false;      
+    // no function currently - could be used for show test track
+    return true;
+  }
+  else
+    return false; 
+}
+
+
 void setup()
 {
   M5.begin(true, true, true, false);
@@ -1733,21 +1760,7 @@ void setup()
     USB_SERIAL.begin(115200);
 
   uint32_t start = millis();
-  while(millis() < start + 1000)
-  {
-    if (digitalRead(BUTTON_GOPRO_TOP_PIN) == false)
-    {
-      topGoProButtonActiveAtStartup = true;
-      break;
-    }
-
-    if (digitalRead(BUTTON_GOPRO_SIDE_PIN) == false)
-    {
-      sideGoProButtonActiveAtStartup = true;
-      // no function currently - could be used for show test track
-      break;
-    }
-  }
+  while(millis() < start + 1000 && !disableESPNowIfSideButtonHeld() &&  !enableOTAAtStartupIfTopButtonHeld);
 
   if (topGoProButtonActiveAtStartup)
   {
@@ -3626,6 +3639,7 @@ uint16_t getOneShotUserActionForUplink()
 void sendUplinkTelemetryMessageV5()
 {
   const uint32_t quietTimeMsBeforeUplink = 0; // disabled - always uplink on call to this method
+  delay(quietTimeMsBeforeUplink);
 
 //  delay(10);    // 10ms delay before sending
 //  if (millis() > latestFixTimeStamp + quietTimeMsBeforeUplink)
@@ -4618,7 +4632,7 @@ void toggleESPNowActive()
   }
 }
 
-void toggleWiFiActive()
+void toggleWiFiActive(bool wait)
 {
   M5.Lcd.fillScreen(TFT_ORANGE);
   M5.Lcd.setCursor(10, 10);
@@ -4641,7 +4655,6 @@ void toggleWiFiActive()
     ssid_connected = ssid_not_connected;
     M5.Lcd.setCursor(0, 10);
     M5.Lcd.printf("Wifi Disabled");
-    delay (2000);
   }
   else
   {
@@ -4658,9 +4671,10 @@ void toggleWiFiActive()
     M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
 
     M5.Lcd.printf(WiFi.status() == WL_CONNECTED ? "Wifi Enabled" : "No Connect");
-    
-    delay(2000);
   }
+
+  if (wait)
+    delay(2000);
 
   M5.Lcd.fillScreen(TFT_BLACK);
 }
@@ -4679,14 +4693,14 @@ void toggleOTAActive()
     asyncWebServer.end();
     M5.Lcd.println("OTA Disabled");
     otaActive = false;
-    delay (2000);
+    delay (500);
   }
   else
   {
     bool wifiToggled = false;
     if (WiFi.status() != WL_CONNECTED)
     {
-      toggleWiFiActive();
+      toggleWiFiActive(false);  // don't wait
       wifiToggled = true;
 
       M5.Lcd.fillScreen(TFT_ORANGE);
@@ -4733,11 +4747,10 @@ void toggleOTAActive()
       M5.Lcd.println("Error: Enable Wifi First");
     }
     
-    delay (2000);
+    delay (500);
   }
   
   disableFeaturesForOTA(otaActive);
-
 
   M5.Lcd.fillScreen(TFT_BLACK);
 }
@@ -4755,7 +4768,7 @@ void toggleUptimeGlobalDisplay()
   else
     M5.Lcd.println("Uptime Off");
 
-  delay (2000);
+  delay(2000);
 
   M5.Lcd.fillScreen(TFT_BLACK);
 }
@@ -4773,7 +4786,7 @@ void toggleAsyncDepthDisplay()
   else
     M5.Lcd.println("Async Depth Off");
 
-  delay (2000);
+  delay(2000);
 
   M5.Lcd.fillScreen(TFT_BLACK);
 }
@@ -4791,7 +4804,7 @@ void toggleUplinkMessageProcessAndSend()
   else
     M5.Lcd.println("Uplink Off");
 
-  delay (2000);
+  delay(2000);
 
   M5.Lcd.fillScreen(TFT_BLACK);
 }
@@ -5074,12 +5087,17 @@ void configESPNowDeviceAP()
   }  
 }
 
+int8_t scanWiFiForSSIDs()
+{
+  return WiFi.scanNetworks(false,false,false,150U);
+}
+
 const char* scanForKnownNetwork() // return first known network found
 {
   const char* network = nullptr;
 
   M5.Lcd.println("Scan WiFi\nSSIDs...");
-  int8_t scanResults = WiFi.scanNetworks();
+  int8_t scanResults = scanWiFiForSSIDs();
 
   if (scanResults != 0)
   {
@@ -5138,12 +5156,12 @@ bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts)
   
     if (!network)
     {
-      delay(1000);
+      delay(500);
       continue;
     }
 
     int connectToFoundNetworkAttempts = 3;
-    const int repeatDelay = 1000;
+    const int repeatDelay = 500;
   
     if (strcmp(network,ssid_1) == 0)
     {
@@ -5161,7 +5179,7 @@ bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts)
         delay(repeatDelay);
     }
     
-    delay(1000);
+    delay(repeatDelay);
   }
 
   bool connected=WiFi.status() == WL_CONNECTED;
@@ -5210,7 +5228,7 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
   {
 
     M5.Lcd.print(".");
-    delay(500);
+    delay(300);
   }
   M5.Lcd.print("\n\n");
 
@@ -5256,7 +5274,7 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
   
       M5.Lcd.qrcode("http://"+WiFi.localIP().toString()+"/update",0,0,135);
   
-      delay(2000);
+      delay(1000);
 
       connected = true;
     }
@@ -5501,7 +5519,7 @@ bool ESPNowScanForPeer(esp_now_peer_info_t& peer, const char* peerSSIDPrefix)
   bool peerFound = false;
   
   M5.Lcd.printf("Scan For\n%s\n",peerSSIDPrefix);
-  int8_t scanResults = WiFi.scanNetworks();
+  int8_t scanResults = scanWiFiForSSIDs();
   
   // reset on each scan 
   memset(&peer, 0, sizeof(peer));
@@ -5617,7 +5635,7 @@ bool pairWithPeer(esp_now_peer_info_t& peer, const char* peerSSIDPrefix, int max
     }
   }
 
-  delay(1000);
+  delay(500);
   
   M5.Lcd.fillScreen(TFT_BLACK);
   M5.Lcd.setCursor(0,0);
