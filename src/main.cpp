@@ -428,7 +428,7 @@ const uint32_t showTempAudioTestDisplayHoldDuration = 2000;
 bool firstLoopThroughTempScreen = false;
 
 char uplink_preamble_pattern[] = "MBJAEJ";
-char uplink_preamble_pattern2[] = "MBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJMBJAEJ";
+char uplink_preamble_pattern2[] = "MBJMBJAEJ";
 
 char uplinkTestMessages[][6] = {"MSG0 ", "MSG1 ", "MSG2 ", "MSG3 "};
 char newWayMarkerLabel[2];
