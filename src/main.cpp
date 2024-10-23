@@ -23,11 +23,6 @@
 
 #include <NavigationWaypoints.h>
 
-//#define INCLUDE_TWITTER_AT_COMPILE_TIME
-
-//#define INCLUDE_SMTP_AT_COMPILE_TIME
-
-
 // ************** Mako Control Parameters **************
 
 bool goProButtonsPrimaryControl = true;
@@ -64,6 +59,9 @@ bool imuAvailable = true;
 
 const uint8_t RED_LED_GPIO = 10;
 int redLEDStatus = HIGH;
+
+bool sendInstantMessageLocationNowFlag = false;
+bool sendInstantMessageEmergencyNowFlag = false;
 
 void disableFeaturesForOTA(bool active)
 {
@@ -108,8 +106,6 @@ void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
                         float* lin_acc_x, float* lin_acc_y, float* lin_acc_z,
                         float* rot_acc_x, float* rot_acc_y, float* rot_acc_z,
                         float* IMU_temperature);
-float ESP32_hallRead();
-bool isMagnetPresentHallSensor();
 const char* scanForKnownNetwork();
 bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts);
 bool setupOTAWebServer(const char* _ssid, const char* _password, const char* label, uint32_t timeout, bool wifiOnly);
@@ -345,15 +341,15 @@ const int SCREEN_WIDTH = 135;
 // does not work up to lemon: 91000
 // const int UPLINK_BAUD_RATE = 576000;  // max baudrate for mako Rx as Lemon Tx is using a real GPIO pin and this is Lemon Max that Mako can decode.
 
-const uint32_t quietTimeMsBeforeUplink = 0;
-const int UPLINK_BAUD_RATE = 57600;  // 57600 115200 max baudrate for mako Tx due to mako phototransistor being 15 uS rise time.
+const uint32_t lingerTimeMsBeforeUplink = 0;
+const int UPLINK_BAUD_RATE = 57600;
 
 /*
 // added 3ms delay before replying to Lemon when running at 2.1Mbit / sec
 // can experiment with 2ms and 1ms.
 // without the delay there's 14% loss/miss
-const uint32_t quietTimeMsBeforeUplink = 3; 
-const int UPLINK_BAUD_RATE = 2100000 ;  // 57600 115200 max baudrate for mako Tx due to mako phototransistor being 15 uS rise time.
+const uint32_t lingerTimeMsBeforeUplink = 3; 
+const int UPLINK_BAUD_RATE = 2100000 ;
 */
 
 enum e_display_brightness {OFF_DISPLAY = 0, DIM_DISPLAY = 25, HALF_BRIGHT_DISPLAY = 50, BRIGHTEST_DISPLAY = 100};
@@ -373,7 +369,7 @@ uint16_t max_sensor_acquisition_time = 0;     // maximum sensor acquistion time 
 uint16_t actual_sensor_acquisition_time = 0;  // actual sensor acquisition time without forced wait
 uint16_t max_actual_sensor_acquisition_time = 0;  // max val of above.
 
-bool enableESPNow = false;       //
+bool enableESPNow = true;
 bool ESPNowActive = false;       // will be set to true on startup if set above - can be toggled through interface.
 bool isPairedWithSilky = false;
 bool isPairedWithTiger = false;
@@ -386,32 +382,6 @@ void OnESPNowDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
 void (*fp_sendUplinkMessage)() =  ( uplinkMode == SEND_NO_UPLINK_MSG ? &sendNoUplinkTelemetryMessages :
                                   ( uplinkMode == SEND_TEST_UPLINK_MSG ? &sendUplinkTestMessage :
                                   ( uplinkMode == SEND_FULL_UPLINK_MSG ? &sendFullUplinkTelemetryMessage : &sendNoUplinkTelemetryMessages)));
-
-#ifdef INCLUDE_TWITTER_AT_COMPILE_TIME
-  // TWITTER START
-    #include <WiFiClientSecure.h>   // Twitter
-    #include <TweESP32.h>          // Install from Github - https://github.com/witnessmenow/TweESP32
-    #include <TwitterServerCert.h> // included with above
-    // Dependant Libraries
-    #include <UrlEncode.h> //Install from library manager
-    #include <ArduinoJson.h> //Install from library manager
-    bool connectToTwitter = true;
-    WiFiClientSecure secureTwitterClient;
-    TweESP32 twitter(secureTwitterClient, twitterConsumerKey, twitterConsumerSecret, twitterAccessToken, twitterAccessTokenSecret, twitterBearerToken);
-  // TWITTER END
-#endif
-
-// flag sent to float if tweet requested (does not require twitter libs locally)
-bool setTweetLocationNowFlag = false;
-bool setTweetEmergencyNowFlag = false;
-
-#ifdef INCLUDE_SMTP_AT_COMPILE_TIME
-  // SMTP Email START
-    #include <ESP_Mail_Client.h>
-    SMTPSession smtp;
-    bool connectToSMTP = true;
-  // SMTP Email END
-#endif
 
 uint8_t telemetry_message_count = 0;
 
@@ -1639,25 +1609,29 @@ const uint32_t s_sendTestSerialBytesPeriodMs = 1000;
 uint32_t s_lastTempHumidityDisplayRefresh = 0;
 const uint32_t s_tempHumidityUpdatePeriod = 1000; // time between each humidity and depth update to screen
 
-const uint8_t BUTTON_GOPRO_TOP_PIN = 25;
-const uint8_t BUTTON_GOPRO_SIDE_PIN = 0;
+const uint8_t  BUTTON_GOPRO_TOP_GPIO = 25;
+const uint8_t  BUTTON_GOPRO_SIDE_GPIO = 0;
+const uint8_t  REED_SWITCH_GPIO = 38;      // new input only input - on white wire of Mako
 const uint32_t MERCATOR_DEBOUNCE_MS = 0;
 
-const uint8_t GROVE_GPS_RX_PIN = 33;
-const uint8_t GROVE_GPS_TX_PIN = 32;
+const uint8_t GROVE_GPS_RX_GPIO = 33;
+const uint8_t GROVE_GPS_TX_GPIO = 32;
 
 const bool useIRLEDforTx = false;   // setting to true currently interferes with I2C (flashing green light) and Tx not functional
 
-const uint8_t HAT_GPS_RX_PIN = 26;
-const uint8_t IR_LED_GPS_TX_PIN = 9;
-const uint8_t HAT_GPS_TX_PIN = 2;
+const uint8_t HAT_GPS_RX_GPIO = 26;
+const uint8_t HAT_GPS_TX_GPIO = 2;
+const uint8_t IR_LED_GPS_TX_GPIO = 9;
 
-Button BtnGoProTop = Button(BUTTON_GOPRO_TOP_PIN, true, MERCATOR_DEBOUNCE_MS);    // from utility/Button.h for M5 Stick C Plus
-Button BtnGoProSide = Button(BUTTON_GOPRO_SIDE_PIN, true, MERCATOR_DEBOUNCE_MS); // from utility/Button.h for M5 Stick C Plus
+const bool switchActionInverted = true;
+Button BtnGoProTop = Button(BUTTON_GOPRO_TOP_GPIO, switchActionInverted, MERCATOR_DEBOUNCE_MS);
+Button BtnGoProSide = Button(BUTTON_GOPRO_SIDE_GPIO, switchActionInverted, MERCATOR_DEBOUNCE_MS); 
+Button ReedGoProTopLeft = Button(REED_SWITCH_GPIO, switchActionInverted, MERCATOR_DEBOUNCE_MS);
 uint16_t sideCount = 0, topCount = 0;
 
 bool topGoProButtonActiveAtStartup = false;
 bool sideGoProButtonActiveAtStartup = false;
+bool goProReedActiveAtStartup = false;
 
 Button* p_primaryButton = NULL;
 Button* p_secondButton = NULL;
@@ -1686,7 +1660,6 @@ void updateButtonsAndBuzzer()
 {
   p_primaryButton->read();
   p_secondButton->read();
-//  M5.Beep.update(); // commented out in anticipation of using GPIO 2 for Tx
 }
 
 char rxQueueItemBuffer[256];
@@ -1731,7 +1704,7 @@ void uploadOTABeginCallback(AsyncElegantOtaClass* originator)
 
 bool enableOTAAtStartupIfTopButtonHeld()
 {
-  if (digitalRead(BUTTON_GOPRO_TOP_PIN) == false)
+  if (digitalRead(BUTTON_GOPRO_TOP_GPIO) == false)
   {
     // enable OTA mode immediately at startup
     topGoProButtonActiveAtStartup = true;
@@ -1743,7 +1716,7 @@ bool enableOTAAtStartupIfTopButtonHeld()
 
 bool disableESPNowIfSideButtonHeld()
 {
-  if (digitalRead(BUTTON_GOPRO_SIDE_PIN) == false)
+  if (digitalRead(BUTTON_GOPRO_SIDE_GPIO) == false)
   {
     sideGoProButtonActiveAtStartup = true;
     // disable espnow to speedup startup time when testing
@@ -1796,16 +1769,16 @@ void setup()
 
   if (useIRLEDforTx)
   {
-    pinMode(IR_LED_GPS_TX_PIN, OUTPUT);
+    pinMode(IR_LED_GPS_TX_GPIO, OUTPUT);
     if (usingSDP8600OptoSchmittDetector)
     {
       // if using SDP8600 phototransistor - logic not inverted on TX
-      digitalWrite(IR_LED_GPS_TX_PIN, LOW); // switch off - sets TX high on input to RS485 which is correct for no data being sent  }
+      digitalWrite(IR_LED_GPS_TX_GPIO, LOW); // switch off - sets TX high on input to RS485 which is correct for no data being sent  }
     }
     else
     {
       // if using original phototransistor SDP8406 - uses inverted logic
-      digitalWrite(IR_LED_GPS_TX_PIN, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
+      digitalWrite(IR_LED_GPS_TX_GPIO, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
     }
   }
 
@@ -1859,7 +1832,7 @@ void setup()
  if (useGrovePortForGPS)
   {
     float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, GROVE_GPS_RX_PIN, GROVE_GPS_TX_PIN);   // pin 33=rx (white M5), pin 32=tx (yellow M5), specifies the grove SCL/SDA pins for Rx/Tx
+    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, GROVE_GPS_RX_GPIO, GROVE_GPS_TX_GPIO);   // pin 33=rx (white M5), pin 32=tx (yellow M5), specifies the grove SCL/SDA pins for Rx/Tx
   }
   else
   {
@@ -1869,14 +1842,14 @@ void setup()
       if (usingSDP8600OptoSchmittDetector)
       {
         const bool invert = true;         // need tx inverted (which inverts both Rx and Tx on .begin call)
-        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_GPIO, IR_LED_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
         float_serial.setRxInvert( false);   // but need rx not inverted (must be done after begin)
       }
       else
       {
         // original phototransistor has inverting logic
         const bool invert = false;
-        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
+        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_GPIO, IR_LED_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
       }
     }
     else
@@ -1884,7 +1857,7 @@ void setup()
       // had to solder to GPIO2 on the main board and cut the header pin to the HAT mezzenine board as there 
       // were some components there preventing the UART from working. Also was cutting power to I2C.
       const bool invert = false;
-      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
+      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_GPIO, HAT_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
     }
   }
 
@@ -2030,29 +2003,6 @@ void setup()
   // https://techtutorialsx.com/2017/10/07/esp32-arduino-timer-interrupts/
   pinMode(RED_LED_GPIO, OUTPUT); // Red LED
   digitalWrite(RED_LED_GPIO, HIGH); // switch off
-
-#ifdef INCLUDE_TWITTER_AT_COMPILE_TIME
-  if (connectToTwitter && WiFi.status() == WL_CONNECTED)
-  {
-    //Required for Oauth for sending tweets
-    twitter.timeConfig();
-    // Checking the cert is the best way on an ESP32i
-    // This will verify the server is trusted.
-    secureTwitterClient.setCACert(twitter_server_cert);
-
-    // send test tweet
-    bool success = twitter.sendTweet("Test Tweet From Mercator Origins - Bluepad Labs. The Scuba Hacker");
-  }
-#endif
-
-#ifdef INCLUDE_SMTP_AT_COMPILE_TIME
-  if (connectToSMTP && WiFi.status() == WL_CONNECTED)
-  {
-    sendTestByEmail();
-  }
-#endif
-
-
 }
 
 void loop_no_gps()
@@ -2549,7 +2499,7 @@ void acquireAllSensorReadings()
   if (actual_sensor_acquisition_time > max_actual_sensor_acquisition_time)
     max_actual_sensor_acquisition_time = actual_sensor_acquisition_time;
 
-  // equalise acquisition time to be set to a minimum - BLOCKING - later make this asynchronous, and use quietTimeMsBeforeUplink
+  // equalise acquisition time to be set to a minimum - BLOCKING - later make this asynchronous, and use lingerTimeMsBeforeUplink
   while (millis() < forced_standardised_sensor_read_time);
   
   sensor_acquisition_time = (uint16_t)(millis() - start_time_millis);
@@ -3354,16 +3304,16 @@ void drawLatLong()
   M5.Lcd.setTextSize(3);
   M5.Lcd.setCursor(0, 0);
   /*
-          if (setTweetEmergencyNowFlag == true)
+          if (sendInstantMessageEmergencyNowFlag == true)
           {
             M5.Lcd.setTextColor(TFT_WHITE, TFT_RED);
-            M5.Lcd.printf("SOS TWEET SENT\n", Lat);
+            M5.Lcd.printf("SOS MSG SENT\n", Lat);
             sleep(3000);
           }
           else
           {
             M5.Lcd.setTextColor(TFT_BLUE, TFT_YELLOW);
-            M5.Lcd.printf(" TWEET SENT! \n", Lat);
+            M5.Lcd.printf(" MSG SENT! \n", Lat);
           }
   */
 
@@ -3646,10 +3596,9 @@ uint16_t getOneShotUserActionForUplink()
 // send number of good messages received and number of bad messages received. 16 bit for both.
 void sendUplinkTelemetryMessageV5()
 {
-  delay(quietTimeMsBeforeUplink);
+  delay(lingerTimeMsBeforeUplink);
 
-//  delay(10);    // 10ms delay before sending
-//  if (millis() > latestFixTimeStamp + quietTimeMsBeforeUplink)
+//  if (millis() > latestFixTimeStamp + lingerTimeMsBeforeUplink)
 //  {
     latestFixTimeStamp = CLEARED_FIX_TIME_STAMP;
 
@@ -3702,7 +3651,7 @@ void sendUplinkTelemetryMessageV5()
 
     uint16_t uplink_mako_good_checksum_msgs = newPassedChecksum;
 
-    uint16_t uplink_flags = setTweetLocationNowFlag | (setTweetEmergencyNowFlag << 1);
+    uint16_t uplink_flags = sendInstantMessageLocationNowFlag | (sendInstantMessageEmergencyNowFlag << 1);
 
     uint16_t* nextMetric = telemetryMessage;
 
@@ -3750,7 +3699,7 @@ void sendUplinkTelemetryMessageV5()
     
 
     *(nextMetric++) = minimum_sensor_read_time;
-    *(nextMetric++) = quietTimeMsBeforeUplink;
+    *(nextMetric++) = lingerTimeMsBeforeUplink;
     *(nextMetric++) = sensor_acquisition_time;
     *(nextMetric++) = max_sensor_acquisition_time;
     *(nextMetric++) = actual_sensor_acquisition_time;
@@ -3821,19 +3770,19 @@ void sendUplinkTelemetryMessageV5()
     bytesTransmittedToLemon += sizeof(uplink_preamble_pattern2) + uplink_length;
 
     // clear flags
-    if (setTweetLocationNowFlag == true)
-      setTweetLocationNowFlag = false;
+    if (sendInstantMessageLocationNowFlag == true)
+      sendInstantMessageLocationNowFlag = false;
 
-    if (setTweetEmergencyNowFlag == true)
-      setTweetEmergencyNowFlag = false;
+    if (sendInstantMessageEmergencyNowFlag == true)
+      sendInstantMessageEmergencyNowFlag = false;
 //  }
 }
 
 void sendUplinkTestMessage()
 {
   // if 5ms after fix received then send the uplink msg, only get here if no bytes received from Float Serial.
-  const uint32_t quietTimeMsBeforeUplink = 5;
-  if (millis() > latestFixTimeStamp + quietTimeMsBeforeUplink)
+  const uint32_t lingerTimeMsBeforeUplink = 5;
+  if (millis() > latestFixTimeStamp + lingerTimeMsBeforeUplink)
   {
     latestFixTimeStamp = CLEARED_FIX_TIME_STAMP;
 
@@ -5344,115 +5293,7 @@ void readAndTestGoProButtons()
   }
 }
 
-float ESP32_hallRead()  // ESP32 hall value read.
-{
-  float value = 0;
-  int count   = 100;  // was 400
-  // mean value filter.
-  for (int n = 0; n < count; n++) value += hallRead();
 
-  if (hallOffset == 0)
-  {
-    hallOffset = value / count * 10;
-    return hallOffset;
-  }
-  else
-  {
-    return value / count * 10 - hallOffset;
-  }
-}
-
-bool isMagnetPresentHallSensor()
-{
-  bool result = false;
-
-  float sample = ESP32_hallRead();
-
-  if (sample < magnetHallReadingForReset || sample > -magnetHallReadingForReset)
-  {
-    result = true;
-    // hall sensor event detected
-    //     esp_restart();
-    printf("Magnet %.0f\n", sample);
-  }
-  return result;
-}
-
-#ifdef INCLUDE_SMTP_AT_COMPILE_TIME
-void sendTestByEmail()
-{
-  ESP_Mail_Session session;
-
-  session.server.host_name = smtpServer;
-  session.server.port = smtpPort;
-  session.login.email = smtpSenderEmail;
-  session.login.password = smtpSenderPassword;
-  session.login.user_domain = "";
-
-  if (!smtp.connect(&session))
-  {
-    USB_SERIAL.println("Error connecting to SMTP, " + smtp.errorReason());
-    return;
-  }
-
-  SMTP_Message emailMessage;
-
-  emailMessage.sender.name = "Mercator Origins";
-  emailMessage.sender.email = smtpSenderEmail;
-  emailMessage.subject = "Mercator Origins Test Email";
-  emailMessage.addRecipient("BluepadLabs", smtpRecepientEmail);
-
-  //Send HTML message
-  String htmlMsg = "<div style=\"color:#FF0000;\"><h1>Hello Bluepad Labs!</h1><p>This is a test email from Mercator Origins.</p></div>";
-  emailMessage.html.content = htmlMsg.c_str();
-  emailMessage.html.content = htmlMsg.c_str();
-  emailMessage.text.charSet = "us-ascii";
-  emailMessage.html.transfer_encoding = Content_Transfer_Encoding::enc_7bit;
-
-  if (!MailClient.sendMail(&smtp, &emailMessage))
-    USB_SERIAL.println("Error sending Email, " + smtp.errorReason());
-}
-
-void sendLocationByEmail()
-{
-  ESP_Mail_Session session;
-
-  session.server.host_name = SMTP_SERVER ;
-  session.server.port = SMTP_PORT;
-  session.login.email = SENDER_EMAIL;
-  session.login.password = SENDER_PASSWORD;
-  session.login.user_domain = "";
-
-  if (!smtp.connect(&session))
-  {
-    USB_SERIAL.println("Error connecting to SMTP, " + smtp.errorReason());
-    return;
-  }
-  else
-  {
-    USB_SERIAL.println("Connected to SMTP Ok");
-  }
-  SMTP_Message emailMessage;
-
-  emailMessage.sender.name = "Mercator Origins";
-  emailMessage.sender.email = smtpSenderEmail;
-  emailMessage.subject = "Mercator Origins Location Fix";
-  emailMessage.addRecipient("BluepadLabs", smtpRecipientEmail);
-
-  //Send HTML message
-  String htmlMsg = "<div style=\"color:#FF0000;\"><h1>Hello BluePad Labs!</h1><p>This is a location email sent from Mercator Origins</p></div>";
-  emailMessage.html.content = htmlMsg.c_str();
-  emailMessage.html.content = htmlMsg.c_str();
-  emailMessage.text.charSet = "us-ascii";
-  emailMessage.html.transfer_encoding = Content_Transfer_Encoding::enc_7bit;
-
-  if (!MailClient.sendMail(&smtp, &emailMessage))
-    USB_SERIAL.println("Error sending Email, " + smtp.errorReason());
-  else
-    USB_SERIAL.println("Error sending Email, " + smtp.errorReason());
-
-}
-#endif
 
 // *************************** ESPNow Functions ***************************
 
