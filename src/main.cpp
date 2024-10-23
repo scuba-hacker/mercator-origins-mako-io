@@ -336,13 +336,25 @@ uint8_t initialTextSize = 2;
 #include <AsyncElegantOTA.h>
 AsyncElegantOtaClass AsyncElegantOTA;
 
-
 const int SCREEN_LENGTH = 240;
 const int SCREEN_WIDTH = 135;
 
 // const int UPLINK_BAUD_RATE = 9600;
+// works for rx from lemon: 922190, 1100000,1500000,1700000,1900000,2100000 (with linger = 3ms)
+// does not work for rx from lemon: 921600, 180000
+// does not work up to lemon: 91000
+// const int UPLINK_BAUD_RATE = 576000;  // max baudrate for mako Rx as Lemon Tx is using a real GPIO pin and this is Lemon Max that Mako can decode.
+
+const uint32_t quietTimeMsBeforeUplink = 0;
 const int UPLINK_BAUD_RATE = 57600;  // 57600 115200 max baudrate for mako Tx due to mako phototransistor being 15 uS rise time.
-// const int UPLINK_BAUD_RATE = 460800;  // max baudrate for mako Rx as Lemon Tx is using a real GPIO pin and this is Lemon Max that Mako can decode.
+
+/*
+// added 3ms delay before replying to Lemon when running at 2.1Mbit / sec
+// can experiment with 2ms and 1ms.
+// without the delay there's 14% loss/miss
+const uint32_t quietTimeMsBeforeUplink = 3; 
+const int UPLINK_BAUD_RATE = 2100000 ;  // 57600 115200 max baudrate for mako Tx due to mako phototransistor being 15 uS rise time.
+*/
 
 enum e_display_brightness {OFF_DISPLAY = 0, DIM_DISPLAY = 25, HALF_BRIGHT_DISPLAY = 50, BRIGHTEST_DISPLAY = 100};
 enum e_uplinkMode {SEND_NO_UPLINK_MSG, SEND_TEST_UPLINK_MSG, SEND_FULL_UPLINK_MSG};
@@ -1561,7 +1573,7 @@ Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(54321);
 Adafruit_BME280 Adafruit_TempHumidityPressure;
 Adafruit_APDS9960 Adafruit_ColourSensor;
 uint16_t red_light=0,green_light=0,blue_light=0,clear_light=0;
-
+uint32_t bytesReceivedFromLemon=0,bytesTransmittedToLemon=0;
 
 uint32_t s_lastColourDisplayRefresh = 0;
 const uint32_t s_colourUpdatePeriod = 200; // time between each colour sensor read
@@ -1609,8 +1621,6 @@ void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
   }
 }
 
-
-
 // Magnetic Compass averaging and refresh rate control
 const uint8_t s_smoothedCompassBufferSize = 10;
 double s_smoothedCompassHeading[s_smoothedCompassBufferSize];
@@ -1636,7 +1646,7 @@ const uint32_t MERCATOR_DEBOUNCE_MS = 0;
 const uint8_t GROVE_GPS_RX_PIN = 33;
 const uint8_t GROVE_GPS_TX_PIN = 32;
 
-const bool useIRLEDforTx = true;   // setting to true currently interferes with I2C (flashing green light) and Tx not functional
+const bool useIRLEDforTx = false;   // setting to true currently interferes with I2C (flashing green light) and Tx not functional
 
 const uint8_t HAT_GPS_RX_PIN = 26;
 const uint8_t IR_LED_GPS_TX_PIN = 9;
@@ -1798,11 +1808,6 @@ void setup()
       digitalWrite(IR_LED_GPS_TX_PIN, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
     }
   }
-  else
-  {
-    pinMode(HAT_GPS_TX_PIN, OUTPUT);
-    digitalWrite(HAT_GPS_TX_PIN, LOW); // switch off Tx pin with 0V out, satisfies boot strapping requirement
-  }
 
   M5.Lcd.setTextSize(initialTextSize);
 
@@ -1854,7 +1859,7 @@ void setup()
  if (useGrovePortForGPS)
   {
     float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, GROVE_GPS_RX_PIN, GROVE_GPS_TX_PIN);   // pin 33=rx (white M5), pin 32=tx (yellow M5), specifies the grove SCL/SDA pins for Rx/Tx
+    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, GROVE_GPS_RX_PIN, GROVE_GPS_TX_PIN);   // pin 33=rx (white M5), pin 32=tx (yellow M5), specifies the grove SCL/SDA pins for Rx/Tx
   }
   else
   {
@@ -1864,25 +1869,22 @@ void setup()
       if (usingSDP8600OptoSchmittDetector)
       {
         const bool invert = true;         // need tx inverted (which inverts both Rx and Tx on .begin call)
-        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
+        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
         float_serial.setRxInvert( false);   // but need rx not inverted (must be done after begin)
       }
       else
       {
         // original phototransistor has inverting logic
-        const bool invert = false;      
-        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
+        const bool invert = false;
+        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, IR_LED_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
       }
     }
     else
     {
-      // when invert=false receive works ok, but i2c light is flashing and something wrong as very slow response.
-      // when invert=true, receive does not work.
-      // when invert=false and invert of rx only is true: Receive works, I2C light still flashing and without the GPIO connected
-      const bool invert = false; 
-      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
-//      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
-//      float_serial.setRxInvert(false);
+      // had to solder to GPIO2 on the main board and cut the header pin to the HAT mezzenine board as there 
+      // were some components there preventing the UART from working. Also was cutting power to I2C.
+      const bool invert = false;
+      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_PIN, HAT_GPS_TX_PIN, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
     }
   }
 
@@ -2255,6 +2257,8 @@ bool processGPSMessageIfAvailable()
       readAndTestGoProButtons();
 
     char nextByte = float_serial.read();
+
+    bytesReceivedFromLemon++;
 
     if (writeLogToSerial)
       USB_SERIAL.write(nextByte);
@@ -3421,14 +3425,18 @@ void drawLocationStats()
 
   M5.Lcd.setCursor(5, 68);
  // M5.Lcd.printf("Tiger: %s\n",tigerMessage);
-  M5.Lcd.printf("Colour: %u %hu   \n",brightLightEvents, clear_light);
-  
+//  M5.Lcd.printf("Colour: %u %hu   \n",brightLightEvents, clear_light);
+  M5.Lcd.printf("Baud: %i\n",UPLINK_BAUD_RATE);
+
   M5.Lcd.setCursor(5, 85);
-  M5.Lcd.printf("T-Reeds: %s\n",tigerReeds);
+//  M5.Lcd.printf("T-Reeds: %s\n",tigerReeds);
+  M5.Lcd.printf("Rx: %lu\n",bytesReceivedFromLemon);
   
   M5.Lcd.setCursor(5, 102);
-  M5.Lcd.printf("Silky: %s",silkyMessage);
-  
+  M5.Lcd.printf("Tx: %lu\n",bytesTransmittedToLemon);
+
+
+//  M5.Lcd.printf("Silky: %s",silkyMessage);  
 //  M5.Lcd.printf("T: (%d)\n%s", (int)(nextWaypoint - currentDiveWaypoints)+1, nextWaypoint->_m5label);
 }
 
@@ -3638,7 +3646,6 @@ uint16_t getOneShotUserActionForUplink()
 // send number of good messages received and number of bad messages received. 16 bit for both.
 void sendUplinkTelemetryMessageV5()
 {
-  const uint32_t quietTimeMsBeforeUplink = 0; // disabled - always uplink on call to this method
   delay(quietTimeMsBeforeUplink);
 
 //  delay(10);    // 10ms delay before sending
@@ -3810,6 +3817,8 @@ void sendUplinkTelemetryMessageV5()
     float_serial.write(uplink_preamble_pattern2);
 
     float_serial.write((char*)telemetryMessage, uplink_length);
+
+    bytesTransmittedToLemon += sizeof(uplink_preamble_pattern2) + uplink_length;
 
     // clear flags
     if (setTweetLocationNowFlag == true)
