@@ -753,7 +753,51 @@ NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
   [11] = { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
 };
 */
+/*
+// Home test
+const uint8_t waypointCountDiveOne = 3;
+const uint8_t waypointExitDiveOne = 1;
 
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z04 Home", ._m5label = "Z04\n\nHome", ._cat=JETTY, ._lat = 51.391513052111996, ._long = -0.2874361808098317},
+  [1] = { ._label = "98N Home Test", ._m5label = "98N\n\nHome\nTest", ._cat=BLUE_BUOY, ._lat = 51.39140569365721, ._long = -0.2869881590541109},
+  [2] = { ._label = "Z04 Home", ._m5label = "Z04\n\nHome", ._cat=JETTY, ._lat = 51.391513052111996, ._long = -0.2874361808098317},
+};
+
+const uint8_t waypointCountDiveTwo = 3;
+const uint8_t waypointExitDiveTwo = 1;
+
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z04 Home", ._m5label = "Z04\n\nHome", ._cat=JETTY, ._lat = 51.391513052111996, ._long = -0.2874361808098317},
+  [1] = { ._label = "98N Home Test", ._m5label = "98N\n\nHome\nTest", ._cat=BLUE_BUOY,._lat = 51.39140569365721, ._long = -0.2869881590541109},
+  [2] = { ._label = "Z04 Home", ._m5label = "Z04\n\nHome", ._cat=JETTY, ._lat = 51.391513052111996, ._long = -0.2874361808098317},
+};
+*/
+
+// Vobster Test
+const uint8_t waypointCountDiveOne = 3;
+const uint8_t waypointExitDiveOne = 1;
+
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+  [1] = { ._label = "99N Pontoon", ._m5label = "99N\nPontoon", ._cat=BLUE_BUOY, ._lat = 51.24671667548201, ._long = -2.4247728907604174},
+  [2] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+};
+
+const uint8_t waypointCountDiveTwo = 3;
+const uint8_t waypointExitDiveTwo = 1;
+
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+  [1] = { ._label = "99N Pontoon", ._m5label = "99N\nPontoon", ._cat=BLUE_BUOY, ._lat = 51.24671667548201, ._long = -2.4247728907604174},
+  [2] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+};
+
+/*
 // Dive 1 3rd Nov 17th 2024
 const uint8_t waypointCountDiveOne = 24;
 const uint8_t waypointExitDiveOne = 23;
@@ -811,7 +855,7 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
   [16] = { ._label = "10N Bus 2m", ._m5label = "10N\n\nBus\n\n2m", ._cat=NO_BUOY,._lat = 51.460073, ._long = -0.548515},
   [17] = { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
 };
-
+*/
 /*
 // Dive 1 Sept 17th 2024
 const uint8_t waypointCountDiveOne = 24;
@@ -1690,7 +1734,8 @@ const uint32_t s_tempHumidityUpdatePeriod = 1000; // time between each humidity 
 
 const uint8_t  BUTTON_GOPRO_TOP_GPIO = 25;
 const uint8_t  BUTTON_GOPRO_SIDE_GPIO = 0;
-const uint8_t  REED_SWITCH_GPIO = 38;      // new input only input - on white wire of Mako
+// GPIO 38 has no internal pull-up resistor so needs to have external pull-up to 3.3V. That's why not working.
+const uint8_t  REED_SWITCH_GPIO = 38;      // input triggers with finger proximity - not now used - new input only input - on white wire of Mako
 const uint32_t MERCATOR_DEBOUNCE_MS = 0;
 
 const uint8_t GROVE_GPS_RX_GPIO = 33;
@@ -1705,7 +1750,9 @@ const uint8_t IR_LED_GPS_TX_GPIO = 9;
 const bool switchActionInverted = true;
 Button BtnGoProTop = Button(BUTTON_GOPRO_TOP_GPIO, switchActionInverted, MERCATOR_DEBOUNCE_MS);
 Button BtnGoProSide = Button(BUTTON_GOPRO_SIDE_GPIO, switchActionInverted, MERCATOR_DEBOUNCE_MS); 
-Button ReedGoProBottomRight = Button(REED_SWITCH_GPIO, switchActionInverted, MERCATOR_DEBOUNCE_MS);
+// There is no internal pull-up on GPIO 38 so the Button implementation that uses INPUT_PULLUP will be 
+// ignored or you need to override and set it to INPUT instead.
+// Button ReedGoProBottomRight = Button(REED_SWITCH_GPIO, switchActionInverted, MERCATOR_DEBOUNCE_MS);
 uint16_t sideCount = 0, topCount = 0;
 
 bool topGoProButtonActiveAtStartup = false;
@@ -1739,7 +1786,7 @@ void updateButtonsAndBuzzer()
 {
   p_primaryButton->read();
   p_secondButton->read();
-  ReedGoProBottomRight.read();
+//  ReedGoProBottomRight.read(); // disabled until a pull-up is added to GPIO 38 (white wire)
 }
 
 char rxQueueItemBuffer[256];
@@ -1957,10 +2004,12 @@ void setup()
 //  magnetometer_max = (vec<double>) { 58.65, 32.55, 115.350};
 
   // re-calibrated on 15th Apr 2024 in situ without audio pod or mapping pod.
-  magnetometer_min = (vec<double>) { -51.9, -54.300, -10.350};
-  magnetometer_max = (vec<double>) { 31.050, 28.0500, 97.050};
+//  magnetometer_min = (vec<double>) { -51.9, -54.300, -10.350};
+//  magnetometer_max = (vec<double>) { 31.050, 28.0500, 97.050};
 
-
+// recalbirated on 2nd Feb 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
+  magnetometer_min = (vec<double>) { -34.05, -58.950, 16.95};
+  magnetometer_max = (vec<double>) { 56.850, 31.500, 109.8};
 
   M5.Lcd.setCursor(0, 0);
 
@@ -2597,12 +2646,16 @@ void checkForButtonPresses()
     
   updateButtonsAndBuzzer();
 
-  const uint32_t reedTestDuration = 1000;
+/*
+  // very strange behaviour with GPIO 38 triggering with finger proximity and not magnet
+  // disabled. Needs a pull-up resistor to pin 38 and probably INPUT_PULLUP changed to INPUT in Button class
+  const uint32_t reedTestDuration = 100;
   if (ReedGoProBottomRight.wasReleasefor(reedTestDuration))
   {
     M5.Lcd.fillScreen(TFT_GREEN);
     delay(1000);
   }
+*/
 
   switch (display_to_show)
   {
@@ -2913,7 +2966,11 @@ void drawSurveyDisplay()
 {
     M5.Lcd.setRotation(0);
     M5.Lcd.setCursor(15, 0);
-    M5.Lcd.setTextSize(6);
+ 
+    if (depth < 10.0)
+      M5.Lcd.setTextSize(6);
+    else
+      M5.Lcd.setTextSize(4);
 
     if (useGetDepthAsync)
       M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
@@ -3200,13 +3257,18 @@ void drawCompassSection()
     M5.Lcd.setTextSize(3);
     M5.Lcd.setTextFont(0);
     M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
-    M5.Lcd.printf("%4.1fm", depth);
 
-    M5.Lcd.setCursor(0, 151);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setTextFont(0);
-    M5.Lcd.setTextColor(TFT_MAGENTA, TFT_BLACK);
-    M5.Lcd.printf("%.1f", M5.Axp.GetTempInAXP192());
+    M5.Lcd.printf("%4.1fm", depth);
+    if (depth < 10.0)
+    {
+      // no display space for axp temp if depth >= 10.0
+      M5.Lcd.printf("%3.1fm", depth);
+      M5.Lcd.setCursor(0, 151);
+      M5.Lcd.setTextSize(2);
+      M5.Lcd.setTextFont(0);
+      M5.Lcd.setTextColor(TFT_MAGENTA, TFT_BLACK);
+      M5.Lcd.printf("%.1f", M5.Axp.GetTempInAXP192());
+    }
 
     blackout_journey_no_movement = false;
 }
