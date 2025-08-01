@@ -334,7 +334,7 @@ void toggleOTAActive()
     haltAllProcessingDuringOTAUpload = true;
   }
 
-  M5.Lcd.fillScreen(TFT_BLACK);
+  showOTARecoveryScreen();
 }
 
 #endif

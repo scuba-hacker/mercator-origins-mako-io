@@ -753,6 +753,7 @@ void drawPowerOnTimeOverlay()
 
 void showOTARecoveryScreen()
 {
+  M5.Lcd.setRotation(1);
   M5.Lcd.fillScreen(TFT_GREEN);
   M5.Lcd.setCursor(5,5);
   M5.Lcd.setTextColor(TFT_BLACK,TFT_GREEN);
