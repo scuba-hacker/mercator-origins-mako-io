@@ -700,6 +700,7 @@ void setup()
   // Always initialise Serial over the USB connection - whether writeLogToSerial is enabled or not
   Serial.begin(115200);
 
+  // wait one second - terminate wait if a button is held
   uint32_t start = millis();
   while(millis() < start + 1000 && !disableESPNowIfSideButtonHeld() &&  !enableOTAAtStartupIfTopButtonHeld());
 
