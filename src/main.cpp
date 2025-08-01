@@ -295,13 +295,37 @@ const int UPLINK_BAUD_RATE = 2100000 ;
 enum e_display_brightness {OFF_DISPLAY = 0, DIM_DISPLAY = 25, HALF_BRIGHT_DISPLAY = 50, BRIGHTEST_DISPLAY = 100};
 enum e_uplinkMode {SEND_NO_UPLINK_MSG, SEND_TEST_UPLINK_MSG, SEND_FULL_UPLINK_MSG};
 
+
+enum  e_mako_displays 
+  {
+  NAV_COMPASS_DISPLAY, 
+  NAV_COURSE_DISPLAY, 
+  SURVEY_DISPLAY, 
+  LOCATION_DISPLAY, 
+  JOURNEY_DISPLAY, 
+  AUDIO_TEST_DISPLAY,
+  COMPASS_CALIBRATION_DISPLAY,
+  SHOW_LAT_LONG_DISPLAY_TEMP, 
+  NEXT_TARGET_DISPLAY_TEMP, 
+  THIS_TARGET_DISPLAY_TEMP,
+  AUDIO_ACTION_DISPLAY_TEMP};
+  
+const e_mako_displays first_display_rotation = NAV_COMPASS_DISPLAY;
+const e_mako_displays last_display_rotation = COMPASS_CALIBRATION_DISPLAY;
+
+e_mako_displays display_to_show = first_display_rotation;
+e_mako_displays display_to_revert_to = first_display_rotation;
+
+const e_display_brightness ScreenBrightness = BRIGHTEST_DISPLAY;
+
+bool skipDiagnosticDisplays = true;
+
 void sendNoUplinkTelemetryMessages();
 void sendUplinkTestMessage();
 void sendFullUplinkTelemetryMessage();
 
 // feature switches
 
-const e_display_brightness ScreenBrightness = BRIGHTEST_DISPLAY;
 const e_uplinkMode uplinkMode = SEND_FULL_UPLINK_MSG;
 
 uint16_t sensor_acquisition_time = 0;         // how long the acquireSensorReadings function took to run (including forced wait)
@@ -499,48 +523,6 @@ uint16_t       whenToStopTimerDueToLackOfDepth = 0;
 uint16_t       minsToTriggerStopDiveTimer = 10;
 
 bool recordBreadCrumbTrail = false;
-
-enum  e_mako_displays 
-  {
-  NAV_COMPASS_DISPLAY, 
-  NAV_COURSE_DISPLAY, 
-  SURVEY_DISPLAY, 
-  LOCATION_DISPLAY, 
-  JOURNEY_DISPLAY, 
-  AUDIO_TEST_DISPLAY,
-  COMPASS_CALIBRATION_DISPLAY,
-  SHOW_LAT_LONG_DISPLAY_TEMP, 
-  NEXT_TARGET_DISPLAY_TEMP, 
-  THIS_TARGET_DISPLAY_TEMP,
-  AUDIO_ACTION_DISPLAY_TEMP};
-  
-const e_mako_displays first_display_rotation = NAV_COMPASS_DISPLAY;
-const e_mako_displays last_display_rotation = COMPASS_CALIBRATION_DISPLAY;
-
-e_mako_displays display_to_show = first_display_rotation;
-e_mako_displays display_to_revert_to = first_display_rotation;
-
-bool skipDiagnosticDisplays = false;
-
-void switchToNextDisplayToShow()
-{
-  do {
-    display_to_show = (e_mako_displays)((int)display_to_show + 1);
-
-    if (display_to_show > last_display_rotation)
-      display_to_show = first_display_rotation;
-      
-  } while (skipDiagnosticDisplays && 
-           (display_to_show == LOCATION_DISPLAY || 
-            display_to_show == JOURNEY_DISPLAY || 
-            display_to_show == AUDIO_TEST_DISPLAY || 
-            display_to_show == COMPASS_CALIBRATION_DISPLAY));
-
-  M5.Lcd.fillScreen(TFT_BLACK);
-  requestConsoleScreenRefresh=true;
-  lastWayMarker = BLACKOUT_MARKER;
-  lastWayMarkerChangeTimestamp = 0;
-}
 
 bool writeLogToSerial = false;
 

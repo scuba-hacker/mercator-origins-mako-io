@@ -1,5 +1,26 @@
 #ifdef BUILD_INCLUDE_MAIN_DISPLAY_CODE
 
+
+void switchToNextDisplayToShow()
+{
+  do {
+    display_to_show = (e_mako_displays)((int)display_to_show + 1);
+
+    if (display_to_show > last_display_rotation)
+      display_to_show = first_display_rotation;
+      
+  } while (skipDiagnosticDisplays && 
+           (display_to_show == LOCATION_DISPLAY || 
+            display_to_show == JOURNEY_DISPLAY || 
+            display_to_show == AUDIO_TEST_DISPLAY || 
+            display_to_show == COMPASS_CALIBRATION_DISPLAY));
+
+  M5.Lcd.fillScreen(TFT_BLACK);
+  requestConsoleScreenRefresh=true;
+  lastWayMarker = BLACKOUT_MARKER;
+  lastWayMarkerChangeTimestamp = 0;
+}
+
 void refreshConsoleScreen()
 {
   switch (display_to_show)
