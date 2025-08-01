@@ -18,7 +18,7 @@ void checkForButtonPresses()
   if (showTempDisplayEndTime != disabledTempDisplayEndTime)
     return;
     
-  updateButtonsAndBuzzer();
+  updateButtons();
 
 /*
   // very strange behaviour with GPIO 38 triggering with finger proximity and not magnet
@@ -300,6 +300,7 @@ bool checkForDualButtonPresses()
       {
         // 3 second hold completed - toggle diagnostic screens
         skipDiagnosticDisplays = !skipDiagnosticDisplays;
+        saveToEEPROMSkipDiagnosticDisplays();  // Save to EEPROM
         M5.Lcd.setCursor(5, M5.Lcd.height() - 90);
         M5.Lcd.printf("Skip Mode: %s", skipDiagnosticDisplays ? "ON" : "OFF");
         triggered = true;

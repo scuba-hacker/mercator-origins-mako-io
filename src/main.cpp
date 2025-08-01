@@ -26,6 +26,7 @@
 #include "esp_task_wdt.h"
 
 #include <NavigationWaypoints.h>
+#include <Preferences.h>
 
 // ************** Mako Control Parameters **************
 
@@ -318,11 +319,13 @@ e_mako_displays display_to_revert_to = first_display_rotation;
 
 const e_display_brightness ScreenBrightness = BRIGHTEST_DISPLAY;
 
+Preferences persistedPreferences;
 bool skipDiagnosticDisplays = true;
 
 void sendNoUplinkTelemetryMessages();
 void sendUplinkTestMessage();
 void sendFullUplinkTelemetryMessage();
+void saveToEEPROMSkipDiagnosticDisplays();
 
 // feature switches
 
@@ -641,7 +644,7 @@ bool goProReedActiveAtStartup = false;
 
 Button* p_primaryButton = NULL;
 Button* p_secondButton = NULL;
-void updateButtonsAndBuzzer();
+void updateButtons();
 
 const uint32_t CLEARED_FIX_TIME_STAMP = 0xF0000000;
 uint32_t latestFixTimeStamp = CLEARED_FIX_TIME_STAMP;
@@ -662,11 +665,10 @@ bool enableButtonTestMode = false;
 float hallOffset = 0;  // Store the initial value of magnetic force
 const float magnetHallReadingForReset = -50;
 
-void updateButtonsAndBuzzer()
+void updateButtons()
 {
   p_primaryButton->read();
   p_secondButton->read();
-//  ReedGoProBottomRight.read(); // disabled until a pull-up is added to GPIO 38 (white wire)
 }
 
 char rxQueueItemBuffer[256];
@@ -688,7 +690,17 @@ bool forceLoopInitialOTAEnablement = false;
 
 const char* buildTimestamp = __DATE__ " " __TIME__;
 
-void setup()
+void readPreferencesFromEEPROM()
+{
+  // Initialize preferences and load skipDiagnosticDisplays from EEPROM
+  persistedPreferences.begin("mako_config", false);
+  skipDiagnosticDisplays = persistedPreferences.getBool("skipDiag", true);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////// PROTECTED - DO NOT ADD CODE IN THE BELOW PROTECTED AREA - RISK OF OTA FAILURE
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool systemStartupAndCheckForOTADemand()
 {
   M5.begin(/* LCD Enable */ true, /* Power Enable */ true,/* Serial Enable */ false, /* Buzzer Enable */ false);
 
@@ -706,17 +718,31 @@ void setup()
 
   if (topGoProButtonActiveAtStartup)
   {
+    // OTA to be enabled
     haltAllProcessingDuringOTAUpload = true;
     forceLoopInitialOTAEnablement = true;
     disableFeaturesForOTA(); 
-    return;
   }
+
+  return haltAllProcessingDuringOTAUpload;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////// PROTECTED - DO NOT ADD CODE IN THE ABOVE PROTECTED AREA - RISK OF OTA FAILURE
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void setup()
+{
+  //////// PROTECTED - DO NOT ADD CODE BEFORE THE OTA DEMAND CHECK  - RISK OF OTA FAILURE
+  if (systemStartupAndCheckForOTADemand())
+    return;     // OTA Required, skip rest of setup.
+
+  readPreferencesFromEEPROM();
 
   msgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
 
   if (msgsReceivedQueue == NULL)
   {
-      USB_SERIAL_PRINTLN("Failed to create queue");
+    USB_SERIAL_PRINTLN("Failed to create queue");
   }
 
   switchDivePlan();   // initialise to dive one
@@ -927,31 +953,34 @@ void setup()
   M5.Lcd.setTextSize(2);
   M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
   M5.Lcd.setCursor(0, 0);
-
-  updateButtonsAndBuzzer();
 }
 
 uint32_t OTAUploadFlashLEDTimer = 0;
 uint32_t OTAUploadFlashLEDPeriodicity = 500;
+uint32_t recoveryScreenStartTime = 0;
+bool recoveryScreenShown = false;
 
-/////////////// EVENT LOOP
-void loop()
+bool cutShortLoopOnOTADemand()
 {
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////// PROTECTED - DO NOT ADD CODE IN THE BELOW PROTECTED AREA - RISK OF OTA FAILURE
+  ////////////////////////////////////////////////////////////////////////////////////////////////////  
   if (haltAllProcessingDuringOTAUpload)
   {
     if (forceLoopInitialOTAEnablement)
     {
       forceLoopInitialOTAEnablement = false;
       M5.Lcd.fillScreen(TFT_BLACK);
-      M5.Lcd.setCursor(5,5);
-      M5.Lcd.setTextSize(3);
-      M5.Lcd.println("Start\nOTA\n\n");
-      M5.Lcd.setTextSize(2);
-
       const bool wifiOnly = false;
       const int maxWifiScanAttempts = 3;
       otaActive = connectToWiFiAndInitOTA(wifiOnly,maxWifiScanAttempts);
+    }
+
+    if (!recoveryScreenShown) 
+    {
       showOTARecoveryScreen();
+      recoveryScreenStartTime = millis();
+      recoveryScreenShown = true;
     }
 
     if (millis() > OTAUploadFlashLEDTimer)
@@ -959,9 +988,41 @@ void loop()
       OTAUploadFlashLEDTimer += OTAUploadFlashLEDPeriodicity;
       toggleRedLED();
     }
-
-    return;
+    
+    // After 5 seconds of recovery screen, allow restart if any button is pressed 
+    if (recoveryScreenShown && (millis() - recoveryScreenStartTime > 5000)) 
+    {            
+      // check if either button is pressed once 5 seconds has passed since ota screen was shown
+      bool topPressed = digitalRead(BUTTON_GOPRO_TOP_GPIO) == false;
+      bool sidePressed = digitalRead(BUTTON_GOPRO_SIDE_GPIO) == false;
+      
+      if (topPressed || sidePressed) {
+        M5.Lcd.setCursor(5,5);
+        M5.Lcd.setTextSize(3);
+        M5.Lcd.println("##############");
+        M5.Lcd.println("# Restarting #");
+        M5.Lcd.println("##############");
+        delay(1000);
+        esp_restart();
+      }
+    }
   }
+  return haltAllProcessingDuringOTAUpload;
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////// PROTECTED - DO NOT ADD CODE IN THE ABOVE PROTECTED AREA - RISK OF OTA FAILURE
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+}
+
+/////////////// EVENT LOOP
+void loop()
+{
+  //////// PROTECTED - DO NOT ADD CODE BEFORE THE OTA DEMAND CHECK  - RISK OF OTA FAILURE
+  if (cutShortLoopOnOTADemand())
+    return;
+  ///////////////////////////////////////////////////////////////////////////////////////
+  
+  updateButtons();
 
   if (msgsReceivedQueue)
   {
@@ -1204,6 +1265,11 @@ bool processGPSMessageIfAvailable()
   }
   
   return result;
+}
+
+void saveToEEPROMSkipDiagnosticDisplays() 
+{
+  persistedPreferences.putBool("skipDiag", skipDiagnosticDisplays);
 }
 
 #define BUILD_INCLUDE_MAIN_BUTTON_PRESS_CODE
