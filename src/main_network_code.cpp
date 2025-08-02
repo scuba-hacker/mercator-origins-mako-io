@@ -3,7 +3,7 @@
 
 // *************************** Networking Functions ***************************
 
-
+/*
 int8_t scanWiFiForSSIDs()
 {
   return WiFi.scanNetworks(false,false,false,150U);
@@ -53,12 +53,12 @@ const char* scanForKnownNetwork() // return first known network found
 
   return network;
 }
-
+*/
 void uploadOTABeginCallback(AsyncElegantOtaClass* originator)
 {
   haltAllProcessingDuringOTAUpload = true;   // prevent LCD call due to separate thread calling this
 }
-
+/*
 bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts)
 {
   if (wifiOnly && WiFi.status() == WL_CONNECTED)
@@ -188,53 +188,7 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
 
   return connected;
 }
-
-void toggleWiFiActive(bool wait)
-{
-  M5.Lcd.fillScreen(TFT_ORANGE);
-  M5.Lcd.setCursor(10, 10);
-  M5.Lcd.setTextSize(3);
-  M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
-
-  if (ESPNowActive)
-    toggleESPNowActive();
-
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    if (otaActive)
-    {
-      asyncWebServer.end();
-      M5.Lcd.println("OTA Disabled");
-      otaActive = false;
-    }
-
-    WiFi.disconnect();
-    ssid_connected = ssid_not_connected;
-    M5.Lcd.setCursor(0, 10);
-    M5.Lcd.printf("Wifi Disabled");
-  }
-  else
-  {
-    M5.Lcd.printf("Wifi Connecting");
-
-    const bool wifiOnly = true;
-    const int scanAttempts = 3;
-    connectToWiFiAndInitOTA(wifiOnly,scanAttempts);
-
-    M5.Lcd.fillScreen(TFT_ORANGE);
-    M5.Lcd.setCursor(10, 10);
-    M5.Lcd.setTextSize(3);
-    M5.Lcd.setRotation(1);
-    M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
-
-    M5.Lcd.printf(WiFi.status() == WL_CONNECTED ? "Wifi Enabled" : "No Connect");
-  }
-
-  if (wait)
-    delay(2000);
-
-  M5.Lcd.fillScreen(TFT_BLACK);
-}
+*/
 
 void disableAllWatchdogs() {
   // Disable task watchdog for current task
@@ -262,79 +216,5 @@ void disableFeaturesForOTA()
   setRedLEDOn();
 }
 
-void toggleOTAActive()
-{
-  M5.Lcd.fillScreen(TFT_ORANGE);
-  M5.Lcd.setCursor(10, 10);
-  M5.Lcd.setTextSize(3);
-  M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
-  M5.Lcd.setRotation(1);
-
-  if (otaActive)
-  {
-    asyncWebServer.end();
-    M5.Lcd.println("OTA Disabled");
-    otaActive = false;
-    delay (500);
-  }
-  else
-  {
-    bool wifiToggled = false;
-    if (WiFi.status() != WL_CONNECTED)
-    {
-      toggleWiFiActive(false);  // don't wait
-      wifiToggled = true;
-
-      M5.Lcd.fillScreen(TFT_ORANGE);
-      M5.Lcd.setCursor(10, 10);
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
-    }
-    
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      asyncWebServer.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
-        request->send(200, "text/plain", "To upload firmware use /update");
-      });
-
-      AsyncElegantOTA.setID(MERCATOR_OTA_DEVICE_LABEL);
-      AsyncElegantOTA.setUploadBeginCallback(uploadOTABeginCallback);
-      AsyncElegantOTA.begin(&asyncWebServer);    // Start AsyncElegantOTA
-      asyncWebServer.begin();
-
-      if (wifiToggled)
-      {
-        // Clear the QR Code from new wifi connection
-        M5.Lcd.fillScreen(TFT_ORANGE);
-        M5.Lcd.setCursor(10, 10);
-        M5.Lcd.setTextSize(3);
-        M5.Lcd.setRotation(1);
-        M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
-        
-        M5.Lcd.printf(" OTA & WiFi\n   Enabled");
-      }
-      else
-      {
-        M5.Lcd.printf("OTA Enabled");
-      }
-              
-      otaActive = true;
-    }
-    else
-    {
-      M5.Lcd.println("Error: Enable Wifi First");
-    }
-    
-    delay (500);
-  }
-  
-  if (otaActive)
-  {
-    writeLogToSerial = false;
-    disableFeaturesForOTA(); 
-    haltAllProcessingDuringOTAUpload = true;
-  }
-
-  showOTARecoveryScreen();
-}
 
 #endif

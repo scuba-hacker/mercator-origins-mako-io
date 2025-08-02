@@ -14,9 +14,30 @@
 #include "SerialConfig.h"
 
 #include <M5StickCPlus.h>
+#include "M5StickCPlusDisplayManager.h"
+
+M5StickCPlusDisplayManager displayManager(M5.Lcd);
+
+#include "NetworkManager.h"
 
 // rename the git file "mercator_secrets_template.c" to the filename below, filling in your wifi credentials etc.
 #include "mercator_secrets.c"
+
+// ################## START NETWORK MANAGER Configuration
+#define MERCATOR_ELEGANTOTA_MAKO_BANNER
+#define MERCATOR_OTA_DEVICE_LABEL "MAKO-IO"
+
+NetworkConfig networkConfig = {
+    ssid_1, password_1, label_1, timeout_1,
+    ssid_2, password_2, label_2, timeout_2, 
+    ssid_3, password_3, label_3, timeout_3,
+    "lemon",  // device hostname
+    MERCATOR_OTA_DEVICE_LABEL
+};
+
+NetworkManager networkManager(networkConfig, displayManager);
+// ################## END NETWORK MANAGER Configuration
+
 
 #include <esp_now.h>
 #include <esp_wifi.h> // only for esp_wifi_set_channel()
@@ -262,8 +283,6 @@ uint8_t initialTextSize = 2;
 #include "TinyGPSPlus.h"
 
 // OTA updates start
-#define MERCATOR_ELEGANTOTA_MAKO_BANNER
-#define MERCATOR_OTA_DEVICE_LABEL "MAKO-IO"
 
 #include <WiFi.h>
 #include <Update.h>
@@ -364,7 +383,7 @@ const String ssid_not_connected = "-";
 String ssid_connected;
 
 const bool enableOTAServer = true; // OTA updates
-AsyncWebServer asyncWebServer(80);
+//AsyncWebServer asyncWebServer(80);
 // OTA updates end
 
 const uint32_t disabledTempDisplayEndTime = 0xFFFFFFFF;
@@ -965,6 +984,11 @@ bool cutShortLoopOnOTADemand()
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////// PROTECTED - DO NOT ADD CODE IN THE BELOW PROTECTED AREA - RISK OF OTA FAILURE
   ////////////////////////////////////////////////////////////////////////////////////////////////////  
+
+  if (networkManager.restartForGoodOTAScheduled && millis() >= networkManager.restartAfterGoodOTAUpdateAt) {
+      ESP.restart();
+  }
+
   if (haltAllProcessingDuringOTAUpload)
   {
     if (forceLoopInitialOTAEnablement)
@@ -996,7 +1020,9 @@ bool cutShortLoopOnOTADemand()
       bool topPressed = digitalRead(BUTTON_GOPRO_TOP_GPIO) == false;
       bool sidePressed = digitalRead(BUTTON_GOPRO_SIDE_GPIO) == false;
       
-      if (topPressed || sidePressed) {
+      if (topPressed || sidePressed) 
+      {
+        M5.Lcd.fillScreen(TFT_GREEN);
         M5.Lcd.setCursor(5,5);
         M5.Lcd.setTextSize(3);
         M5.Lcd.println("##############");
