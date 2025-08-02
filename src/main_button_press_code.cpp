@@ -366,16 +366,8 @@ bool enableOTAAtStartupIfTopButtonHeld()
 
 bool disableESPNowIfSideButtonHeld()
 {
-  if (digitalRead(BUTTON_GOPRO_SIDE_GPIO) == false)
-  {
-    sideGoProButtonActiveAtStartup = true;
-    // disable espnow to speedup startup time when testing
-    enableESPNowAtStartup = false;      
-    // no function currently - could be used for show test track
-    return true;
-  }
-  else
-    return false; 
+  // BUTTON_GOPRO_SIDE_GPIO uses GPIO so cannot be used at startup as strapping pin
+  return false;
 }
 
 // END BUTTON PRESS CODE

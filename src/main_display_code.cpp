@@ -782,17 +782,20 @@ void showOTARecoveryScreen()
 
   if (otaActive)
   {
-    M5.Lcd.println("OTA\nActive\n");
+    M5.Lcd.println("  Mako OTA\n    Ready\n");
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.println("");
     M5.Lcd.setTextSize(2);
-    M5.Lcd.printf("%s\n",WiFi.localIP().toString().c_str());
+    M5.Lcd.printf("%s  Build:\n",WiFi.localIP().toString().c_str());
   }
   else
   {
     M5.Lcd.print("OTA\nOff\nNo WiFi\n\n");
   }
 
+  M5.Lcd.setTextSize(1);
+  M5.Lcd.println("");
   M5.Lcd.setTextSize(2);
-  M5.Lcd.println("Build:");
   M5.Lcd.println(buildTimestamp);
 }
 

@@ -365,6 +365,8 @@ String ssid_connected;
 
 const bool enableOTAServer = true; // OTA updates
 AsyncWebServer asyncWebServer(80);
+uint32_t restartAfterGoodOTAUpdateAt = millis() + 3000;
+uint32_t restartForGoodOTAScheduled = false;
 // OTA updates end
 
 const uint32_t disabledTempDisplayEndTime = 0xFFFFFFFF;
@@ -616,7 +618,7 @@ uint32_t s_lastTempHumidityDisplayRefresh = 0;
 const uint32_t s_tempHumidityUpdatePeriod = 1000; // time between each humidity and depth update to screen
 
 const uint8_t  BUTTON_GOPRO_TOP_GPIO = 25;
-const uint8_t  BUTTON_GOPRO_SIDE_GPIO = 0;
+const uint8_t  BUTTON_GOPRO_SIDE_GPIO = 0;    // can't use this at startup - strapping pin
 // GPIO 38 has no internal pull-up resistor so needs to have external pull-up to 3.3V. That's why not working.
 const uint8_t  REED_SWITCH_GPIO = 38;      // input triggers with finger proximity - not now used - new input only input - on white wire of Mako
 const uint32_t MERCATOR_DEBOUNCE_MS = 0;
@@ -956,7 +958,10 @@ void setup()
 }
 
 uint32_t OTAUploadFlashLEDTimer = 0;
-uint32_t OTAUploadFlashLEDPeriodicity = 500;
+const uint32_t OTAUploadFlashAwaitLEDPeriodicity = 500;
+const uint32_t OTAUploadFlashInProgressLEDPeriodicity = 250;
+
+uint32_t OTAUploadFlashCurrentLEDPeriodicity = OTAUploadFlashAwaitLEDPeriodicity;
 uint32_t recoveryScreenStartTime = 0;
 bool recoveryScreenShown = false;
 
@@ -967,6 +972,11 @@ bool cutShortLoopOnOTADemand()
   ////////////////////////////////////////////////////////////////////////////////////////////////////  
   if (haltAllProcessingDuringOTAUpload)
   {
+    // Handle OTA restart if scheduled
+    if (restartForGoodOTAScheduled && millis() >= restartAfterGoodOTAUpdateAt) {
+        ESP.restart();
+    }
+
     if (forceLoopInitialOTAEnablement)
     {
       forceLoopInitialOTAEnablement = false;
@@ -985,10 +995,10 @@ bool cutShortLoopOnOTADemand()
 
     if (millis() > OTAUploadFlashLEDTimer)
     {
-      OTAUploadFlashLEDTimer += OTAUploadFlashLEDPeriodicity;
+      OTAUploadFlashLEDTimer += OTAUploadFlashCurrentLEDPeriodicity;
       toggleRedLED();
     }
-    
+
     // After 5 seconds of recovery screen, allow restart if any button is pressed 
     if (recoveryScreenShown && (millis() - recoveryScreenStartTime > 5000)) 
     {            
@@ -997,11 +1007,14 @@ bool cutShortLoopOnOTADemand()
       bool sidePressed = digitalRead(BUTTON_GOPRO_SIDE_GPIO) == false;
       
       if (topPressed || sidePressed) {
+        M5.Lcd.fillScreen(TFT_GREEN);
         M5.Lcd.setCursor(5,5);
         M5.Lcd.setTextSize(3);
-        M5.Lcd.println("##############");
-        M5.Lcd.println("# Restarting #");
-        M5.Lcd.println("##############");
+        M5.Lcd.println("");
+        M5.Lcd.println("");
+        M5.Lcd.println("#############");
+        M5.Lcd.println("# Rebooting #");
+        M5.Lcd.println("#############");
         delay(1000);
         esp_restart();
       }
@@ -1017,7 +1030,7 @@ bool cutShortLoopOnOTADemand()
 /////////////// EVENT LOOP
 void loop()
 {
-  //////// PROTECTED - DO NOT ADD CODE BEFORE THE OTA DEMAND CHECK  - RISK OF OTA FAILURE
+  //////// PROTECTED - DO NOT ADD CODE BEFORE OR WITHIN THE OTA DEMAND CHECK BELOW  - RISK OF OTA FAILURE
   if (cutShortLoopOnOTADemand())
     return;
   ///////////////////////////////////////////////////////////////////////////////////////

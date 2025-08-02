@@ -3,7 +3,6 @@
 
 // *************************** Networking Functions ***************************
 
-
 int8_t scanWiFiForSSIDs()
 {
   return WiFi.scanNetworks(false,false,false,150U);
@@ -57,6 +56,33 @@ const char* scanForKnownNetwork() // return first known network found
 void uploadOTABeginCallback(AsyncElegantOtaClass* originator)
 {
   haltAllProcessingDuringOTAUpload = true;   // prevent LCD call due to separate thread calling this
+}
+
+uint32_t otaProgressScreenUpdateAt = 0;
+const uint32_t otaProgressUpdateDisplayDutyCycle = 200;
+
+void uploadOTAProgressCallback(AsyncElegantOtaClass* originator, size_t progress, size_t total) 
+{
+  // Skip if no total size available
+  if (total == 0) {
+      USB_SERIAL_PRINTF("OTA Progress: skipping, total=0\n");
+      return;
+  }
+  
+  if (millis() > otaProgressScreenUpdateAt) 
+  {
+    OTAUploadFlashCurrentLEDPeriodicity = OTAUploadFlashInProgressLEDPeriodicity;
+    otaProgressScreenUpdateAt = millis() + otaProgressUpdateDisplayDutyCycle;
+    M5.Lcd.setCursor(3, 60);
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.printf("%7lu / %-7lu B", progress, total);
+  }  
+}
+
+void uploadOTASucceededCallback(AsyncElegantOtaClass* originator)
+{
+    restartAfterGoodOTAUpdateAt = millis() + 3000;
+    restartForGoodOTAScheduled = true;
 }
 
 bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts)
@@ -156,6 +182,8 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
         
       AsyncElegantOTA.setID(MERCATOR_OTA_DEVICE_LABEL);
       AsyncElegantOTA.setUploadBeginCallback(uploadOTABeginCallback);
+      AsyncElegantOTA.setUploadProgressCallback(uploadOTAProgressCallback);
+      AsyncElegantOTA.setUploadSucceededCallback(uploadOTASucceededCallback);
       AsyncElegantOTA.begin(&asyncWebServer);    // Start AsyncElegantOTA
       asyncWebServer.begin();
 
@@ -298,6 +326,8 @@ void toggleOTAActive()
 
       AsyncElegantOTA.setID(MERCATOR_OTA_DEVICE_LABEL);
       AsyncElegantOTA.setUploadBeginCallback(uploadOTABeginCallback);
+      AsyncElegantOTA.setUploadProgressCallback(uploadOTAProgressCallback);
+      AsyncElegantOTA.setUploadSucceededCallback(uploadOTASucceededCallback);
       AsyncElegantOTA.begin(&asyncWebServer);    // Start AsyncElegantOTA
       asyncWebServer.begin();
 
