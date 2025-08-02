@@ -1008,12 +1008,13 @@ bool cutShortLoopOnOTADemand()
       
       if (topPressed || sidePressed) {
         M5.Lcd.fillScreen(TFT_GREEN);
-        M5.Lcd.setCursor(5,5);
+        M5.Lcd.setCursor(0,10);
         M5.Lcd.setTextSize(3);
-        M5.Lcd.println("");
-        M5.Lcd.println("#############");
+        M5.Lcd.println(" ########### ");
+        M5.Lcd.println("#           #");
         M5.Lcd.println("# Rebooting #");
-        M5.Lcd.println("#############");
+        M5.Lcd.println("#           #");
+        M5.Lcd.println(" ########### ");
         delay(1000);
         esp_restart();
       }
