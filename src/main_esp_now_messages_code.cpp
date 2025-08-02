@@ -5,6 +5,62 @@
 
 char tiger_espnow_buffer[256];
 
+// check for incoming messages
+void processIncomingESPNowMessages()
+{
+  if (msgsReceivedQueue)
+  {
+    if (xQueueReceive(msgsReceivedQueue,&(rxQueueItemBuffer),(TickType_t)0))
+    {
+      switch(rxQueueItemBuffer[0])
+      {
+        case 'T':   // Test message From Tiger
+        {
+          strncpy(tigerMessage,rxQueueItemBuffer+1,sizeof(tigerMessage));
+          refreshTigerMsgShown = true;
+          break;
+        }
+        case 'R':   // Reed switch status from Tiger
+        {
+          strncpy(tigerReeds,rxQueueItemBuffer+1,sizeof(tigerReeds));
+          refreshTigerReedsShown = true;
+          break;
+        }        
+        case 'L':   // Leak alarm detected from Tiger
+        {
+          sendLeakDetectedToLemon = true;
+          break;
+        }        
+        case 'S':   // Test message from Silky
+        {
+          strncpy(silkyMessage,rxQueueItemBuffer+1,sizeof(silkyMessage));
+          refreshSilkyMsgShown = true;
+          break;
+        }
+        case 'O':   // Button status from Oceanic
+        {
+          strncpy(oceanicButtons,rxQueueItemBuffer+1,sizeof(oceanicButtons));
+          refreshOceanicButtonsShown = true;
+          break;
+        }
+        case 'B':   // Breadcrumb Trail record on/off message from Oceanic
+        {
+          strncpy(oceanicMessage,rxQueueItemBuffer+1,sizeof(oceanicMessage));
+          if (oceanicMessage[0] == 'Y')
+            recordBreadCrumbTrail = true;
+          else
+            recordBreadCrumbTrail = false;
+          break;
+        }
+        default:
+        {
+          
+        }
+      }
+    }
+  }
+}
+
 void publishToTigerBrightLightEvent()
 {
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)

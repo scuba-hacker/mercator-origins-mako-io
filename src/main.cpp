@@ -124,7 +124,7 @@ bool processGPSMessageIfAvailable();
 void refreshAndCalculatePositionalAttributes();
 void acquireAllSensorReadings();
 void checkForButtonPresses();
-void refreshConsoleScreen();
+void refreshDisplay();
 void drawSurveyDisplay();
 void drawTargetSection();
 void drawCompassSection();
@@ -164,6 +164,7 @@ void disableFeaturesForOTA();
 void toggleUptimeGlobalDisplay();
 void toggleAsyncDepthDisplay();
 void toggleUplinkMessageProcessAndSend();
+void processIncomingESPNowMessages();
 void publishToTigerBrightLightEvent();
 void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget);
 void publishToTigerAndOceanicCurrentTarget(const char* currentTarget);
@@ -352,9 +353,9 @@ void (*fp_sendUplinkMessage)() =  ( uplinkMode == SEND_NO_UPLINK_MSG ? &sendNoUp
 
 uint8_t telemetry_message_count = 0;
 
-const uint32_t console_screen_refresh_minimum_interval = 500; // milliseconds
-uint32_t lastConsoleScreenRefresh = 0;
-bool requestConsoleScreenRefresh = false;
+const uint32_t displayScreenRefreshMinimumInterval = 500; // milliseconds
+uint32_t lastDisplayRefreshAt = 0;
+bool requestDisplayRefresh = false;
 
 uint32_t map_screen_refresh_minimum_interval = 1000; // milliseconds
 uint32_t nextMapScreenRefresh = 0;
@@ -1037,95 +1038,44 @@ void loop()
   
   updateButtons();
 
-  if (msgsReceivedQueue)
-  {
-    if (xQueueReceive(msgsReceivedQueue,&(rxQueueItemBuffer),(TickType_t)0))
-    {
-      switch(rxQueueItemBuffer[0])
-      {
-        case 'T':   // Test message From Tiger
-        {
-          strncpy(tigerMessage,rxQueueItemBuffer+1,sizeof(tigerMessage));
-          refreshTigerMsgShown = true;
-          break;
-        }
-        case 'R':   // Reed switch status from Tiger
-        {
-          strncpy(tigerReeds,rxQueueItemBuffer+1,sizeof(tigerReeds));
-          refreshTigerReedsShown = true;
-          break;
-        }        
-        case 'L':   // Leak alarm detected from Tiger
-        {
-          sendLeakDetectedToLemon = true;
-          break;
-        }        
-        case 'S':   // Test message from Silky
-        {
-          strncpy(silkyMessage,rxQueueItemBuffer+1,sizeof(silkyMessage));
-          refreshSilkyMsgShown = true;
-          break;
-        }
-        case 'O':   // Button status from Oceanic
-        {
-          strncpy(oceanicButtons,rxQueueItemBuffer+1,sizeof(oceanicButtons));
-          refreshOceanicButtonsShown = true;
-          break;
-        }
-        case 'B':   // Breadcrumb Trail record on/off message from Oceanic
-        {
-          strncpy(oceanicMessage,rxQueueItemBuffer+1,sizeof(oceanicMessage));
-          if (oceanicMessage[0] == 'Y')
-            recordBreadCrumbTrail = true;
-          else
-            recordBreadCrumbTrail = false;
-          break;
-        }
-        default:
-        {
-          
-        }
-      }
-    }
-  }
-
-  bool msgProcessed = enableDownlinkComms ? processGPSMessageIfAvailable() : false;
-  
+  // check for incoming messages
+  processIncomingESPNowMessages();
+   
   if (useGetDepthAsync)
     getDepthAsync(depth, water_temperature, water_pressure, depth_altitude);
   
-  if (!msgProcessed)
+  if (enableDownlinkComms && processGPSMessageIfAvailable())
   {
-    // no gps message received, do a manual refresh of sensors and screen
+    // no gps message read to process, do a manual refresh of sensors and screen
     acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
  
-    if (millis() > lastConsoleScreenRefresh + console_screen_refresh_minimum_interval)
+    if (millis() > lastDisplayRefreshAt + displayScreenRefreshMinimumInterval)
     {
       checkDivingDepthForTimer(depth);
-      refreshConsoleScreen();
-      lastConsoleScreenRefresh = millis();
+      refreshDisplay();
+      lastDisplayRefreshAt = millis();
+    }
+    else
+    {
+      // do not update display
     }
   }
   else
   {
-     lastConsoleScreenRefresh = millis();
+     lastDisplayRefreshAt = millis();
   }
 
   if (sendBrightLightEventToTiger)
-  {
     publishToTigerBrightLightEvent();
-  }
-
+    
   if (sendLightLevelToOceanic)
-  {
     publishToOceanicLightLevel(currentLightLevel);
-  }
 
-  if (requestConsoleScreenRefresh)
+  if (requestDisplayRefresh)
   {
-    requestConsoleScreenRefresh = false;
-    refreshConsoleScreen();
-    lastConsoleScreenRefresh = millis();
+    requestDisplayRefresh = false;
+    refreshDisplay();
+    lastDisplayRefreshAt = millis();
   }
 
   if (millis() > nextMapScreenRefresh || requestMapScreenRefresh)
@@ -1137,7 +1087,7 @@ void loop()
     requestMapScreenRefresh = false;
   }  
 
-//  refreshGlobalStatusDisplay();
+//  refreshGlobalStatusDisplay();     // I think needs some debugging
 
   refreshDiveTimer();
 
@@ -1224,7 +1174,7 @@ bool processGPSMessageIfAvailable()
     
             checkDivingDepthForTimer(depth);
   
-            refreshConsoleScreen();
+            refreshDisplay();
     
             checkForButtonPresses();
               

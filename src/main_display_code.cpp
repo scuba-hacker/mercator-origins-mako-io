@@ -16,12 +16,12 @@ void switchToNextDisplayToShow()
             display_to_show == COMPASS_CALIBRATION_DISPLAY));
 
   M5.Lcd.fillScreen(TFT_BLACK);
-  requestConsoleScreenRefresh=true;
+  requestDisplayRefresh=true;
   lastWayMarker = BLACKOUT_MARKER;
   lastWayMarkerChangeTimestamp = 0;
 }
 
-void refreshConsoleScreen()
+void refreshDisplay()
 {
   switch (display_to_show)
   {
