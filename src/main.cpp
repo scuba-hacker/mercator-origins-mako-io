@@ -1011,7 +1011,6 @@ bool cutShortLoopOnOTADemand()
         M5.Lcd.setCursor(5,5);
         M5.Lcd.setTextSize(3);
         M5.Lcd.println("");
-        M5.Lcd.println("");
         M5.Lcd.println("#############");
         M5.Lcd.println("# Rebooting #");
         M5.Lcd.println("#############");
