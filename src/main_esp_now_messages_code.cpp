@@ -52,6 +52,12 @@ void processIncomingESPNowMessages()
             recordBreadCrumbTrail = false;
           break;
         }
+        case 'F':   // Force GoPro buttons to be primary control - in case M5 Buttons are set to primary by mistake when installed in pod
+        {
+          goProButtonsPrimaryControl = true;
+          setPrimaryControls(goProButtonsPrimaryControl);
+          break;
+        }
         default:
         {
           

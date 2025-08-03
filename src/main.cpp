@@ -1,3 +1,24 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool goProButtonsPrimaryControl = true;     // false means use the M5 Stick physical buttons (eg out of gopro case bench test)
+                                            // true means use the go pro buttons meaning it must be installed into the pod.
+                                            // If set to false when Mako is in the pod, activate an reed switch to make
+                                            // go pro buttons primary so that OTA can be done with fixed code. 
+                                            // Relies on receiving ESP Now message from Tiger
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+Documentation needed:
+
+Reed Controls / M5 Button Controls when under test
+Serial Commands
+ESPNow Commands 
+*/
+
 // https://www.hackster.io/pradeeplogu0/real-time-gps-monitoring-with-qubitro-and-m5stickc-a2bc7c
 
 // https://github.com/mikalhart/TinyGPSPlus/blob/master/README.md
@@ -30,7 +51,6 @@
 
 // ************** Mako Control Parameters **************
 
-bool goProButtonsPrimaryControl = true;
 bool usingSDP8600OptoSchmittDetector = true; // alternative is SDP8406 phototransistor which was the original detector
 
 bool enableDigitalCompass = true;
@@ -620,6 +640,8 @@ const uint32_t s_tempHumidityUpdatePeriod = 1000; // time between each humidity 
 
 const uint8_t  BUTTON_GOPRO_TOP_GPIO = 25;
 const uint8_t  BUTTON_GOPRO_SIDE_GPIO = 0;    // can't use this at startup - strapping pin
+const uint8_t  M5_BUTTON_A_PIN = BUTTON_A_PIN;
+const uint8_t  M5_BUTTON_B_PIN = BUTTON_B_PIN;
 // GPIO 38 has no internal pull-up resistor so needs to have external pull-up to 3.3V. That's why not working.
 const uint8_t  REED_SWITCH_GPIO = 38;      // input triggers with finger proximity - not now used - new input only input - on white wire of Mako
 const uint32_t MERCATOR_DEBOUNCE_MS = 0;
@@ -672,6 +694,36 @@ void updateButtons()
 {
   p_primaryButton->read();
   p_secondButton->read();
+}
+
+bool isTopGoProButtonPressed() { // Direct GPIO Read Bypass button press code
+  return digitalRead(BUTTON_GOPRO_TOP_GPIO) == false;
+}
+
+bool isSideGoProButtonPressed() { // Direct GPIO Read Bypass button press code
+  return digitalRead(BUTTON_GOPRO_SIDE_GPIO) == false;
+}
+
+bool isButtonAPressed() { // Direct GPIO Read Bypass button press code
+  return digitalRead(M5_BUTTON_A_PIN) == false;
+}
+
+bool isButtonBPressed() { // Direct GPIO Read Bypass button press code
+  return digitalRead(M5_BUTTON_B_PIN) == false;
+}
+
+void setPrimaryControls(const bool useGoProButtons)
+{
+  if (useGoProButtons)
+  {
+    p_primaryButton = &BtnGoProTop;
+    p_secondButton = &BtnGoProSide;
+  }
+  else
+  {
+    p_primaryButton = &M5.BtnA;
+    p_secondButton = &M5.BtnB;
+  }
 }
 
 char rxQueueItemBuffer[256];
@@ -783,16 +835,7 @@ void setup()
   M5.Lcd.setRotation(1);
   M5.Lcd.setTextSize(2);
 
-  if (goProButtonsPrimaryControl)
-  {
-    p_primaryButton = &BtnGoProTop;
-    p_secondButton = &BtnGoProSide;
-  }
-  else
-  {
-    p_primaryButton = &M5.BtnA;
-    p_secondButton = &M5.BtnB;
-  }
+  setPrimaryControls(goProButtonsPrimaryControl);
 
   if (enableESPNowAtStartup)
   {
@@ -1102,7 +1145,7 @@ bool isGPSStreamOk()
 
 bool isLatestGPSMsgFix()
 {
-  return (latestFixTimeStampStreamOk > latestNoFixTimeStamp);
+  return  (latestFixTimeStampStreamOk > latestNoFixTimeStamp);
 }
 
 bool isInternetUploadOk()
