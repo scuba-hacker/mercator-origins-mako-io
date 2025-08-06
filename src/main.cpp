@@ -7,12 +7,14 @@ bool goProButtonsPrimaryControl = true;     // false means use the M5 Stick phys
                                             // If set to false when Mako is in the pod, activate an reed switch to make
                                             // go pro buttons primary so that OTA can be done with fixed code. 
                                             // Relies on receiving ESP Now message from Tiger
+bool testTigerOutsidePod = false;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 Documentation needed:
+
 
 Reed Controls / M5 Button Controls when under test
 Serial Commands
@@ -72,6 +74,12 @@ bool enableGlobalUptimeDisplay = false;    // adds a timer to compass heading di
 
 bool enableWifiAtStartup = false;   // set to true only if no espnow at startup
 bool enableESPNowAtStartup = true;  // set to true only if no wifi at startup
+int pingResponseReceivedFromTiger = 0;
+int pingResponseReceivedFromUnknown = 0;
+int espMsgReceived = 0;
+int espPingMsgReceived = 0;
+int pingSentTigerCount = 0;
+int attemptTigerPingSend = 0;
 
 bool otaActive = false; // OTA updates toggle
 
@@ -153,6 +161,7 @@ void drawNextTarget();
 void drawAudioActionDisplay();
 void drawLatLong();
 void drawLocationStats();
+void drawEspNowDisplay();
 void drawJourneyStats();
 void drawAudioTest();
 void drawNullDisplay();
@@ -173,8 +182,11 @@ void startDiveTimer();
 void notifyNotAtDivingDepth();
 void refreshDiveTimer();
 void resetRealTimeClock();
+uint32_t verifyAllEspNowConnections();
 void notifyESPNowNotActive();
 void displayESPNowSendDataResult(const esp_err_t result);
+void enableFastPairing();
+void enableParallelPairing();
 void toggleESPNowActive();
 bool disableESPNowIfSideButtonHeld();
 bool enableOTAAtStartupIfTopButtonHeld();
@@ -323,7 +335,8 @@ enum  e_mako_displays
   NAV_COMPASS_DISPLAY, 
   NAV_COURSE_DISPLAY, 
   SURVEY_DISPLAY, 
-  LOCATION_DISPLAY, 
+  LOCATION_DISPLAY,
+  ESP_NOW_DISPLAY,
   JOURNEY_DISPLAY, 
   AUDIO_TEST_DISPLAY,
   COMPASS_CALIBRATION_DISPLAY,
@@ -342,6 +355,7 @@ const e_display_brightness ScreenBrightness = BRIGHTEST_DISPLAY;
 
 Preferences persistedPreferences;
 bool skipDiagnosticDisplays = true;
+String latestConnectedWiFiSSID;
 
 void sendNoUplinkTelemetryMessages();
 void sendUplinkTestMessage();
@@ -363,6 +377,11 @@ bool isPairedWithSilky = false;
 bool isPairedWithTiger = false;
 bool isPairedWithOceanic = false;
 
+// Ping response tracking
+uint32_t tigerLastPingResponse = 0;
+uint32_t silkyLastPingResponse = 0;
+uint32_t oceanicLastPingResponse = 0;
+
 void OnESPNowDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
 
 // compilation switches
@@ -373,8 +392,8 @@ void (*fp_sendUplinkMessage)() =  ( uplinkMode == SEND_NO_UPLINK_MSG ? &sendNoUp
 
 uint8_t telemetry_message_count = 0;
 
-const uint32_t displayScreenRefreshMinimumInterval = 500; // milliseconds
-uint32_t lastDisplayRefreshAt = 0;
+const uint32_t displayScreenRefreshMinimumInterval = 200; // milliseconds
+uint32_t nextDisplayRefreshAt = 0;
 bool requestDisplayRefresh = false;
 
 uint32_t map_screen_refresh_minimum_interval = 1000; // milliseconds
@@ -441,6 +460,7 @@ char displayLabel[] = "??";
 char navCompassDisplayLabel[] = "CM";
 char navCourseDisplayLabel[] = "CO";
 char locationDisplayLabel[] = "LO";
+char espNowDisplayLabel[] = "ES";
 char journeyDisplayLabel[] = "JO";
 char showLatLongDisplayLabel[] = "LL";
 char audioTestDisplayLabel[] = "AT";
@@ -750,6 +770,7 @@ void readPreferencesFromEEPROM()
   // Initialize preferences and load skipDiagnosticDisplays from EEPROM
   persistedPreferences.begin("mako_config", false);
   skipDiagnosticDisplays = persistedPreferences.getBool("skipDiag", true);
+  latestConnectedWiFiSSID = persistedPreferences.getString("lastSSID", "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -758,6 +779,8 @@ void readPreferencesFromEEPROM()
 bool systemStartupAndCheckForOTADemand()
 {
   M5.begin(/* LCD Enable */ true, /* Power Enable */ true,/* Serial Enable */ false, /* Buzzer Enable */ false);
+
+  readPreferencesFromEEPROM();
 
   pinMode(RED_LED_GPIO, OUTPUT); // Red LED - the interior LED to M5 Stick
   setRedLEDOff();
@@ -790,8 +813,6 @@ void setup()
   //////// PROTECTED - DO NOT ADD CODE BEFORE THE OTA DEMAND CHECK  - RISK OF OTA FAILURE
   if (systemStartupAndCheckForOTADemand())
     return;     // OTA Required, skip rest of setup.
-
-  readPreferencesFromEEPROM();
 
   msgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
 
@@ -839,6 +860,8 @@ void setup()
 
   if (enableESPNowAtStartup)
   {
+//    enableFastPairing();
+//    enableParallelPairing();
     toggleESPNowActive();
   }
 
@@ -1011,6 +1034,8 @@ bool recoveryScreenShown = false;
 
 bool cutShortLoopOnOTADemand()
 {
+  // DO WE NEED TO ADD TEAR DOWN ESP NOW IF IT IS ACTIVE HERE?
+  
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   ////////////////// PROTECTED - DO NOT ADD CODE IN THE BELOW PROTECTED AREA - RISK OF OTA FAILURE
   ////////////////////////////////////////////////////////////////////////////////////////////////////  
@@ -1024,7 +1049,6 @@ bool cutShortLoopOnOTADemand()
     if (forceLoopInitialOTAEnablement)
     {
       forceLoopInitialOTAEnablement = false;
-      M5.Lcd.fillScreen(TFT_BLACK);
       const bool wifiOnly = false;
       const int maxWifiScanAttempts = 3;
       otaActive = connectToWiFiAndInitOTA(wifiOnly,maxWifiScanAttempts);
@@ -1091,21 +1115,6 @@ void loop()
   {
     // no gps message read to process, do a manual refresh of sensors and screen
     acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
- 
-    if (millis() > lastDisplayRefreshAt + displayScreenRefreshMinimumInterval)
-    {
-      checkDivingDepthForTimer(depth);
-      refreshDisplay();
-      lastDisplayRefreshAt = millis();
-    }
-    else
-    {
-      // do not update display
-    }
-  }
-  else
-  {
-     lastDisplayRefreshAt = millis();
   }
 
   if (sendBrightLightEventToTiger)
@@ -1113,21 +1122,24 @@ void loop()
     
   if (sendLightLevelToOceanic)
     publishToOceanicLightLevel(currentLightLevel);
+  
 
-  if (requestDisplayRefresh)
+  if (requestDisplayRefresh || millis() > nextDisplayRefreshAt)
   {
-    requestDisplayRefresh = false;
+    checkDivingDepthForTimer(depth);
     refreshDisplay();
-    lastDisplayRefreshAt = millis();
+
+    requestDisplayRefresh = false;
+    nextDisplayRefreshAt = millis() + displayScreenRefreshMinimumInterval;
   }
 
-  if (millis() > nextMapScreenRefresh || requestMapScreenRefresh)
+  if (requestMapScreenRefresh || millis() > nextMapScreenRefresh)
   {
-        // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
-      publishToTigerAndOceanicLocationAndTarget(nextWaypoint->_m5label);
+    // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
+    publishToTigerAndOceanicLocationAndTarget(nextWaypoint->_m5label);
 
-    nextMapScreenRefresh = millis() + map_screen_refresh_minimum_interval;
     requestMapScreenRefresh = false;
+    nextMapScreenRefresh = millis() + map_screen_refresh_minimum_interval;
   }  
 
 //  refreshGlobalStatusDisplay();     // I think needs some debugging
@@ -1283,9 +1295,6 @@ void saveToEEPROMSkipDiagnosticDisplays()
 
 #define BUILD_INCLUDE_MAIN_TELEMETRY_CODE
 #include "main_telemetry_code.cpp"
-
-#define BUILD_INCLUDE_MAIN_TELEMETRY_CODE
-#include "main_button_press_code.cpp"
 
 #define BUILD_INCLUDE_MAIN_SENSOR_CODE
 #include "main_sensor_code.cpp"

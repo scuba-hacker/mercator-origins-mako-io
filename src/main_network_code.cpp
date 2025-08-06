@@ -1,5 +1,41 @@
 #ifdef BUILD_INCLUDE_MAIN_NETWORK_CODE
 
+const char podTigerHostName[] = "Tiger";
+const char testTigerHostName[] = "Tiger-Test";
+const char *tigerHostName = podTigerHostName;
+const char makoHostName[] = "Mako";
+const char oceanicHostName[] = "Oceanic";
+const char silkyHostName[] = "AudioPod";
+
+// *************************** WiFi Persistence using Preferences ***************************
+
+void saveLastSSID(const char* ssid) {
+  persistedPreferences.putString("lastSSID", String(ssid));
+  USB_SERIAL_PRINTF("Saved last SSID: %s\n", ssid);
+}
+
+String loadLastSSID() {
+  String ssid = persistedPreferences.getString("lastSSID", "");
+  if (ssid.length() > 0) {
+    USB_SERIAL_PRINTF("Loaded last SSID: %s\n", ssid.c_str());
+  } else {
+    USB_SERIAL_PRINTLN("No saved SSID found");
+  }
+  return ssid;
+}
+
+const char* wifiStatusToString(wl_status_t status) {
+  switch (status) {
+    case WL_IDLE_STATUS: return "IDLE";
+    case WL_NO_SSID_AVAIL: return "NO_SSID";
+    case WL_SCAN_COMPLETED: return "SCAN_DONE";
+    case WL_CONNECTED: return "CONNECTED";
+    case WL_CONNECT_FAILED: return "FAILED";
+    case WL_CONNECTION_LOST: return "LOST";
+    case WL_DISCONNECTED: return "DISCONNECTED";
+    default: return "UNKNOWN";
+  }
+}
 
 // *************************** Networking Functions ***************************
 
@@ -85,6 +121,46 @@ void uploadOTASucceededCallback(AsyncElegantOtaClass* originator)
     restartForGoodOTAScheduled = true;
 }
 
+bool connectToLastConnectedWifiNetwork(const bool wifiOnly)
+{
+  const uint32_t lastKnownNetworkTimeout = 5000;
+
+  String lastSSID = loadLastSSID();
+  if (lastSSID.length() > 0)
+  {
+    if (lastSSID.equals(ssid_1))
+    {
+      if (setupOTAWebServer(ssid_1, password_1, label_1, lastKnownNetworkTimeout, wifiOnly))
+      {
+        saveLastSSID(ssid_1);
+        return true;
+      }
+    }
+    else if (lastSSID.equals(ssid_2))
+    {
+      if (setupOTAWebServer(ssid_2, password_2, label_2, lastKnownNetworkTimeout, wifiOnly))
+      {
+        saveLastSSID(ssid_2);
+        return true;
+      }
+    }
+    else if (lastSSID.equals(ssid_3))
+    {
+      if (setupOTAWebServer(ssid_3, password_3, label_3, lastKnownNetworkTimeout, wifiOnly))
+      {
+        saveLastSSID(ssid_3);
+        return true;
+      }
+    }
+    else
+    {
+      saveLastSSID("");
+    }
+  }
+
+  return WiFi.status() == WL_CONNECTED;
+}
+
 bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts)
 {
   if (wifiOnly && WiFi.status() == WL_CONNECTED)
@@ -94,83 +170,96 @@ bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts)
   M5.Lcd.fillScreen(TFT_BLACK);
   M5.Lcd.setTextSize(2);
 
-  while (repeatScanAttempts-- &&
-         (WiFi.status() != WL_CONNECTED ||
-          WiFi.status() == WL_CONNECTED && wifiOnly == false && otaActive == false ) )
+  if (connectToLastConnectedWifiNetwork(wifiOnly) == false)
   {
-    const char* network = scanForKnownNetwork();
-  
-    if (!network)
+    // Fallback: Normal scan and connect process
+    while (repeatScanAttempts-- &&
+          (WiFi.status() != WL_CONNECTED ||
+            WiFi.status() == WL_CONNECTED && wifiOnly == false && otaActive == false ) )
     {
-      delay(500);
-      continue;
-    }
-
-    int connectToFoundNetworkAttempts = 3;
-    const int repeatDelay = 500;
-  
-    if (strcmp(network,ssid_1) == 0)
-    {
-      while (connectToFoundNetworkAttempts-- && !setupOTAWebServer(ssid_1, password_1, label_1, timeout_1, wifiOnly))
-        delay(repeatDelay);
-    }
-    else if (strcmp(network,ssid_2) == 0)
-    {
-      while (connectToFoundNetworkAttempts-- && !setupOTAWebServer(ssid_2, password_2, label_2, timeout_2, wifiOnly))
-        delay(repeatDelay);
-    }
-    else if (strcmp(network,ssid_3) == 0)
-    {
-      while (connectToFoundNetworkAttempts-- && !setupOTAWebServer(ssid_3, password_3, label_3, timeout_3, wifiOnly))
-        delay(repeatDelay);
-    }
+      const char* network = scanForKnownNetwork();
     
-    delay(repeatDelay);
+      if (!network)
+      {
+        delay(500);
+        continue;
+      }
+
+      int connectToFoundNetworkAttempts = 3;
+      const int repeatDelay = 500;
+    
+      if (strcmp(network,ssid_1) == 0)
+      {
+        while (connectToFoundNetworkAttempts-- && !setupOTAWebServer(ssid_1, password_1, label_1, timeout_1, wifiOnly))
+          delay(repeatDelay);
+        if (WiFi.status() == WL_CONNECTED)
+          saveLastSSID(ssid_1);
+      }
+      else if (strcmp(network,ssid_2) == 0)
+      {
+        while (connectToFoundNetworkAttempts-- && !setupOTAWebServer(ssid_2, password_2, label_2, timeout_2, wifiOnly))
+          delay(repeatDelay);
+        if (WiFi.status() == WL_CONNECTED)
+          saveLastSSID(ssid_2);
+      }
+      else if (strcmp(network,ssid_3) == 0)
+      {
+        while (connectToFoundNetworkAttempts-- && !setupOTAWebServer(ssid_3, password_3, label_3, timeout_3, wifiOnly))
+          delay(repeatDelay);
+        if (WiFi.status() == WL_CONNECTED)
+          saveLastSSID(ssid_3);
+      }
+      
+      delay(repeatDelay);
+    }
   }
 
-  bool connected=WiFi.status() == WL_CONNECTED;
-  
-  if (connected)
+  if (WiFi.status() == WL_CONNECTED)  
   {
     ssid_connected = WiFi.SSID();
-  }
-  else
-  {
-    ssid_connected = ssid_not_connected;
+    return true;
   }
   
-  return connected;
+  ssid_connected = ssid_not_connected;
+  
+  return false;
 }
 
 bool setupOTAWebServer(const char* _ssid, const char* _password, const char* label, uint32_t timeout, bool wifiOnly)
 {
+  const bool showQRCode = false;    // disabled - kept for reference
+
   if (wifiOnly && WiFi.status() == WL_CONNECTED)
+  {
+     M5.Lcd.print("Already Connected!");
     return true;
+  }
 
   bool forcedCancellation = false;
 
+  M5.Lcd.setRotation(0);
   M5.Lcd.setCursor(0, 0);
   M5.Lcd.fillScreen(TFT_BLACK);
   M5.Lcd.setTextSize(2);
+  M5.Lcd.print("Connect\nWifi");
+
   bool connected = false;
   WiFi.mode(WIFI_STA);
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
-  WiFi.setHostname("mako");
+  WiFi.setHostname(makoHostName);
 
-  WiFi.begin(_ssid, _password);
-
-  // Wait for connection for max of timeout/1000 seconds
-  M5.Lcd.printf("%s Wifi", label);
-  int count = timeout / 500;
+  wl_status_t beginResult = WiFi.begin(_ssid, _password);
+  
+  // Wait for connection for max of timeout milliseconds
+  const int cycleTime = 500;
+  int count = timeout / cycleTime;
+  
   while (WiFi.status() != WL_CONNECTED && --count > 0)
   {
-
     M5.Lcd.print(".");
-    delay(300);
+    delay(cycleTime);
   }
-
-  M5.Lcd.print("\n\n");
-
+  
   if (WiFi.status() == WL_CONNECTED )
   {
     if (wifiOnly == false && !otaActive)
@@ -186,22 +275,9 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
       AsyncElegantOTA.setUploadSucceededCallback(uploadOTASucceededCallback);
       AsyncElegantOTA.begin(&asyncWebServer);    // Start AsyncElegantOTA
       asyncWebServer.begin();
-
-      M5.Lcd.setRotation(0);
       
-      M5.Lcd.fillScreen(TFT_BLACK);
-      M5.Lcd.setCursor(0,155);
-      M5.Lcd.setTextSize(2);
-      M5.Lcd.printf("%s\n\n",WiFi.localIP().toString().c_str());
-      M5.Lcd.println(WiFi.macAddress());
       connected = true;
       otaActive = true;
-  
-      M5.Lcd.qrcode("http://"+WiFi.localIP().toString()+"/update",0,0,135);
-  
-      delay(1000);
-
-      connected = true;
     }
   }
   else
@@ -243,8 +319,6 @@ void toggleWiFiActive(bool wait)
   }
   else
   {
-    M5.Lcd.printf("Wifi Connecting");
-
     const bool wifiOnly = true;
     const int scanAttempts = 3;
     connectToWiFiAndInitOTA(wifiOnly,scanAttempts);
@@ -295,7 +369,7 @@ void toggleOTAActive()
   M5.Lcd.fillScreen(TFT_ORANGE);
   M5.Lcd.setCursor(10, 10);
   M5.Lcd.setTextSize(3);
-  M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
+  M5.Lcd.setTextColor(TFT_WHITE, TFT_ORANGE);
   M5.Lcd.setRotation(1);
 
   if (otaActive)
@@ -315,7 +389,7 @@ void toggleOTAActive()
 
       M5.Lcd.fillScreen(TFT_ORANGE);
       M5.Lcd.setCursor(10, 10);
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
+      M5.Lcd.setTextColor(TFT_WHITE, TFT_ORANGE);
     }
     
     if (WiFi.status() == WL_CONNECTED)
@@ -338,7 +412,7 @@ void toggleOTAActive()
         M5.Lcd.setCursor(10, 10);
         M5.Lcd.setTextSize(3);
         M5.Lcd.setRotation(1);
-        M5.Lcd.setTextColor(TFT_WHITE, TFT_BLUE);
+        M5.Lcd.setTextColor(TFT_WHITE, TFT_ORANGE);
         
         M5.Lcd.printf(" OTA & WiFi\n   Enabled");
       }

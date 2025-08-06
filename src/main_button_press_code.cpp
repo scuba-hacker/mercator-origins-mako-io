@@ -1,7 +1,5 @@
 
-#ifdef BUILD_INCLUDE_MAIN_TELEMETRY_CODE
-
-
+#ifdef BUILD_INCLUDE_MAIN_BUTTON_PRESS_CODE
 
 /////////////////// BUTTON PRESS CODE
 
@@ -69,6 +67,15 @@ void checkForButtonPresses()
       break;
     }
     
+    case ESP_NOW_DISPLAY:
+    {
+      if (p_primaryButton->wasReleasefor(buttonPressDurationToChangeScreen))
+      {
+        switchToNextDisplayToShow();
+      }
+      break;
+    }
+
     case JOURNEY_DISPLAY:
     {
       if (p_primaryButton->wasReleasefor(1000)) // Journey Course Display: toggle send uplink messages

@@ -10,7 +10,8 @@ void switchToNextDisplayToShow()
       display_to_show = first_display_rotation;
       
   } while (skipDiagnosticDisplays && 
-           (display_to_show == LOCATION_DISPLAY || 
+           (display_to_show == LOCATION_DISPLAY ||
+            display_to_show == ESP_NOW_DISPLAY ||  
             display_to_show == JOURNEY_DISPLAY || 
             display_to_show == AUDIO_TEST_DISPLAY || 
             display_to_show == COMPASS_CALIBRATION_DISPLAY));
@@ -45,6 +46,11 @@ void refreshDisplay()
     case LOCATION_DISPLAY:
     {
       drawLocationStats();
+      break;
+    }
+    case ESP_NOW_DISPLAY:
+    {
+      drawEspNowDisplay();
       break;
     }
     case JOURNEY_DISPLAY:
@@ -657,6 +663,43 @@ void drawLocationStats()
 
 //  M5.Lcd.printf("Silky: %s",silkyMessage);  
 //  M5.Lcd.printf("T: (%d)\n%s", (int)(nextWaypoint - currentDiveWaypoints)+1, nextWaypoint->_m5label);
+}
+
+void drawEspNowDisplay()
+{
+  M5.Lcd.setRotation(1);
+  M5.Lcd.setTextSize(1); // Smaller text to fit more info
+
+  // test every 5 seconds whilst on this screen
+  verifyAllEspNowConnections();
+
+  M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
+  M5.Lcd.setCursor(5, 0);
+  M5.Lcd.printf("ESP Now Active: %i T: %lu\n", (int)ESPNowActive,millis() / 1000);
+  M5.Lcd.printf("T/O/S:   %i %i %i \n",isPairedWithTiger, isPairedWithOceanic, isPairedWithSilky);
+  M5.Lcd.printf("Ping Resp:   %i %i\n",pingResponseReceivedFromTiger, pingResponseReceivedFromUnknown);
+  M5.Lcd.printf("ESP Msg Rx: %i %i\n",espMsgReceived, espPingMsgReceived);
+  M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
+  M5.Lcd.printf("MAKO AP MAC: %s\n",WiFi.softAPmacAddress().c_str());
+  M5.Lcd.printf("Paired MACs:\n");
+
+  M5.Lcd.setCursor(5, 48);
+  if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL) {
+    M5.Lcd.printf("Tiger: %02X:%02X:%02X:%02X:%02X:%02X\n", 
+                  ESPNow_tiger_peer.peer_addr[0], ESPNow_tiger_peer.peer_addr[1], ESPNow_tiger_peer.peer_addr[2], 
+                  ESPNow_tiger_peer.peer_addr[3], ESPNow_tiger_peer.peer_addr[4], ESPNow_tiger_peer.peer_addr[5]);
+  } else {
+    M5.Lcd.printf("Tiger: Not Paired\n");
+  }
+
+  M5.Lcd.setCursor(5, 60);
+  if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL) {
+    M5.Lcd.printf("Oceanic: %02X:%02X:%02X:%02X:%02X:%02X\n", 
+                  ESPNow_oceanic_peer.peer_addr[0], ESPNow_oceanic_peer.peer_addr[1], ESPNow_oceanic_peer.peer_addr[2], 
+                  ESPNow_oceanic_peer.peer_addr[3], ESPNow_oceanic_peer.peer_addr[4], ESPNow_oceanic_peer.peer_addr[5]);
+  } else {
+    M5.Lcd.printf("Oceanic: Not Paired\n");
+  }
 }
 
 void drawJourneyStats()

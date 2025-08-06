@@ -4,6 +4,8 @@
 // *************************** Tiger ESPNow Send Functions ******************
 
 char tiger_espnow_buffer[256];
+char oceanic_espnow_buffer[256];
+char silky_espnow_buffer[256];
 
 // check for incoming messages
 void processIncomingESPNowMessages()
@@ -58,6 +60,14 @@ void processIncomingESPNowMessages()
           setPrimaryControls(goProButtonsPrimaryControl);
           break;
         }
+        case 'p':   // Ping response from Tiger/Oceanic/Silky
+        {
+          // Update connection status based on who responded
+          // We can identify the sender from the MAC address in the OnESPNowDataRecv callback
+          // For now, just mark Tiger as responsive since we're focusing on Tiger pairing
+          tigerLastPingResponse = millis();
+          break;
+        }
         default:
         {
           
@@ -78,6 +88,60 @@ void publishToTigerBrightLightEvent()
   }
 
   sendBrightLightEventToTiger = false;
+}
+
+void publishToTigerPingEvent()
+{
+  attemptTigerPingSend++;
+
+  bool    isPaired               = isPairedWithTiger;
+  esp_now_peer_info_t& peer      = ESPNow_tiger_peer;
+  char*   buffer                 = tiger_espnow_buffer;
+  
+  ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+
+  if (isPaired && peer.channel == ESPNOW_CHANNEL)
+  {
+    memset(buffer,0,sizeof(buffer));
+    buffer[0] = 'P';  // command l = light event
+    buffer[1] = '\0';
+    ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+    pingSentTigerCount++;
+  }
+}
+
+void publishToOceanicPingEvent()
+{
+  bool    isPaired               = isPairedWithOceanic;
+  esp_now_peer_info_t& peer      = ESPNow_oceanic_peer;
+  char*   buffer                 = oceanic_espnow_buffer;
+  
+  ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+
+  if (isPaired && peer.channel == ESPNOW_CHANNEL)
+  {
+    memset(buffer,0,sizeof(buffer));
+    buffer[0] = 'P';  // command l = light event
+    buffer[1] = '\0';
+    ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+  }
+}
+
+void publishToSilkyPingEvent()
+{
+  bool    isPaired               = isPairedWithSilky;
+  esp_now_peer_info_t& peer      = ESPNow_silky_peer;
+  char*   buffer                 = silky_espnow_buffer;
+  
+  ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+
+  if (isPaired && peer.channel == ESPNOW_CHANNEL)
+  {
+    memset(buffer,0,sizeof(buffer));
+    buffer[0] = 'P';  // command l = light event
+    buffer[1] = '\0';
+    ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+  }
 }
 
 void publishToTigerAndOceanicCurrentTarget(const char* currentTarget)
@@ -138,8 +202,6 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
 }
 
 // *************************** Oceanic Send Functions ******************
-
-char oceanic_espnow_buffer[256];
 
 void publishToOceanicLightLevel(uint16_t lightLevel)
 {
