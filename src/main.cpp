@@ -8,6 +8,7 @@ bool goProButtonsPrimaryControl = true;     // false means use the M5 Stick phys
                                             // go pro buttons primary so that OTA can be done with fixed code. 
                                             // Relies on receiving ESP Now message from Tiger
 bool testTigerOutsidePod = false;
+bool writeLogToSerial = false;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -569,8 +570,6 @@ uint16_t       whenToStopTimerDueToLackOfDepth = 0;
 uint16_t       minsToTriggerStopDiveTimer = 10;
 
 bool recordBreadCrumbTrail = false;
-
-bool writeLogToSerial = false;
 
 TinyGPSPlus gps;
 int uart_number = 2;
