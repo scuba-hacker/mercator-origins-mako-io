@@ -7,6 +7,9 @@ bool goProButtonsPrimaryControl = true;     // false means use the M5 Stick phys
                                             // If set to false when Mako is in the pod, activate an reed switch to make
                                             // go pro buttons primary so that OTA can be done with fixed code. 
                                             // Relies on receiving ESP Now message from Tiger
+
+bool divingInTheSea = true;                 // Salt / Fresh water depth sensor calibration
+
 bool testTigerOutsidePod = false;
 bool writeLogToSerial = false;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +133,7 @@ std::string getCardinal(float b, bool surveyScreen = false);
 void getTempAndHumidityAndAirPressureBME280(float& h, float& t, float& p, float& p_a);
 void getDepth(float& d, float& d_t, float& d_p, float& d_a, bool original_read);
 bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a);
+bool manualInitDepthSensor();
 void goBlackout();
 void goAhead();
 void goClockwise();
@@ -188,7 +192,7 @@ void notifyESPNowNotActive();
 void displayESPNowSendDataResult(const esp_err_t result);
 void enableFastPairing();
 void enableParallelPairing();
-void toggleESPNowActive();
+void toggleESPNowActive(bool adjustDisplay=false);
 bool disableESPNowIfSideButtonHeld();
 bool enableOTAAtStartupIfTopButtonHeld();
 void toggleWiFiActive(bool wait=true);
@@ -395,7 +399,7 @@ uint8_t telemetry_message_count = 0;
 
 const uint32_t displayScreenRefreshMinimumInterval = 200; // milliseconds
 uint32_t nextDisplayRefreshAt = 0;
-bool requestDisplayRefresh = false;
+bool requestDisplayRefresh = true;  // request display to refresh at startup of loop()
 
 uint32_t map_screen_refresh_minimum_interval = 1000; // milliseconds
 uint32_t nextMapScreenRefresh = 0;
@@ -657,6 +661,9 @@ const uint32_t s_sendTestSerialBytesPeriodMs = 1000;
 uint32_t s_lastTempHumidityDisplayRefresh = 0;
 const uint32_t s_tempHumidityUpdatePeriod = 1000; // time between each humidity and depth update to screen
 
+uint32_t s_lastCallToAcquireSensorData = 0;
+const uint32_t s_acquireSensorDataUpdatePeriod = 250; // allow the compass to update ok even if there are not Messages being received from the surface.
+
 const uint8_t  BUTTON_GOPRO_TOP_GPIO = 25;
 const uint8_t  BUTTON_GOPRO_SIDE_GPIO = 0;    // can't use this at startup - strapping pin
 const uint8_t  M5_BUTTON_A_PIN = BUTTON_A_PIN;
@@ -837,32 +844,29 @@ void setup()
     }
   }
 
-  M5.Lcd.setTextSize(initialTextSize);
+  M5.Lcd.setRotation(0);
+  M5.Lcd.setTextSize(2);
+  M5.Lcd.setCursor(0, 0);
 
   if (enableIMUSensor)
   {
     imuAvailable = !M5.Imu.Init();
+    if (imuAvailable)
+      M5.Lcd.println("M5 IMU On");
   }
   else
   {
-      USB_SERIAL_PRINTLN("IMU Sensor Off");
+    USB_SERIAL_PRINTLN("IMU Sensor Off");
     M5.Lcd.println("IMU Sensor Off");
     imuAvailable = false;
   }
 
   M5.Axp.ScreenBreath(ScreenBrightness);
 
-  M5.Lcd.setRotation(1);
-  M5.Lcd.setTextSize(2);
-
   setPrimaryControls(goProButtonsPrimaryControl);
 
   if (enableESPNowAtStartup)
-  {
-//    enableFastPairing();
-//    enableParallelPairing();
     toggleESPNowActive();
-  }
 
  if (useGrovePortForGPS)
   {
@@ -919,22 +923,25 @@ void setup()
   magnetometer_min = (vec<double>) { -34.05, -58.950, 16.95};
   magnetometer_max = (vec<double>) { 56.850, 31.500, 109.8};
 
-  M5.Lcd.setCursor(0, 0);
-
   if (enableHumiditySensor)
   {
     if (!Adafruit_TempHumidityPressure.begin())
     {
-        USB_SERIAL_PRINTLN("Could not find BME280 Barometer");
+      USB_SERIAL_PRINTLN("Could not find BME280 Barometer");
   
       M5.Lcd.println("BE280 T/H/P bad");
       delay(5000);
       humidityAvailable = false;
     }
+    else
+    {
+      M5.Lcd.println("Tmp/Humd Ok");
+      M5.Lcd.println("Barometr Ok");
+    }
   }
   else
   {
-      USB_SERIAL_PRINTLN("BME280 Humidity Off");
+    USB_SERIAL_PRINTLN("BME280 Humidity Off");
     M5.Lcd.println("BME280 Humidity Off");
     humidityAvailable = false;
     temperature = 0.1;
@@ -946,15 +953,19 @@ void setup()
   {
     if (!mag.begin())
     {
-        USB_SERIAL_PRINTLN("Could not find LIS2MDL Magnetometer. Check wiring");
+      USB_SERIAL_PRINTLN("Could not find LIS2MDL Magnetometer. Check wiring");
       M5.Lcd.println("LIS2MDL Magnetometer bad");
       delay(5000);
       compassAvailable = false;
     }
+    else
+    {
+      M5.Lcd.println("Compass Ok");
+    }
   }
   else
   {
-      USB_SERIAL_PRINTLN("LSM303 Compass off");
+    USB_SERIAL_PRINTLN("LSM303 Compass off");
     M5.Lcd.println("LSM303 Compass off");
     compassAvailable = false;
   }
@@ -963,9 +974,13 @@ void setup()
   {
     if (!accel.begin())
     {
-        USB_SERIAL_PRINTLN("Unable to initialize LSM303 accelerometer");
+      USB_SERIAL_PRINTLN("Unable to initialize LSM303 accelerometer");
       M5.Lcd.println("LSM303 accelerometer bad");
       compassAvailable = false;
+    }
+    else
+    {
+      M5.Lcd.println("Accel Ok");
     }
 
     if (compassAvailable && enableSmoothedCompass)
@@ -975,7 +990,7 @@ void setup()
   }
   else
   {
-      USB_SERIAL_PRINTLN("LSM303 Accel off");
+    USB_SERIAL_PRINTLN("LSM303 Accel off");
     M5.Lcd.println("LSM303 Accel off");
     compassAvailable = false;
   }
@@ -984,12 +999,13 @@ void setup()
   {
     if (!Adafruit_ColourSensor.begin())
     {
-        USB_SERIAL_PRINTLN("Unable to init APDS9960 colour");
+      USB_SERIAL_PRINTLN("Unable to init APDS9960 colour");
       M5.Lcd.println("APDS9960 colour bad");
       colourSensorAvailable=false;
     }
     else
     {
+      M5.Lcd.println("Colour Ok");
       Adafruit_ColourSensor.enableColor(true);
       colourSensorAvailable=true;
     }
@@ -997,28 +1013,38 @@ void setup()
   
   if (enableDepthSensor)
   {
+    USB_SERIAL_PRINTLN("Attempt to begin depth sensor");
+
     if (!BlueRobotics_DepthSensor.begin())
     {
-        USB_SERIAL_PRINTLN("Could not begin depth sensor");
-      M5.Lcd.println("Could not begin depth sensor");
+      USB_SERIAL_PRINTLN("Could not begin depth sensor");
       depthAvailable = false;
     }
     else
     {
-      BlueRobotics_DepthSensor.setFluidDensityFreshWater();
+      if (divingInTheSea)
+        BlueRobotics_DepthSensor.setFluidDensitySaltWater();
+      else
+        BlueRobotics_DepthSensor.setFluidDensityFreshWater();
+
+      M5.Lcd.println("Depth Ok");
     }
   }
   else
   {
-      USB_SERIAL_PRINTLN("Depth Sensor Off");
+    USB_SERIAL_PRINTLN("Depth Sensor Off");
     M5.Lcd.println("Depth Sensor Off");
     depthAvailable = false;
     depth = 0;
   }
 
+  acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
+
+  delay(1000);
+
   M5.Lcd.fillScreen(TFT_BLACK);
   M5.Lcd.setRotation(1);
-  M5.Lcd.setTextSize(2);
+  M5.Lcd.setTextSize(3);
   M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
   M5.Lcd.setCursor(0, 0);
 }
@@ -1102,6 +1128,8 @@ void loop()
     return;
   ///////////////////////////////////////////////////////////////////////////////////////
   
+  uint32_t now = millis();
+
   updateButtons();
 
   // check for incoming messages
@@ -1115,6 +1143,15 @@ void loop()
     // no gps message read to process, do a manual refresh of sensors and screen
     acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
   }
+  else
+  {
+    if  (s_lastCallToAcquireSensorData + s_acquireSensorDataUpdatePeriod > now)
+    {
+      acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
+      s_lastCallToAcquireSensorData = now;
+      requestDisplayRefresh = true;
+    }
+  }
 
   if (sendBrightLightEventToTiger)
     publishToTigerBrightLightEvent();
@@ -1122,23 +1159,22 @@ void loop()
   if (sendLightLevelToOceanic)
     publishToOceanicLightLevel(currentLightLevel);
   
-
-  if (requestDisplayRefresh || millis() > nextDisplayRefreshAt)
+  if (requestDisplayRefresh || now > nextDisplayRefreshAt)
   {
     checkDivingDepthForTimer(depth);
     refreshDisplay();
 
     requestDisplayRefresh = false;
-    nextDisplayRefreshAt = millis() + displayScreenRefreshMinimumInterval;
+    nextDisplayRefreshAt = now + displayScreenRefreshMinimumInterval;
   }
 
-  if (requestMapScreenRefresh || millis() > nextMapScreenRefresh)
+  if (requestMapScreenRefresh || now > nextMapScreenRefresh)
   {
     // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
     publishToTigerAndOceanicLocationAndTarget(nextWaypoint->_m5label);
 
     requestMapScreenRefresh = false;
-    nextMapScreenRefresh = millis() + map_screen_refresh_minimum_interval;
+    nextMapScreenRefresh = now + map_screen_refresh_minimum_interval;
   }  
 
 //  refreshGlobalStatusDisplay();     // I think needs some debugging
@@ -1146,6 +1182,30 @@ void loop()
   refreshDiveTimer();
 
   checkForButtonPresses();
+}
+
+void scanI2C()
+{
+  M5.Lcd.println("Scan I2C...");
+  /*
+    Wire1: 1st I2C Bus (pins 32 and 33 - see /.platformio/packages/framework-arduinoespressif32/variants/m5stick_c/pins_arduino.h
+
+    MS5837 Depth:                     0x76
+    BME280 Temp/Humid/Baro:           0x77
+    MPU6886 M5 IMU:                   0x68
+    LIS2MDL Magnetometer:             0x1E
+    LSM303  Accelerometer:            0x19
+    APDS9960 Colour/Proximity/Gesture 0x39
+
+    Wire1: 2nd I2C Bus (pins 21 and 22 - internal to M5)
+
+    AXP192 M5 Power Mgmt IC:          0x34
+  */
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    uint8_t rc = Wire.endTransmission();
+    if (rc == 0) M5.Lcd.printf("Found 0x%02X\n", addr);
+  }
 }
 
 bool isGPSStreamOk()

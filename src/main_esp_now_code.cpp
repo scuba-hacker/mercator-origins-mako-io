@@ -159,14 +159,17 @@ void displayESPNowSendDataResult(const esp_err_t result)
     M5.Lcd.println("ESPNOW Unknown Error");
 }
 
-void toggleESPNowActive()
+void toggleESPNowActive(bool adjustDisplay)
 {
   if (enableESPNow)
   {
-    M5.Lcd.fillScreen(TFT_BLACK);
-    M5.Lcd.setCursor(0, 0);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setRotation(0);
+    if (adjustDisplay)
+    {
+      M5.Lcd.fillScreen(TFT_BLACK);
+      M5.Lcd.setCursor(0, 0);
+      M5.Lcd.setTextSize(1);
+      M5.Lcd.setRotation(0);
+    }
 
     bool disabledWiFi = false;
     
@@ -181,9 +184,12 @@ void toggleESPNowActive()
         disabledWiFi = true;
       }
 
-      M5.Lcd.setTextSize(1);
-      M5.Lcd.setCursor(0,0);
-      M5.Lcd.setRotation(0);
+      if (adjustDisplay)
+      {
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setCursor(0,0);
+        M5.Lcd.setRotation(0);
+      }
 
       bool success = connectESPNow();
 
@@ -191,7 +197,8 @@ void toggleESPNowActive()
       {
         ESPNowActive = true;
 
-        M5.Lcd.setRotation(1);
+        if (adjustDisplay)
+          M5.Lcd.setRotation(1);
         
         if (USE_KNOWN_MACS)
         {
@@ -239,7 +246,7 @@ void toggleESPNowActive()
         ESPNowActive = false;
   
         M5.Lcd.println("   ESPNow\nDisabled");
-          USB_SERIAL_PRINTLN("ESPNow Disabled");
+        USB_SERIAL_PRINTLN("ESPNow Disabled");
       }
     }
     else
@@ -254,12 +261,13 @@ void toggleESPNowActive()
 
       M5.Lcd.println("ESPNow Disabled");
       
-        USB_SERIAL_PRINTLN("ESPNow Disabled");
+      USB_SERIAL_PRINTLN("ESPNow Disabled");
     }
     
     delay (500);
   
-    M5.Lcd.fillScreen(TFT_BLACK);
+    if (adjustDisplay)
+      M5.Lcd.fillScreen(TFT_BLACK);
   }
 }
 
@@ -524,8 +532,8 @@ bool ESPNowManagePeer(esp_now_peer_info_t& peer)
       if (addStatus == ESP_OK) 
       {
         // Pair success
-          USB_SERIAL_PRINTLN("Pair success");
-        M5.Lcd.println("Pair success");
+          USB_SERIAL_PRINTLN("Pair ok");
+        M5.Lcd.println("Pair ok");
         result = true;
       } 
       else if (addStatus == ESP_ERR_ESPNOW_EXIST) 

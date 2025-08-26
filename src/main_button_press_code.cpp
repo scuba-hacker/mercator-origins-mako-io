@@ -102,7 +102,8 @@ void checkForButtonPresses()
     {
       if (p_primaryButton->wasReleasefor(10000))    // toggle between espnow and wifi
       {
-        toggleESPNowActive();
+        const bool adjustDisplay = true;
+        toggleESPNowActive(adjustDisplay);
       }
       if (p_primaryButton->wasReleasefor(2000))    // select next set of guidance sounds
       {
