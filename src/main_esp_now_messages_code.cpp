@@ -10,9 +10,9 @@ char silky_espnow_buffer[256];
 // check for incoming messages
 void processIncomingESPNowMessages()
 {
-  if (msgsReceivedQueue)
+  if (espNowMsgsReceivedQueue)
   {
-    if (xQueueReceive(msgsReceivedQueue,&(rxQueueItemBuffer),(TickType_t)0))
+    if (xQueueReceive(espNowMsgsReceivedQueue,&(rxQueueItemBuffer),(TickType_t)0))
     {
       switch(rxQueueItemBuffer[0])
       {

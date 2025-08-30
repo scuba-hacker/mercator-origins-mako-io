@@ -643,9 +643,9 @@ void OnESPNowDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len
     }
   }
 
-  if (msgsReceivedQueue && ESPNowActive)
+  if (espNowMsgsReceivedQueue && ESPNowActive)
   {
-    xQueueSend(msgsReceivedQueue, (void*)data, (TickType_t)0);  // don't block on enqueue
+    xQueueSend(espNowMsgsReceivedQueue, (void*)data, (TickType_t)0);  // don't block on enqueue
   }
 }
 

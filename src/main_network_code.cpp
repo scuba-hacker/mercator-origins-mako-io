@@ -356,6 +356,17 @@ void disableFeaturesForOTA()
 {
   disableAllWatchdogs();
 
+  if (lemonTaskHandle != nullptr) {
+    vTaskDelete(lemonTaskHandle);
+    lemonTaskHandle = nullptr;
+  }
+  
+  if (lemonQueue != nullptr) 
+  {
+    vQueueDelete(lemonQueue);
+    lemonQueue = nullptr;
+  }
+
   writeLogToSerial = false;
   enableDigitalCompass = enableTiltCompensation = enableSmoothedCompass = enableHumiditySensor = false;
   enableDepthSensor = enableIMUSensor = enableColourSensor = enableDownlinkComms = enableUplinkComms = enableDepthSensor = false;

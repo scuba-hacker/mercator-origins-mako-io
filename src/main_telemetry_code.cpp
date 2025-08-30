@@ -224,9 +224,9 @@ void sendUplinkTelemetryMessageV5()
 
     telemetryMessage[wordsToXOR-1] = checksum;
 
-    float_serial.write(uplink_preamble_pattern2);
+    lemon_float_serial.write(uplink_preamble_pattern2);
 
-    float_serial.write((char*)telemetryMessage, uplink_length);
+    lemon_float_serial.write((char*)telemetryMessage, uplink_length);
 
     bytesTransmittedToLemon += sizeof(uplink_preamble_pattern2) + uplink_length;
 
@@ -249,11 +249,11 @@ void sendUplinkTestMessage()
 
     // now send one uplink msg, cycling around the 5 msgs.
 
-    float_serial.write(uplink_preamble_pattern);
+    lemon_float_serial.write(uplink_preamble_pattern);
 
     for (int i = 0; i < 4; i++)
     {
-      float_serial.write(uplinkTestMessages[nextUplinkMessage]);
+      lemon_float_serial.write(uplinkTestMessages[nextUplinkMessage]);
     }
     nextUplinkMessage = (nextUplinkMessage + 1) % 4;
   }

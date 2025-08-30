@@ -48,6 +48,8 @@ ESPNow Commands
 #include <esp_now.h>
 #include <esp_wifi.h> // only for esp_wifi_set_channel()
 
+#include "driver/uart.h"
+
 #include <memory.h>
 #include "soc/rtc_wdt.h"
 #include "esp_task_wdt.h"
@@ -248,7 +250,7 @@ esp_now_peer_info_t ESPNow_silky_peer;
 esp_now_peer_info_t ESPNow_tiger_peer;
 esp_now_peer_info_t ESPNow_oceanic_peer;
 
-QueueHandle_t msgsReceivedQueue;
+QueueHandle_t espNowMsgsReceivedQueue;
 
 char tigerMessage[16]="";
 char tigerReeds[16]="";
@@ -262,6 +264,8 @@ bool refreshOceanicButtonsShown = false;
 bool refreshSilkyMsgShown = false;
 
 bool sendLeakDetectedToLemon = false;
+
+TaskHandle_t lemonTaskHandle = nullptr;
 
 // ************** Silky / Sounds variables **************
 
@@ -576,8 +580,24 @@ uint16_t       minsToTriggerStopDiveTimer = 10;
 bool recordBreadCrumbTrail = false;
 
 TinyGPSPlus gps;
-int uart_number = 2;
-HardwareSerial float_serial(uart_number);   // UART number 2: This uses Grove SCL=GPIO33 and SDA=GPIO32 for Hardware UART Tx and Rx
+#define UART_NUMBER_LEMON_FLOAT 2
+
+static constexpr int LEMON_RX_BUFFER_SIZE = 1024;
+static constexpr size_t LEMON_RX_READ_CHUNK = 256;
+static constexpr int LEMON_RX_QUEUE_SIZE = 10;
+static constexpr TickType_t LEMON_RX_TIMEOUT = pdMS_TO_TICKS(100);
+
+QueueHandle_t lemonRxQueue = nullptr;
+
+// Data structure to send via queue
+struct LemonDataPacket
+{
+  uint8_t data[LEMON_RX_READ_CHUNK];
+  int length;
+};
+
+HardwareSerial lemon_float_serial(UART_NUMBER_LEMON_FLOAT);   // UART number 2: This uses Grove SCL=GPIO33 and SDA=GPIO32 for Hardware UART Tx and Rx
+
 double Lat, Lng;
 String  lat_str , lng_str;
 int satellites = 0;
@@ -585,8 +605,6 @@ char internetUploadStatusGood = false;
 int  overrideTarget = -1;
 double b, c = 0;
 int power_up_no_fix_byte_loop_count = 0;
-
-bool useGrovePortForGPS = false;
 
 uint8_t nextUplinkMessage = 0;
 
@@ -671,9 +689,6 @@ const uint8_t  M5_BUTTON_B_PIN = BUTTON_B_PIN;
 // GPIO 38 has no internal pull-up resistor so needs to have external pull-up to 3.3V. That's why not working.
 const uint8_t  REED_SWITCH_GPIO = 38;      // input triggers with finger proximity - not now used - new input only input - on white wire of Mako
 const uint32_t MERCATOR_DEBOUNCE_MS = 0;
-
-const uint8_t GROVE_GPS_RX_GPIO = 33;
-const uint8_t GROVE_GPS_TX_GPIO = 32;
 
 const bool useIRLEDforTx = false;   // setting to true currently interferes with I2C (flashing green light) and Tx not functional
 
@@ -779,6 +794,34 @@ void readPreferencesFromEEPROM()
   latestConnectedWiFiSSID = persistedPreferences.getString("lastSSID", "");
 }
 
+
+void lemonRxTask(void *arg)
+{
+  LemonDataPacket packet;
+  for (;;)
+  {
+    if (!haltAllProcessingDuringOTAUpload)
+    {
+      int bytesRead = uart_read_bytes(UART_NUMBER_LEMON_FLOAT, packet.data, sizeof(packet.data), LEMON_RX_TIMEOUT);
+      if (bytesRead > 0)
+      {
+        packet.length = bytesRead;
+
+        // Send packet to main loop via FreeRTOS queue (don't block if queue is full)
+        if (xQueueSend(lemonRxQueue, &packet, 0) != pdTRUE)
+        {
+            // Queue full - increment dropped packet counter
+            // Could add statistics tracking here
+        }
+      }
+    }
+    else
+    {
+      delay(100);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////// PROTECTED - DO NOT ADD CODE IN THE BELOW PROTECTED AREA - RISK OF OTA FAILURE
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -820,12 +863,9 @@ void setup()
   if (systemStartupAndCheckForOTADemand())
     return;     // OTA Required, skip rest of setup.
 
-  msgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
+  espNowMsgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
 
-  if (msgsReceivedQueue == NULL)
-  {
-    USB_SERIAL_PRINTLN("Failed to create queue");
-  }
+  lemonRxQueue = xQueueCreate(LEMON_RX_QUEUE_SIZE, sizeof(LemonDataPacket));
 
   switchDivePlan();   // initialise to dive one
 
@@ -868,37 +908,21 @@ void setup()
   if (enableESPNowAtStartup)
     toggleESPNowActive();
 
- if (useGrovePortForGPS)
-  {
-    float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, GROVE_GPS_RX_GPIO, GROVE_GPS_TX_GPIO);   // pin 33=rx (white M5), pin 32=tx (yellow M5), specifies the grove SCL/SDA pins for Rx/Tx
-  }
-  else
-  {
-    float_serial.setRxBufferSize(512); // was 256 - must set before begin called
-    if (useIRLEDforTx)
-    {
-      if (usingSDP8600OptoSchmittDetector)
-      {
-        const bool invert = true;         // need tx inverted (which inverts both Rx and Tx on .begin call)
-        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_GPIO, IR_LED_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)
-        float_serial.setRxInvert( false);   // but need rx not inverted (must be done after begin)
-      }
-      else
-      {
-        // original phototransistor has inverting logic
-        const bool invert = false;
-        float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_GPIO, IR_LED_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
-      }
-    }
-    else
-    {
-      // had to solder to GPIO2 on the main board and cut the header pin to the HAT mezzenine board as there 
-      // were some components there preventing the UART from working. Also was cutting power to I2C.
-      const bool invert = false;
-      float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_GPIO, HAT_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
-    }
-  }
+  lemon_float_serial.setRxBufferSize(512); // was 256 - must set before begin called
+
+  // Had to solder to GPIO2 on the main board and cut the header pin to the HAT mezzenine board as there 
+  // were some components there preventing the UART from working. Also was cutting power to I2C.
+  const bool invert = false;
+  lemon_float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_GPIO, HAT_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
+
+  // Create Lemon RS485 receive task on Core 1
+  xTaskCreatePinnedToCore(lemonRxTask,
+                          "lemonRxTask",
+                          4096,    // stack size
+                          nullptr, // user parameters to pass to task
+                          7,       // task priority
+                          &lemonTaskHandle, // task handle
+                          1);      // core id
 
   // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
   //  uart_set_mode(uart_number, UART_MODE_RS485_HALF_DUPLEX);
@@ -1226,121 +1250,119 @@ bool isInternetUploadOk()
 
 bool processGPSMessageIfAvailable()
 { 
-  bool result = (float_serial.available() > 0);
+  LemonDataPacket lemonPacket;
 
-  while (float_serial.available() > 0)
+  bool result = false;
+
+  if (xQueueReceive(lemonRxQueue, &lemonPacket, 0) == pdTRUE)
   {
-    if (enableButtonTestMode)
-      readAndTestGoProButtons();
+    result = true;
 
-    char nextByte = float_serial.read();
-
-    bytesReceivedFromLemon++;
-
-      USB_SERIAL_WRITE(nextByte);
-
-    if (gps.encode(nextByte))
+    for (int i = 0; i < lemonPacket.length; i++)
     {
-      if (gps.location.isValid())
+      if (gps.encode(lemonPacket.data[i]))
       {
-        uint32_t newFixCount = gps.sentencesWithFix();
-        uint32_t newNoFixCount = gps.sentencesWithNoFix();
-        newPassedChecksum = gps.passedChecksum();
-        newFailedChecksum = gps.failedChecksum();
-        if (newFixCount > fixCount)
+        if (gps.location.isValid())
         {
-          fixCount = newFixCount;
+          uint32_t newFixCount = gps.sentencesWithFix();
+          uint32_t newNoFixCount = gps.sentencesWithNoFix();
+          newPassedChecksum = gps.passedChecksum();
+          newFailedChecksum = gps.failedChecksum();
+          if (newFixCount > fixCount)
+          {
+            fixCount = newFixCount;
 
-          USB_SERIAL_PRINTF("\nFix: %lu Good Msg: %lu Bad Msg: %lu", fixCount, newPassedChecksum, gps.failedChecksum());
+            USB_SERIAL_PRINTF("\nFix: %lu Good Msg: %lu Bad Msg: %lu", fixCount, newPassedChecksum, gps.failedChecksum());
 
-          latestFixTimeStampStreamOk = latestFixTimeStamp = millis();
-        }
-        else if (newNoFixCount > noFixCount)
-        {
-          latestNoFixTimeStamp = millis();
-        }
-        
-        if (power_up_no_fix_byte_loop_count > -1)
-        {
-          // clear the onscreen counter that increments whilst attempting to get first valid location
-          power_up_no_fix_byte_loop_count = -1;
-          M5.Lcd.fillScreen(TFT_BLACK);
-        }
+            latestFixTimeStampStreamOk = latestFixTimeStamp = millis();
+          }
+          else if (newNoFixCount > noFixCount)
+          {
+            latestNoFixTimeStamp = millis();
+          }
+          
+          if (power_up_no_fix_byte_loop_count > -1)
+          {
+            // clear the onscreen counter that increments whilst attempting to get first valid location
+            power_up_no_fix_byte_loop_count = -1;
+            M5.Lcd.fillScreen(TFT_BLACK);
+          }
 
-        if (newPassedChecksum <= passedChecksumCount)
-        {
-          // incomplete message received, continue reading bytes, don't update display.
-          // continue reading bytes
-          result = false;
+          if (newPassedChecksum <= passedChecksumCount)
+          {
+            // incomplete message received, continue reading bytes, don't update display.
+            // continue reading bytes
+            result = false;
+          }
+          else
+          {
+            passedChecksumCount = newPassedChecksum;
+
+            if (gps.isSentenceGGA())      // only send uplink message back for GGA messages
+            {
+              // At this point a new lat/long fix has been received and is available.
+              refreshAndCalculatePositionalAttributes();
+    
+              performUplinkTasks();
+
+              acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
+      
+              checkDivingDepthForTimer(depth);
+    
+              refreshDisplay();
+      
+              checkForButtonPresses();
+                
+              result = true;
+            }
+            else if (GPS_status != GPS_FIX_FROM_FLOAT && gps.isSentenceRMC())
+            {
+              if (gps.date.year() == 2000)  // fake data received from float for No GPS.
+              {
+                if (GPS_status != GPS_NO_GPS_LIVE_IN_FLOAT)
+                {
+                  GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
+                }
+              }
+              else if (gps.date.year() == 2012) // fake data received from float for No Fix yet.
+              {
+                if (GPS_status != GPS_NO_FIX_FROM_FLOAT)
+                {
+                  GPS_status = GPS_NO_FIX_FROM_FLOAT;
+                }
+              }
+              else
+              {
+                if (GPS_status != GPS_FIX_FROM_FLOAT)
+                {
+                  GPS_status = GPS_FIX_FROM_FLOAT;
+                }
+              }
+              result = false;
+            }
+          }
         }
         else
         {
-          passedChecksumCount = newPassedChecksum;
-
-          if (gps.isSentenceGGA())      // only send uplink message back for GGA messages
+          // get location invalid if there is no new fix to read before 1 second is up.
+          if (power_up_no_fix_byte_loop_count > -1)
           {
-            // At this point a new lat/long fix has been received and is available.
-            refreshAndCalculatePositionalAttributes();
-  
-            performUplinkTasks();
-
-            acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
-    
-            checkDivingDepthForTimer(depth);
-  
-            refreshDisplay();
-    
-            checkForButtonPresses();
-              
-            result = true;
+            // Bytes are being received but no valid location fix has been seen since startup
+            // Increment byte count shown until first fix received.
+            M5.Lcd.setCursor(50, 90);
+            M5.Lcd.printf("%d", power_up_no_fix_byte_loop_count++);
           }
-          else if (GPS_status != GPS_FIX_FROM_FLOAT && gps.isSentenceRMC())
-          {
-            if (gps.date.year() == 2000)  // fake data received from float for No GPS.
-            {
-              if (GPS_status != GPS_NO_GPS_LIVE_IN_FLOAT)
-              {
-                GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
-              }
-            }
-            else if (gps.date.year() == 2012) // fake data received from float for No Fix yet.
-            {
-              if (GPS_status != GPS_NO_FIX_FROM_FLOAT)
-              {
-                GPS_status = GPS_NO_FIX_FROM_FLOAT;
-              }
-            }
-            else
-            {
-              if (GPS_status != GPS_FIX_FROM_FLOAT)
-              {
-                GPS_status = GPS_FIX_FROM_FLOAT;
-              }
-            }
-            result = false;
-          }
+          result = false;
         }
       }
       else
       {
-        // get location invalid if there is no new fix to read before 1 second is up.
-        if (power_up_no_fix_byte_loop_count > -1)
-        {
-          // Bytes are being received but no valid location fix has been seen since startup
-          // Increment byte count shown until first fix received.
-          M5.Lcd.setCursor(50, 90);
-          M5.Lcd.printf("%d", power_up_no_fix_byte_loop_count++);
-        }
+        // no byte received.
         result = false;
       }
     }
-    else
-    {
-      // no byte received.
-      result = false;
-    }
   }
-  
+
   return result;
 }
 
