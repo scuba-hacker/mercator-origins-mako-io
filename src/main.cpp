@@ -944,9 +944,13 @@ void setup()
 //  magnetometer_max = (vec<double>) { 31.050, 28.0500, 97.050};
 
 // recalbirated on 2nd Feb 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
-  magnetometer_min = (vec<double>) { -34.05, -58.950, 16.95};
-  magnetometer_max = (vec<double>) { 56.850, 31.500, 109.8};
+//  magnetometer_min = (vec<double>) { -34.05, -58.950, 16.95};
+  // magnetometer_max = (vec<double>) { 56.850, 31.500, 109.8};
 
+ // recalbirated on 30 Aug 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
+  magnetometer_min = (vec<double>) { -45, -57, -8.7};
+  magnetometer_max = (vec<double>) { 51.6, 35.85, 86.85};
+ 
   if (enableHumiditySensor)
   {
     if (!Adafruit_TempHumidityPressure.begin())

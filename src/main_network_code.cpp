@@ -346,6 +346,7 @@ void disableAllWatchdogs() {
   esp_task_wdt_deinit();
 
   // Disable RTC watchdog
+  
   rtc_wdt_protect_off();
   rtc_wdt_disable();
   rtc_wdt_protect_on();
@@ -361,10 +362,10 @@ void disableFeaturesForOTA()
     lemonTaskHandle = nullptr;
   }
   
-  if (lemonQueue != nullptr) 
+  if (lemonRxQueue != nullptr) 
   {
-    vQueueDelete(lemonQueue);
-    lemonQueue = nullptr;
+    vQueueDelete(lemonRxQueue);
+    lemonRxQueue = nullptr;
   }
 
   writeLogToSerial = false;
