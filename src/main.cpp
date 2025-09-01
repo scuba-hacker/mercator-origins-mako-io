@@ -484,26 +484,58 @@ uint32_t recordHighlightExpireTime = 0;
 uint32_t recordHighlightDisplayDuration = 10000;
 bool     recordSurveyHighlight = false;
 
-// Vobster Test
-const uint8_t waypointCountDiveOne = 3;
-const uint8_t waypointExitDiveOne = 1;
+// Dive 1 - Tue eve 2nd Sep 2025 with Curt and Stefanos
+
+const uint8_t waypointCountDiveOne = 20;
+const uint8_t waypointExitDiveOne = 19;
 
 NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
 {
-  [0] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
-  [1] = { ._label = "99N Pontoon", ._m5label = "99N\nPontoon", ._cat=BLUE_BUOY, ._lat = 51.24671667548201, ._long = -2.4247728907604174},
-  [2] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+  [0] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316},
+  [1] = { ._label = "04N Spitfire", ._lat = 51.4601028571429, ._long = -0.54883835},
+  [2] = { ._label = "03N Scimitar", ._lat = 51.460347, ._long = -0.5489195},
+  [3] = { ._label = "X02 Quarry Machine in Reeds", ._lat = 51.460434, ._long = -0.548921},
+  [4] = { ._label = "05aN Lightning1 12d fr Scimitar (03N)", ._lat = 51.4605855, ._long = -0.548901666666667},
+  [5] = { ._label = "05bN Lightning2 12d fr Scimitar (03N)", ._lat = 51.4606164444445, ._long = -0.548867111111111},
+  [6] = { ._label = "02N? Sub 4m 337d from Lightning (5)", ._lat = 0, ._long = 0},
+  [7] = { ._label = "01N? Canoe 3m 7d from Sub (2)", ._lat = 0, ._long = 0},
+  [8] = { ._label = "12Nb? Commer Van 6m 159d fr Canoe", ._lat = 0, ._long = 0},
+  [9] = { ._label = "06aN Caves Centre", ._lat = 51.460947625, ._long = -0.54878325},
+  [10] = { ._label = "12Nc? Commer Van 6m 22d fr Caves", ._lat = 0, ._long = 0},  
+  [11] = { ._label = "24N Half Die Hard Taxi", ._lat = 51.460773, ._long = -0.547620875},
+  [12] = { ._label = "12Na? Commer Van 6m 317d fr die hard", ._lat = 0, ._long = 0},
+  [13] = { ._label = "19N Chick Hutch Boat", ._lat = 51.4604027142857, ._long = -0.54804},
+  [14] = { ._label = "23N Traffic Lights 7m 143d from (21B)", ._lat = 51.4600558888889, ._long = -0.547677333333333},
+  [15] = { ._label = "22B Lady of Kent Search Light 5m", ._lat = 51.4599185714286, ._long = -0.547681},
+  [16] = { ._label = "25N Boat In A Hole 7m ENE from (22B)", ._lat = 51.4599545, ._long = -0.54755475},
+  [17] = { ._label = "20N Sweet Bowl 311d from (22B)", ._lat = 51.46020025, ._long = -0.5479775},
+  [18] = { ._label = "18N Milk Float", ._lat = 51.4601745714286, ._long = -0.548058571428571},
+  [19] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316}
 };
 
-const uint8_t waypointCountDiveTwo = 3;
-const uint8_t waypointExitDiveTwo = 1;
+// Dive 2 - Tue eve 2nd Sep 2025 with Curt and Stefanos
 
-NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
+const uint8_t waypointCountDiveTwo = 14;
+const uint8_t waypointExitDiveTwo = 13;
+
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
 {
-  [0] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
-  [1] = { ._label = "99N Pontoon", ._m5label = "99N\nPontoon", ._cat=BLUE_BUOY, ._lat = 51.24671667548201, ._long = -2.4247728907604174},
-  [2] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+  [0] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
+  [1] = { ._label = "30B White boat by platform", ._lat = 51.4598131428572, ._long = -0.547380285714286},
+  [2] = { ._label = "38B? Lifeboat 78d 6.5m ", ._lat = 51.4598136301389, ._long = -0.546991890449386},
+  [3] = { ._label = "45B List Sharon 7.5m", ._lat = 51.4598098699702, ._long = -0.54670373432756},
+  [4] = { ._label = "46N Plane", ._lat = 51.459745, ._long = -0.546649},
+  [5] = { ._label = "49B Claymore 6.5m", ._lat = 51.459634435324, ._long = -0.54646635372985},
+  [6] = { ._label = "48N Holey Ship 191d from 49B 4.5m", ._lat = 0, ._long = 0},
+  [7] = { ._label = "50cN Swim Through - crates", ._lat = 51.4592045, ._long = -0.545912625},
+  [8] = { ._label = "51B Orca Van", ._lat = 51.4591431428571, ._long = -0.545936857142857},
+  [9] = { ._label = "X15? Sphere Bell via Reeds to Old Jetty", ._lat = 0, ._long = 0},
+  [10] = { ._label = "44N VW Van", ._lat = 51.459368, ._long = -0.546760142857143},
+  [11] = { ._label = "37N Dive Bell", ._lat = 51.4595419038462, ._long = -0.547160394230769},
+  [12] = { ._label = "39N London Black Cab", ._lat = 51.459729, ._long = -0.546992857142857},
+  [13] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461}
 };
+
 
 const uint8_t* p_currentDiveWaypointCount = nullptr;
 const uint8_t* p_currentDiveWaypointExit = nullptr;

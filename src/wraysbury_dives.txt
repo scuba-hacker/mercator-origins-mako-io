@@ -21,6 +21,29 @@ class NavigationWaypoint
 };
 */
 
+/*
+// Vobster Test
+const uint8_t waypointCountDiveOne = 3;
+const uint8_t waypointExitDiveOne = 1;
+
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+  [1] = { ._label = "99N Pontoon", ._m5label = "99N\nPontoon", ._cat=BLUE_BUOY, ._lat = 51.24671667548201, ._long = -2.4247728907604174},
+  [2] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+};
+
+const uint8_t waypointCountDiveTwo = 3;
+const uint8_t waypointExitDiveTwo = 1;
+
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+  [1] = { ._label = "99N Pontoon", ._m5label = "99N\nPontoon", ._cat=BLUE_BUOY, ._lat = 51.24671667548201, ._long = -2.4247728907604174},
+  [2] = { ._label = "Z05 Vobster Jetty", ._m5label = "Z05\nVobster\nJetty", ._cat=JETTY, ._lat = 51.24597379175095, ._long = -2.4244255715380394},
+};
+
+*/
 
 /*
 const uint8_t waypointCount = 14;
@@ -958,7 +981,7 @@ NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
   [6] = { ._label = "06aN Caves Centre", ._lat = 51.460947625, ._long = -0.54878325},
   [7] = { ._label = "?2B Sub 300d, 4m", ._lat = 51, ._long = 1},
   [8] = { ._label = "06aN Caves Centre", ._lat = 51.460947625, ._long = -0.54878325},
-  [9] = { ._label = "?5N Litning 192d, 5.5m", ._lat = 51, ._long = 1},
+  [9] = { ._label = "?5N Lightning 192d, 5.5m", ._lat = 51, ._long = 1},
   [10] = { ._label = "06aN Caves Centre", ._lat = 51.460947625, ._long = -0.54878325},
   [11] = { ._label = "?12N Commer 22d, 6m", ._lat = 51, ._long = 1},
   [12] = { ._label = "?1N Canoe 339d, 3m", ._lat = 51, ._long = 1},
