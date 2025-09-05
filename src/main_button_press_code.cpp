@@ -5,7 +5,8 @@
 
 bool waitForBothButtonsReleased()
 {
-  while (!(BtnGoProTop.isReleased() && BtnGoProSide.isReleased()));  
+  while (!(BtnGoProTop.isReleased() && BtnGoProSide.isReleased()));
+  return true;
 }
 
 const uint32_t buttonPressDurationToChangeScreen = 50;

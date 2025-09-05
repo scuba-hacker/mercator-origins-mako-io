@@ -3,4 +3,4 @@
 .DS_Store
 src/mercator_secrets.c
 compile_commands.json
-mercator-origins-mako-io.bin
+mercator-origins-mako-io.*

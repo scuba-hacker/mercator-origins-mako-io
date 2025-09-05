@@ -184,13 +184,12 @@ void acquireAllSensorReadings()
     max_actual_sensor_acquisition_time = actual_sensor_acquisition_time;
 
   // equalise acquisition time to be set to a minimum - BLOCKING - later make this asynchronous, and use lingerTimeMsBeforeUplink
-  while (millis() < forced_standardised_sensor_read_time);
+//  while (millis() < forced_standardised_sensor_read_time);
   
   sensor_acquisition_time = (uint16_t)(millis() - start_time_millis);
   if (sensor_acquisition_time > max_sensor_acquisition_time)
     max_sensor_acquisition_time = sensor_acquisition_time;
 }
-
 
 bool getSmoothedMagHeading(double& magHeading)
 {
@@ -388,8 +387,9 @@ std::string getCardinal(float b, bool surveyScreen)
 }
 
 uint32_t nextDepthReadCompleteTime = 0xFFFFFFFF;
-const uint32_t depthReadCompletePeriod = 1000;
+const uint32_t depthReadCompletePeriod = 250;
 
+// Need a way to reset the depth sensor in dive - just a reboot.
 bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a)
 {
   bool dataAcquired = false;
@@ -403,6 +403,7 @@ bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a)
   
   if (nextDepthReadCompleteTime > timeNow && BlueRobotics_DepthSensor.readAsync() == MS5837::READ_COMPLETE)
   {
+    // Trigger a read of the depth sensor in one second's time once the read is complete.
     nextDepthReadCompleteTime = timeNow + depthReadCompletePeriod;
     
     float temp_d = BlueRobotics_DepthSensor.depth();

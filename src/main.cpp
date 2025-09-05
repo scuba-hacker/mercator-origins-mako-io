@@ -63,7 +63,7 @@ bool usingSDP8600OptoSchmittDetector = true; // alternative is SDP8406 phototran
 
 bool enableDigitalCompass = true;
 bool enableTiltCompensation = true;
-bool enableSmoothedCompass = true;
+bool enableSmoothedCompass = false;
 bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
 bool enableIMUSensor = true;
@@ -484,6 +484,49 @@ uint32_t recordHighlightExpireTime = 0;
 uint32_t recordHighlightDisplayDuration = 10000;
 bool     recordSurveyHighlight = false;
 
+// Dover test
+const uint8_t waypointCountDiveOne = 2;
+const uint8_t waypointExitDiveOne = 1;
+
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z06 Wreck Zone", ._m5label = "Z06\nWreck\nZone", ._cat=JETTY, ._lat = 51.066017, ._long = 1.270883},
+  [1] = { ._label = "Z06 Wreck Zone", ._m5label = "Z06\nWreck\nZone", ._cat=JETTY, ._lat = 51.066017, ._long = 1.270883},
+};
+
+const uint8_t waypointCountDiveTwo = 2;
+const uint8_t waypointExitDiveTwo = 1;
+
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+{
+  [0] = { ._label = "Z06 Wreck Zone", ._m5label = "Z06\nWreck\nZone", ._cat=JETTY, ._lat = 51.066017, ._long = 1.270883},
+  [1] = { ._label = "Z06 Wreck Zone", ._m5label = "Z06\nWreck\nZone", ._cat=JETTY, ._lat = 51.066017, ._long = 1.270883},
+};
+
+/*
+// Home test
+const uint8_t waypointCountDiveOne = 3;
+const uint8_t waypointExitDiveOne = 1;
+
+NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z04 Home", ._m5label = "Z04\n\nHome", ._cat=JETTY, ._lat = 51.391513052111996, ._long = -0.2874361808098317},
+  [1] = { ._label = "98N Home Test", ._m5label = "98N\n\nHome\nTest", ._cat=BLUE_BUOY, ._lat = 51.39140569365721, ._long = -0.2869881590541109},
+  [2] = { ._label = "Z04 Home", ._m5label = "Z04\n\nHome", ._cat=JETTY, ._lat = 51.391513052111996, ._long = -0.2874361808098317},
+};
+
+const uint8_t waypointCountDiveTwo = 3;
+const uint8_t waypointExitDiveTwo = 1;
+
+NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
+{
+  [0] = { ._label = "Z04 Home", ._m5label = "Z04\n\nHome", ._cat=JETTY, ._lat = 51.391513052111996, ._long = -0.2874361808098317},
+  [1] = { ._label = "98N Home Test", ._m5label = "98N\n\nHome\nTest", ._cat=BLUE_BUOY,._lat = 51.39140569365721, ._long = -0.2869881590541109},
+  [2] = { ._label = "Z04 Home", ._m5label = "Z04\n\nHome", ._cat=JETTY, ._lat = 51.391513052111996, ._long = -0.2874361808098317},
+};
+*/
+
+/*
 // Dive 1 - Tue eve 2nd Sep 2025 with Curt and Stefanos
 
 const uint8_t waypointCountDiveOne = 20;
@@ -535,7 +578,7 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
   [12] = { ._label = "39N London Black Cab", ._lat = 51.459729, ._long = -0.546992857142857},
   [13] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461}
 };
-
+*/
 
 const uint8_t* p_currentDiveWaypointCount = nullptr;
 const uint8_t* p_currentDiveWaypointExit = nullptr;
@@ -709,10 +752,10 @@ uint32_t s_lastSendTestSerialBytesTest = 0;
 const uint32_t s_sendTestSerialBytesPeriodMs = 1000;
 
 uint32_t s_lastTempHumidityDisplayRefresh = 0;
-const uint32_t s_tempHumidityUpdatePeriod = 1000; // time between each humidity and depth update to screen
+const uint32_t s_tempHumidityUpdatePeriod = 250; // time between each humidity and depth update to screen
 
 uint32_t s_lastCallToAcquireSensorData = 0;
-const uint32_t s_acquireSensorDataUpdatePeriod = 250; // allow the compass to update ok even if there are not Messages being received from the surface.
+const uint32_t s_acquireSensorDataUpdatePeriod = 100; // allow the compass to update ok even if there are not Messages being received from the surface.
 
 const uint8_t  BUTTON_GOPRO_TOP_GPIO = 25;
 const uint8_t  BUTTON_GOPRO_SIDE_GPIO = 0;    // can't use this at startup - strapping pin
@@ -980,9 +1023,13 @@ void setup()
   // magnetometer_max = (vec<double>) { 56.850, 31.500, 109.8};
 
  // recalbirated on 30 Aug 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
-  magnetometer_min = (vec<double>) { -45, -57, -8.7};
-  magnetometer_max = (vec<double>) { 51.6, 35.85, 86.85};
+//  magnetometer_min = (vec<double>) { -45, -57, -8.7};
+//  magnetometer_max = (vec<double>) { 51.6, 35.85, 86.85};
  
+ // recalbirated on 5 Sep 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
+  magnetometer_min = (vec<double>) { -44.1, -58.8, -10.350};
+  magnetometer_max = (vec<double>) { 54.0, 33.75, 87.6};
+
   if (enableHumiditySensor)
   {
     if (!Adafruit_TempHumidityPressure.begin())
@@ -1198,19 +1245,13 @@ void loop()
   if (useGetDepthAsync)
     getDepthAsync(depth, water_temperature, water_pressure, depth_altitude);
   
-  if (enableDownlinkComms && processGPSMessageIfAvailable())
+  processGPSMessageIfAvailable();
+
+  if  (s_lastCallToAcquireSensorData + s_acquireSensorDataUpdatePeriod <= now)
   {
-    // no gps message read to process, do a manual refresh of sensors and screen
     acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
-  }
-  else
-  {
-    if  (s_lastCallToAcquireSensorData + s_acquireSensorDataUpdatePeriod > now)
-    {
-      acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
-      s_lastCallToAcquireSensorData = now;
-      requestDisplayRefresh = true;
-    }
+    s_lastCallToAcquireSensorData = now;
+    requestDisplayRefresh = true;
   }
 
   if (sendBrightLightEventToTiger)
