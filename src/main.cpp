@@ -450,6 +450,7 @@ const uint16_t SEALEVELPRESSURE_HPA = 1000.00;    // could get Lemon to check at
 
 enum gpsStatus {GPS_NO_GPS_LIVE_IN_FLOAT, GPS_NO_FIX_FROM_FLOAT, GPS_FIX_FROM_FLOAT};
 gpsStatus GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
+bool hasEverReceivedGPSFix = false;  // Track if GPS fix has ever been received since power-on
 
 const int maxSizeTelemetryMessageToMakoInBytes = 200;
 uint16_t telemetryMessage[maxSizeTelemetryMessageToMakoInBytes/sizeof(uint16_t)];
@@ -1401,6 +1402,7 @@ bool processGPSMessageIfAvailable()
               {
                 // Valid GPS fix - update positional data and respond normally
                 refreshAndCalculatePositionalAttributes();
+                hasEverReceivedGPSFix = true;  // Mark that we've received a valid GPS fix
               }
               // Always respond with sensor data regardless of GPS fix status
               performUplinkTasks();
@@ -1436,6 +1438,7 @@ bool processGPSMessageIfAvailable()
                 if (GPS_status != GPS_FIX_FROM_FLOAT)
                 {
                   GPS_status = GPS_FIX_FROM_FLOAT;
+                  hasEverReceivedGPSFix = true;  // Mark that we've received a fix
                 }
               }
               result = false;

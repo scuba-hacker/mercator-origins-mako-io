@@ -225,7 +225,7 @@ void drawTargetSection()
 
   uint16_t x = 0, y = 0, degree_offset = 0, cardinal_offset = 0, hdop = 0, metre_offset = 0;
 
-  if (GPS_status == GPS_NO_GPS_LIVE_IN_FLOAT)
+  if (GPS_status == GPS_NO_GPS_LIVE_IN_FLOAT && !hasEverReceivedGPSFix)
   {
     M5.Lcd.setCursor(5, 0);
     M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);
@@ -236,7 +236,7 @@ void drawTargetSection()
 
     M5.Lcd.setTextSize(2);
   }
-  else if (GPS_status == GPS_NO_FIX_FROM_FLOAT)
+  else if (GPS_status == GPS_NO_FIX_FROM_FLOAT && !hasEverReceivedGPSFix)
   {
     M5.Lcd.setCursor(5, 0);
     M5.Lcd.setTextColor(TFT_ORANGE, TFT_BLACK);
@@ -247,7 +247,7 @@ void drawTargetSection()
 
     M5.Lcd.setTextSize(2);
   }
-  else if (GPS_status == GPS_FIX_FROM_FLOAT)
+  else // GPS_FIX_FROM_FLOAT or post-first-fix states - use color coding
   {
     M5.Lcd.setCursor(5, 0);
     
@@ -331,8 +331,11 @@ void drawTargetSection()
       else
         M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);      // Green when GPS is current
       
+      uint8_t distanceTextSize = 0;
+
       M5.Lcd.setCursor(x, y);
-  
+
+      distance_to_target = 10001;
       if (distance_to_target >= 1000)
       {
         x = M5.Lcd.getCursorX();
@@ -340,21 +343,22 @@ void drawTargetSection()
 
         if (distance_to_target >= 10000)
         {
-          M5.Lcd.setTextSize(4);
+          distanceTextSize=4;
+          M5.Lcd.setTextSize(distanceTextSize);
           M5.Lcd.setCursor(x, y + 15);
           M5.Lcd.printf("\n%4.0f", distance_to_target / 1000.0);
           metre_offset = 14;
         }
         else
         {
-          M5.Lcd.setTextSize(5);
+          distanceTextSize=5;
+          M5.Lcd.setTextSize(distanceTextSize);
           M5.Lcd.println("");
     
           x = M5.Lcd.getCursorX();
           y = M5.Lcd.getCursorY();
 
           M5.Lcd.setCursor(x+5, y);
-
           M5.Lcd.printf("%2.1f", distance_to_target / 1000.0);
           metre_offset = 22;
         }
@@ -366,13 +370,12 @@ void drawTargetSection()
 
         M5.Lcd.setCursor(x, y + metre_offset);
         M5.Lcd.print("km");
-
-        M5.Lcd.setTextSize(5);
-        M5.Lcd.println("");
+        M5.Lcd.setCursor(x, y);
       }
       else  // < 1000m
       {
-        M5.Lcd.setTextSize(5);
+        distanceTextSize = 5;
+        M5.Lcd.setTextSize(distanceTextSize);
         M5.Lcd.printf("\n%3.0f", distance_to_target);
         M5.Lcd.setTextSize(3);
 
@@ -383,9 +386,10 @@ void drawTargetSection()
         M5.Lcd.setCursor(x, y + metre_offset);
         M5.Lcd.print("m");
         M5.Lcd.setCursor(x, y);
-        M5.Lcd.setTextSize(5);
-        M5.Lcd.println("");
       }
+
+      M5.Lcd.setTextSize(distanceTextSize);
+      M5.Lcd.println("");
     }
   }
 }
