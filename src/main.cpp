@@ -154,6 +154,7 @@ void loop_no_gps();
 void sendTestSerialBytesWhenReady();
 bool isGPSStreamOk();
 bool isLatestGPSMsgFix();
+bool isGPSTargetShortTimedOut();
 bool isInternetUploadOk();
 bool processGPSMessageIfAvailable();
 void refreshAndCalculatePositionalAttributes();
@@ -431,7 +432,8 @@ char uplinkTestMessages[][6] = {"MSG0 ", "MSG1 ", "MSG2 ", "MSG3 "};
 char newWayMarkerLabel[2];
 char directionMetricLabel[2];
 
-const uint32_t minimumExpectedTimeBetweenFix = 1000;  // 1 second
+const uint32_t minimumExpectedTimeBetweenFix = 10000;  // 10 seconds for red
+const uint32_t gpsTargetYellowTimeout = 3000;        // 3 seconds for yellow
 
 // I2C and framework
 #include <Wire.h>                   // I2C framework
@@ -793,6 +795,7 @@ uint32_t latestFixTimeStampStreamOk = 0;
 
 uint32_t latestNoFixTimeStamp = 0;
 uint32_t newNoFixCount = 0;
+uint32_t latestGPSMessageTimeStamp = 0;
 
 // Magnetic heading calculation functions
 template <typename T> double calculateTiltCompensatedHeading(vec<T> from);
@@ -1311,13 +1314,17 @@ void scanI2C()
 
 bool isGPSStreamOk()
 {
-  return (millis() - latestFixTimeStampStreamOk < minimumExpectedTimeBetweenFix ||
-          millis() - latestNoFixTimeStamp < minimumExpectedTimeBetweenFix );
+  return (millis() - latestGPSMessageTimeStamp < minimumExpectedTimeBetweenFix);
 }
 
 bool isLatestGPSMsgFix()
 {
   return  (latestFixTimeStampStreamOk > latestNoFixTimeStamp);
+}
+
+bool isGPSTargetShortTimedOut()
+{
+  return (millis() - latestGPSMessageTimeStamp >= gpsTargetYellowTimeout);
 }
 
 bool isInternetUploadOk()
@@ -1339,25 +1346,37 @@ bool processGPSMessageIfAvailable()
     {
       if (gps.encode(lemonPacket.data[i]))
       {
-        if (gps.location.isValid())
+        // Process GPS messages regardless of whether location is valid (handles both FIX and NO FIX)
+        uint32_t newFixCount = gps.sentencesWithFix();
+        uint32_t newNoFixCount = gps.sentencesWithNoFix();
+        newPassedChecksum = gps.passedChecksum();
+        newFailedChecksum = gps.failedChecksum();
+        
+        bool messageCountChanged = false;
+        bool hasValidLocation = gps.location.isValid();
+        
+        if (newFixCount > fixCount)
         {
-          uint32_t newFixCount = gps.sentencesWithFix();
-          uint32_t newNoFixCount = gps.sentencesWithNoFix();
-          newPassedChecksum = gps.passedChecksum();
-          newFailedChecksum = gps.failedChecksum();
-          if (newFixCount > fixCount)
-          {
-            fixCount = newFixCount;
+          fixCount = newFixCount;
+          messageCountChanged = true;
 
-            USB_SERIAL_PRINTF("\nFix: %lu Good Msg: %lu Bad Msg: %lu", fixCount, newPassedChecksum, gps.failedChecksum());
+          USB_SERIAL_PRINTF("\nFix: %lu Good Msg: %lu Bad Msg: %lu", fixCount, newPassedChecksum, gps.failedChecksum());
 
-            latestFixTimeStampStreamOk = latestFixTimeStamp = millis();
-          }
-          else if (newNoFixCount > noFixCount)
-          {
-            latestNoFixTimeStamp = millis();
-          }
+          latestFixTimeStampStreamOk = latestFixTimeStamp = millis();
+          latestGPSMessageTimeStamp = millis();  // Update fix message timestamp only
+        }
+        else if (newNoFixCount > noFixCount)
+        {
+          noFixCount = newNoFixCount;
+          messageCountChanged = true;
+          latestNoFixTimeStamp = millis();
+          // Don't update latestGPSMessageTimeStamp for no-fix messages
           
+          USB_SERIAL_PRINTF("\nNo Fix: %lu Good Msg: %lu Bad Msg: %lu", noFixCount, newPassedChecksum, gps.failedChecksum());
+        }
+        
+        if (messageCountChanged)
+        {
           if (power_up_no_fix_byte_loop_count > -1)
           {
             // clear the onscreen counter that increments whilst attempting to get first valid location
@@ -1377,9 +1396,13 @@ bool processGPSMessageIfAvailable()
 
             if (gps.isSentenceGGA())      // only send uplink message back for GGA messages
             {
-              // At this point a new lat/long fix has been received and is available.
-              refreshAndCalculatePositionalAttributes();
-    
+              // Respond to both FIX and NO FIX GGA messages to maintain communication with Lemon
+              if (hasValidLocation)
+              {
+                // Valid GPS fix - update positional data and respond normally
+                refreshAndCalculatePositionalAttributes();
+              }
+              // Always respond with sensor data regardless of GPS fix status
               performUplinkTasks();
 
               acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure

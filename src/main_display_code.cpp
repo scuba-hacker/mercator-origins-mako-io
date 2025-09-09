@@ -186,13 +186,13 @@ void drawSurveyDisplay()
 
     M5.Lcd.setTextSize(3);
 
-    if (isGPSStreamOk())
-      if (isLatestGPSMsgFix())
-        M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
-      else
-        M5.Lcd.setTextColor(TFT_WHITE, TFT_YELLOW);
+    // Set GPS 'G' character background color based on fix message timeout
+    if (!isGPSStreamOk())
+      M5.Lcd.setTextColor(TFT_WHITE, TFT_RED);        // Red after 10 seconds no fix
+    else if (isGPSTargetShortTimedOut())
+      M5.Lcd.setTextColor(TFT_WHITE, TFT_YELLOW);     // Yellow after 3 seconds no fix  
     else
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_RED);
+      M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);      // Black when GPS fixes current
 
     M5.Lcd.print("G");
 
@@ -250,9 +250,16 @@ void drawTargetSection()
   else if (GPS_status == GPS_FIX_FROM_FLOAT)
   {
     M5.Lcd.setCursor(5, 0);
-    M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
+    
+    // Set color based on GPS message timeout
+    if (!isGPSStreamOk())
+      M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);        // Red after 10 seconds
+    else if (isGPSTargetShortTimedOut())
+      M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);     // Yellow after 2.5 seconds
+    else
+      M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);      // Green when GPS is current
 
-    // Display Green heading to target at top with degrees sign suffix
+    // Display heading to target at top with degrees sign suffix
     M5.Lcd.printf("%3.0f", heading_to_target);
     M5.Lcd.setTextSize(2);
     degree_offset = -2;
@@ -316,28 +323,68 @@ void drawTargetSection()
     else
     {
       // Display distance to target in metres, with by 'm' suffix
-      M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
+      // Set color based on GPS message timeout
+      if (!isGPSStreamOk())
+        M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);        // Red after 10 seconds
+      else if (isGPSTargetShortTimedOut())
+        M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);     // Yellow after 2.5 seconds
+      else
+        M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);      // Green when GPS is current
+      
       M5.Lcd.setCursor(x, y);
-      M5.Lcd.setTextSize(5);
   
-      if (distance_to_target < 1000)      //     (less than 1km)
+      if (distance_to_target >= 1000)
       {
-        M5.Lcd.printf("\n%3.0f", distance_to_target);
-        M5.Lcd.setTextSize(3);
-  
         x = M5.Lcd.getCursorX();
         y = M5.Lcd.getCursorY();
-  
+
+        if (distance_to_target >= 10000)
+        {
+          M5.Lcd.setTextSize(4);
+          M5.Lcd.setCursor(x, y + 15);
+          M5.Lcd.printf("\n%4.0f", distance_to_target / 1000.0);
+          metre_offset = 14;
+        }
+        else
+        {
+          M5.Lcd.setTextSize(5);
+          M5.Lcd.println("");
+    
+          x = M5.Lcd.getCursorX();
+          y = M5.Lcd.getCursorY();
+
+          M5.Lcd.setCursor(x+5, y);
+
+          M5.Lcd.printf("%2.1f", distance_to_target / 1000.0);
+          metre_offset = 22;
+        }
+
+        M5.Lcd.setTextSize(2);
+
+        x = M5.Lcd.getCursorX();
+        y = M5.Lcd.getCursorY();
+
+        M5.Lcd.setCursor(x, y + metre_offset);
+        M5.Lcd.print("km");
+
+        M5.Lcd.setTextSize(5);
+        M5.Lcd.println("");
+      }
+      else  // < 1000m
+      {
+        M5.Lcd.setTextSize(5);
+        M5.Lcd.printf("\n%3.0f", distance_to_target);
+        M5.Lcd.setTextSize(3);
+
+        x = M5.Lcd.getCursorX();
+        y = M5.Lcd.getCursorY();
+
         metre_offset = 14;
         M5.Lcd.setCursor(x, y + metre_offset);
         M5.Lcd.print("m");
         M5.Lcd.setCursor(x, y);
         M5.Lcd.setTextSize(5);
         M5.Lcd.println("");
-      }
-      else
-      {
-        M5.Lcd.printf("\n*%3d", ((uint32_t)distance_to_target) % 1000);
       }
     }
   }
