@@ -67,7 +67,8 @@ void checkForButtonPresses()
       }
       break;
     }
-    
+
+#ifdef ENABLE_ESP_NOW_DISPLAY
     case ESP_NOW_DISPLAY:
     {
       if (p_primaryButton->wasReleasefor(buttonPressDurationToChangeScreen))
@@ -76,6 +77,7 @@ void checkForButtonPresses()
       }
       break;
     }
+#endif
 
     case JOURNEY_DISPLAY:
     {

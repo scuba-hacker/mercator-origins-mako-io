@@ -346,7 +346,9 @@ enum  e_mako_displays
   NAV_COURSE_DISPLAY, 
   SURVEY_DISPLAY, 
   LOCATION_DISPLAY,
-  ESP_NOW_DISPLAY,
+#ifdef ENABLE_ESP_NOW_DISPLAY
+  ESP_NOW_DISPLAY,  // uncomment to bring back
+#endif
   JOURNEY_DISPLAY, 
   AUDIO_TEST_DISPLAY,
   COMPASS_CALIBRATION_DISPLAY,
@@ -906,6 +908,7 @@ void lemonRxTask(void *arg)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool systemStartupAndCheckForOTADemand()
 {
+  delay(1000);
   M5.begin(/* LCD Enable */ true, /* Power Enable */ true,/* Serial Enable */ false, /* Buzzer Enable */ false);
 
   readPreferencesFromEEPROM();
@@ -1417,29 +1420,20 @@ bool processGPSMessageIfAvailable()
                 
               result = true;
             }
-            else if (GPS_status != GPS_FIX_FROM_FLOAT && gps.isSentenceRMC())
+            else if (gps.isSentenceRMC())
             {
               if (gps.date.year() == 2000)  // fake data received from float for No GPS.
               {
-                if (GPS_status != GPS_NO_GPS_LIVE_IN_FLOAT)
-                {
-                  GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
-                }
+                GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
               }
               else if (gps.date.year() == 2012) // fake data received from float for No Fix yet.
               {
-                if (GPS_status != GPS_NO_FIX_FROM_FLOAT)
-                {
-                  GPS_status = GPS_NO_FIX_FROM_FLOAT;
-                }
+                GPS_status = GPS_NO_FIX_FROM_FLOAT;
               }
               else
               {
-                if (GPS_status != GPS_FIX_FROM_FLOAT)
-                {
-                  GPS_status = GPS_FIX_FROM_FLOAT;
-                  hasEverReceivedGPSFix = true;  // Mark that we've received a fix
-                }
+                GPS_status = GPS_FIX_FROM_FLOAT;
+                hasEverReceivedGPSFix = true;  // Mark that we've received a fix
               }
               result = false;
             }

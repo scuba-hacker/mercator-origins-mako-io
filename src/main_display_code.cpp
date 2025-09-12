@@ -11,7 +11,10 @@ void switchToNextDisplayToShow()
       
   } while (skipDiagnosticDisplays && 
            (display_to_show == LOCATION_DISPLAY ||
+
+#ifdef ENABLE_ESP_NOW_DISPLAY
             display_to_show == ESP_NOW_DISPLAY ||  
+#endif            
             display_to_show == JOURNEY_DISPLAY || 
             display_to_show == AUDIO_TEST_DISPLAY || 
             display_to_show == COMPASS_CALIBRATION_DISPLAY));
@@ -48,11 +51,15 @@ void refreshDisplay()
       drawLocationStats();
       break;
     }
+
+#ifdef ENABLE_ESP_NOW_DISPLAY
     case ESP_NOW_DISPLAY:
     {
       drawEspNowDisplay();
       break;
     }
+#endif
+
     case JOURNEY_DISPLAY:
     {
       drawJourneyStats();
@@ -335,7 +342,6 @@ void drawTargetSection()
 
       M5.Lcd.setCursor(x, y);
 
-      distance_to_target = 10001;
       if (distance_to_target >= 1000)
       {
         x = M5.Lcd.getCursorX();
