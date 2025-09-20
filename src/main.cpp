@@ -1401,7 +1401,7 @@ bool processGPSMessageIfAvailable()
             if (gps.isSentenceGGA())      // only send uplink message back for GGA messages
             {
               // Respond to both FIX and NO FIX GGA messages to maintain communication with Lemon
-              if (hasValidLocation)
+              if (gps.isSentenceContainingValidFix())
               {
                 // Valid GPS fix - update positional data and respond normally
                 refreshAndCalculatePositionalAttributes();
@@ -1422,18 +1422,18 @@ bool processGPSMessageIfAvailable()
             }
             else if (gps.isSentenceRMC())
             {
-              if (gps.date.year() == 2000)  // fake data received from float for No GPS.
+              if (gps.date.year() == 2000)      // fake data received from float for No GPS.
               {
                 GPS_status = GPS_NO_GPS_LIVE_IN_FLOAT;
               }
-              else if (gps.date.year() == 2012) // fake data received from float for No Fix yet.
+              else if (gps.date.year() == 2012) // fake data received from float for No Fix.
               {
                 GPS_status = GPS_NO_FIX_FROM_FLOAT;
               }
               else
               {
                 GPS_status = GPS_FIX_FROM_FLOAT;
-                hasEverReceivedGPSFix = true;  // Mark that we've received a fix
+                hasEverReceivedGPSFix = true;   // Mark that we've received a fix
               }
               result = false;
             }

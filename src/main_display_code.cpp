@@ -197,7 +197,7 @@ void drawSurveyDisplay()
     if (!isGPSStreamOk())
       M5.Lcd.setTextColor(TFT_WHITE, TFT_RED);        // Red after 10 seconds no fix
     else if (isGPSTargetShortTimedOut())
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_YELLOW);     // Yellow after 3 seconds no fix  
+      M5.Lcd.setTextColor(TFT_BLACK, TFT_YELLOW);     // Yellow after 3 seconds no fix  
     else
       M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);      // Black when GPS fixes current
 
@@ -777,9 +777,10 @@ void drawJourneyStats()
   M5.Lcd.setCursor(5, 51);
   M5.Lcd.printf("Fix:%lu Up:%lu", fixCount, uplinkMessageCount);
   M5.Lcd.setCursor(5, 68);
-  M5.Lcd.printf("chk+:%lu chk-:%lu", newPassedChecksum, newFailedChecksum);
+  M5.Lcd.printf("No Fix:%lu", noFixCount);
   M5.Lcd.setCursor(5, 85);
-  M5.Lcd.printf("tc:%.0f d:%.0f  ", heading_to_target, distance_to_target);
+  M5.Lcd.printf("chk+:%lu chk-:%lu", newPassedChecksum, newFailedChecksum); 
+//  M5.Lcd.printf("tc:%.0f d:%.0f  ", heading_to_target, distance_to_target);
   M5.Lcd.setCursor(5, 102);
   M5.Lcd.printf("%02d:%02d:%02d UTC", gps.time.hour(), gps.time.minute(), gps.time.second());
   M5.Lcd.setCursor(5, 119);
