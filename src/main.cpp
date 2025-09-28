@@ -8,7 +8,7 @@ bool goProButtonsPrimaryControl = true;     // false means use the M5 Stick phys
                                             // go pro buttons primary so that OTA can be done with fixed code. 
                                             // Relies on receiving ESP Now message from Tiger
 
-bool divingInTheSea = true;                 // Salt / Fresh water depth sensor calibration
+bool divingInTheSea = false;                 // Salt / Fresh water depth sensor calibration
 
 bool testTigerOutsidePod = false;
 bool writeLogToSerial = false;
@@ -63,7 +63,7 @@ bool usingSDP8600OptoSchmittDetector = true; // alternative is SDP8406 phototran
 
 bool enableDigitalCompass = true;
 bool enableTiltCompensation = true;
-bool enableSmoothedCompass = false;
+bool enableSmoothedCompass = true;
 bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
 bool enableIMUSensor = true;
@@ -489,6 +489,7 @@ uint32_t recordHighlightExpireTime = 0;
 uint32_t recordHighlightDisplayDuration = 10000;
 bool     recordSurveyHighlight = false;
 
+/*
 // Dover test
 const uint8_t waypointCountDiveOne = 2;
 const uint8_t waypointExitDiveOne = 1;
@@ -507,6 +508,7 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
   [0] = { ._label = "Z06 Wreck Zone", ._m5label = "Z06\nWreck\nZone", ._cat=JETTY, ._lat = 51.066017, ._long = 1.270883},
   [1] = { ._label = "Z06 Wreck Zone", ._m5label = "Z06\nWreck\nZone", ._cat=JETTY, ._lat = 51.066017, ._long = 1.270883},
 };
+*/
 
 /*
 // Home test
@@ -531,59 +533,58 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
 };
 */
 
-/*
-// Dive 1 - Tue eve 2nd Sep 2025 with Curt and Stefanos
-
-const uint8_t waypointCountDiveOne = 20;
-const uint8_t waypointExitDiveOne = 19;
-
-NavigationWaypoint diveOneWaypoints[waypointCountDiveOne] =
+// Dive 1
+NavigationWaypoint diveOneWaypoints[] =
 {
-  [0] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316},
-  [1] = { ._label = "04N Spitfire", ._lat = 51.4601028571429, ._long = -0.54883835},
-  [2] = { ._label = "03N Scimitar", ._lat = 51.460347, ._long = -0.5489195},
-  [3] = { ._label = "X02 Quarry Machine in Reeds", ._lat = 51.460434, ._long = -0.548921},
-  [4] = { ._label = "05aN Lightning1 12d fr Scimitar (03N)", ._lat = 51.4605855, ._long = -0.548901666666667},
-  [5] = { ._label = "05bN Lightning2 12d fr Scimitar (03N)", ._lat = 51.4606164444445, ._long = -0.548867111111111},
-  [6] = { ._label = "02N? Sub 4m 337d from Lightning (5)", ._lat = 0, ._long = 0},
-  [7] = { ._label = "01N? Canoe 3m 7d from Sub (2)", ._lat = 0, ._long = 0},
-  [8] = { ._label = "12Nb? Commer Van 6m 159d fr Canoe", ._lat = 0, ._long = 0},
-  [9] = { ._label = "06aN Caves Centre", ._lat = 51.460947625, ._long = -0.54878325},
-  [10] = { ._label = "12Nc? Commer Van 6m 22d fr Caves", ._lat = 0, ._long = 0},  
-  [11] = { ._label = "24N Half Die Hard Taxi", ._lat = 51.460773, ._long = -0.547620875},
-  [12] = { ._label = "12Na? Commer Van 6m 317d fr die hard", ._lat = 0, ._long = 0},
-  [13] = { ._label = "19N Chick Hutch Boat", ._lat = 51.4604027142857, ._long = -0.54804},
-  [14] = { ._label = "23N Traffic Lights 7m 143d from (21B)", ._lat = 51.4600558888889, ._long = -0.547677333333333},
-  [15] = { ._label = "22B Lady of Kent Search Light 5m", ._lat = 51.4599185714286, ._long = -0.547681},
-  [16] = { ._label = "25N Boat In A Hole 7m ENE from (22B)", ._lat = 51.4599545, ._long = -0.54755475},
-  [17] = { ._label = "20N Sweet Bowl 311d from (22B)", ._lat = 51.46020025, ._long = -0.5479775},
-  [18] = { ._label = "18N Milk Float", ._lat = 51.4601745714286, ._long = -0.548058571428571},
-  [19] = { ._label = "Z01 Cafe Jetty", ._lat = 51.460015, ._long = -0.548316}
+  { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
+  { ._label = "10N Bus 2m", ._m5label = "10N\n\nBus\n\n2m", ._cat=NO_BUOY,._lat = 51.460073, ._long = -0.548515},
+  { ._label = "X07 Boat with Chain Links", ._m5label = "X07\nChain\nLink\nBoat", ._cat=UNMARKED, ._lat = 51.4600385714286, ._long = -0.548724142857143},
+  { ._label = "04N Spitfire Car 6m", ._m5label = "04N\nSpit\n  fire\nCar\n6m", ._cat=NO_BUOY, ._lat = 51.4601028571429, ._long = -0.54883835},
+  { ._label = "03N Scimitar Car 5.5m",  ._m5label = "03N\nScimitar\nCar\n5.5m", ._cat=NO_BUOY, ._lat = 51.460347, ._long = -0.5489195},
+  { ._label = "X02 Quarry Machine in Reeds", ._m5label = "X02\nQuarry\nMachine\nReeds", ._cat=UNMARKED, ._lat = 51.460434, ._long = -0.548921},
+  { ._label = "05N Lightning Boat 5.5m", ._m5label = "05N\nLight\n  ning\nBoat\n5.5m", ._cat=NO_BUOY, ._lat = 51.4605855, ._long = -0.548901666666667},
+  { ._label = "06aN Caves Centre", ._m5label = "06aN\nCaves\nCentre", ._cat=NO_BUOY, ._lat = 51.460947625, ._long = -0.54878325},
+  { ._label = "12N Commer Van 6m", ._m5label = "12N\n\nCommer\nVan\n\n6m", BLUE_BUOY, ._lat = 51.4613355909091, ._long = -0.548469727272727},
+  { ._label = "X21 Memorial Stone - Kit 7.5m", ._m5label = "X21\nMem\nStone\nKit\n7.5m", ._cat=UNMARKED, ._lat = 51.460993, ._long = -0.548006}, // Near die hard taxi
+  { ._label = "24N Half Die Hard Taxi 8m", ._m5label = "24N\n\nHalf\nDie\nHard\nTaxi 8m", ._cat=NO_BUOY, ._lat = 51.460773, ._long = -0.547620875},
+  { ._label = "X20 La Mouette Boat", ._m5label = "X20\nLa\nMouette\nBoat", ._cat=UNMARKED, ._lat = 51.460740, ._long = -0.547713}, // By die hard taxi
+  { ._label = "27B Wreck Site 6m", ._m5label = "27B\n\nWreck\nSite\n\n6m", BLUE_BUOY, ._lat = 51.4604300973436, ._long = -0.547383365365033},
+  { ._label = "43N Thorpe Orange Boat 5.5m", ._m5label = "43N\n\nThorpe\nOrange\nBoat\n\n5.5m", ._cat=NO_BUOY, ._lat = 51.4602073333333, ._long = -0.546787666666667},
+  { ._label = "35N Dragon Boat 7.5m", ._m5label = "35N\n\nDragon\nBoat\n\n7.5m", ._cat=NO_BUOY, ._lat = 51.4599636666667, ._long = -0.547154333333333},
+  { ._label = "46N Plane 6m", ._m5label = "46N\n\nPlane\n\n6m", ._cat=NO_BUOY, ._lat = 51.459745, ._long = -0.546649},
+  { ._label = "50aN Swim Through - no crates 6m", ._m5label = "50aN\nSwim\nThrough\nno\ncrates\n\n6m", ._cat=UNMARKED, ._lat = 51.45914367, ._long = -0.546032333},
+  { ._label = "X22 Fruit Machine 5.5m", ._m5label = "X22\nFruit\nMach\n5.5m", ._cat=UNMARKED, ._lat = 51.459353, ._long = -0.546939}, // By disused exit + 2 buried boats
+  { ._label = "37N Dive Bell 4m", ._m5label = "37N\n\nDive\nBell\n\n4m", ._cat=NO_BUOY, ._lat = 51.4594757058824, ._long = -0.547087117647059},
+  { ._label = "23N Traffic Lights 7m", ._m5label = "23N\n\nTraffic\nLights\n\n7m", ._cat=NO_BUOY, ._lat = 51.4600558888889, ._long = -0.547677333333333},
+  { ._label = "X25 Dumpy Cylinder 6m", ._m5label = "X25\nDumpy\nCylinder\n6m",._cat=UNMARKED, ._lat = 51.4600631, ._long = -0.5480722},
+  { ._label = "X15 Fireworks Launcher", ._m5label = "X15\nFirework\nLauncher", ._cat=UNMARKED, ._lat = 51.4599975, ._long = -0.5481015},
+  { ._label = "Z02 Mid Jetty", ._m5label = "Z02\n\nMid\nJetty", ._cat=JETTY, ._lat = 51.459547, ._long = -0.547461},
 };
 
-// Dive 2 - Tue eve 2nd Sep 2025 with Curt and Stefanos
+const uint8_t waypointCountDiveOne = sizeof(diveOneWaypoints)/sizeof(NavigationWaypoint); const uint8_t waypointExitDiveOne = waypointCountDiveOne - 1;
 
-const uint8_t waypointCountDiveTwo = 14;
-const uint8_t waypointExitDiveTwo = 13;
-
-NavigationWaypoint diveTwoWaypoints[waypointCountDiveTwo] =
+// Dive 2
+NavigationWaypoint diveTwoWaypoints[] =
 {
-  [0] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461},
-  [1] = { ._label = "30B White boat by platform", ._lat = 51.4598131428572, ._long = -0.547380285714286},
-  [2] = { ._label = "38B? Lifeboat 78d 6.5m ", ._lat = 51.4598136301389, ._long = -0.546991890449386},
-  [3] = { ._label = "45B List Sharon 7.5m", ._lat = 51.4598098699702, ._long = -0.54670373432756},
-  [4] = { ._label = "46N Plane", ._lat = 51.459745, ._long = -0.546649},
-  [5] = { ._label = "49B Claymore 6.5m", ._lat = 51.459634435324, ._long = -0.54646635372985},
-  [6] = { ._label = "48N Holey Ship 191d from 49B 4.5m", ._lat = 0, ._long = 0},
-  [7] = { ._label = "50cN Swim Through - crates", ._lat = 51.4592045, ._long = -0.545912625},
-  [8] = { ._label = "51B Orca Van", ._lat = 51.4591431428571, ._long = -0.545936857142857},
-  [9] = { ._label = "X15? Sphere Bell via Reeds to Old Jetty", ._lat = 0, ._long = 0},
-  [10] = { ._label = "44N VW Van", ._lat = 51.459368, ._long = -0.546760142857143},
-  [11] = { ._label = "37N Dive Bell", ._lat = 51.4595419038462, ._long = -0.547160394230769},
-  [12] = { ._label = "39N London Black Cab", ._lat = 51.459729, ._long = -0.546992857142857},
-  [13] = { ._label = "Z02 Mid Jetty", ._lat = 51.459547, ._long = -0.547461}
+  { ._label = "Z02 Mid Jetty", ._m5label = "Z02\n\nMid\nJetty", ._cat=JETTY, ._lat = 51.459547, ._long = -0.547461},
+  { ._label = "44N VW Camper Van and Seahorse 5.5m", ._m5label = "44N\nVW\nCamper\nVan and\nSeahors\n\n5.5m", ._cat=NO_BUOY, ._lat = 51.459368, ._long = -0.546760142857143},
+  { ._label = "51B Orca Van 5.5m", ._m5label = "51B\n\nOrca\nVan\n\n5.5m", BLUE_BUOY, ._lat = 51.4591431428571, ._long = -0.545936857142857},
+  { ._label = "50aN Swim Through - no crates 6m", ._m5label = "50aN\nSwim\nThrough\nno\ncrates\n\n6m", ._cat=UNMARKED, ._lat = 51.45914367, ._long = -0.546032333},
+  { ._label = "49B Claymore 6.5m", ._m5label = "49B\n\nClay-\n   more\n\n6.5m", BLUE_BUOY, ._lat = 51.459634435324, ._long = -0.54646635372985},
+  { ._label = "46N Plane 6m", ._m5label = "46N\n\nPlane\n\n6m", ._cat=NO_BUOY, ._lat = 51.459745, ._long = -0.546649},
+  { ._label = "41N Tin/Cabin Boat 7m", ._m5label = "41N\n\nTin\nCabin\nBoat\n\n7m", ._cat=NO_BUOY, ._lat = 51.459676625, ._long = -0.5468125},
+  { ._label = "39N London Black Cab 7m", ._m5label = "39N\n\nLondon\nBlack\nCab\n\n7m", ._cat=NO_BUOY, ._lat = 51.459729, ._long = -0.546992857142857},
+  { ._label = "38B Lifeboat 6.5m", ._m5label = "38B\n\nLife\nBoat\n\n6.5m", BLUE_BUOY, ._lat = 51.459839375, ._long = -0.5469307},
+  { ._label = "35N Dragon Boat 7.5m", ._m5label = "35N\n\nDragon\nBoat\n\n7.5m", ._cat=NO_BUOY, ._lat = 51.4599636666667, ._long = -0.547154333333333},
+  { ._label = "25N Boat In A Hole 7m", ._m5label = "25N\n\nBoat In\nA Hole\n\n7m", ._cat=NO_BUOY, ._lat = 51.4599545, ._long = -0.54755475},
+  { ._label = "22B Lady of Kent Search Light 5m", ._m5label = "22B\nLady of\nKent\nSearch\nLight\n\n5m", BLUE_BUOY, ._lat = 51.4599185714286, ._long = -0.547681},
+  { ._label = "20N Skittles Sweet Bowl 5.5m", ._m5label = "20N\n\nSkittle\nSweet\nBowl\n\n5.5m", ._cat=NO_BUOY, ._lat = 51.4600375, ._long = -0.5478815},
+  { ._label = "X12 Cement Mixer", ._m5label = "X12\nCement\nMixer\n", ._cat=UNMARKED, ._lat = 51.46020025, ._long =	-0.5478815},
+  { ._label = "18N Milk Float 6.5m", ._m5label = "18N\n\nMilk\nFloat\n\n6.5m", ._cat=NO_BUOY, ._lat = 51.4601745714286, ._long = -0.548058571428571},
+  { ._label = "10N Bus 2m", ._m5label = "10N\n\nBus\n\n2m", ._cat=NO_BUOY,._lat = 51.460073, ._long = -0.548515},
+  { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
 };
-*/
+const uint8_t waypointCountDiveTwo =  sizeof(diveTwoWaypoints)/sizeof(NavigationWaypoint); const uint8_t waypointExitDiveTwo = waypointCountDiveTwo - 1;
 
 const uint8_t* p_currentDiveWaypointCount = nullptr;
 const uint8_t* p_currentDiveWaypointExit = nullptr;
@@ -746,12 +747,12 @@ const uint8_t s_smoothedCompassBufferSize = 10;
 double s_smoothedCompassHeading[s_smoothedCompassBufferSize];
 uint8_t s_nextCompassSampleIndex = 0;
 bool s_smoothedCompassBufferInitialised = false;
-const uint16_t s_smoothedCompassSampleDelay = 100;
 
 bool smoothedCompassCalcInProgress = false;
 
+
 uint32_t s_lastCompassNotSmoothedDisplayRefresh = 0;
-const uint32_t s_compassNotSmoothedHeadingUpdateRate = 150; // time between each compass update to screen 
+const uint32_t s_compassNotSmoothedHeadingUpdateRate = 100; // Reduced from 200ms to 150ms for more responsive updates
 
 uint32_t s_lastSendTestSerialBytesTest = 0;
 const uint32_t s_sendTestSerialBytesPeriodMs = 1000;
@@ -1034,8 +1035,30 @@ void setup()
 //  magnetometer_max = (vec<double>) { 51.6, 35.85, 86.85};
  
  // recalbirated on 5 Sep 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
-  magnetometer_min = (vec<double>) { -44.1, -58.8, -10.350};
-  magnetometer_max = (vec<double>) { 54.0, 33.75, 87.6};
+//  magnetometer_min = (vec<double>) { -44.1, -58.8, -10.350};
+//`  magnetometer_max = (vec<double>) { 54.0, 33.75, 87.6};
+
+  // CLAUDE - use these compass calibration vectors below
+  // recalibration on 28 Sep 2025 only Oceanic mounted, plus the gopro mount arm.
+  magnetometer_min = (vec<double>) { -40.05, -58.650, -2.550};
+  magnetometer_max = (vec<double>) { 56.4, 33.9, 94.35};
+
+    // Measurements against real Suunto dive compass.
+  // Suunto compass versus Mako digital compass
+  //
+  // 0 N on    suunto:  352 on digital compass (-8 difference)
+  // 45 NE on  suunto:  47 (+2)
+  // 90 E on   suunto:  100 (+10)
+  // 135 SE on suunto:  156 (+21)
+  // 180 S on  suunto:  186 (+6)
+  // 225 SW on suunto:  220 (-5)
+  // 270 W on  suunto:  260 (-10)
+  // 315 NW on suunto:  315 (0)
+
+  // Initialize compass smoothing arrays
+  for (uint8_t i = 0; i < s_smoothedCompassBufferSize; i++) {
+    s_smoothedCompassHeading[i] = 0.0;
+  }
 
   if (enableHumiditySensor)
   {

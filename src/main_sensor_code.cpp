@@ -216,7 +216,6 @@ bool getSmoothedMagHeading(double& magHeading)
   // compute average from s_nextCompassSampleIndex % s_smoothedCompassBufferSize to s_nextCompassSampleIndex-1
   magHeading = 0.0;
 
-  bool correctForDiscontinuityAtZero = false;
   bool magHeadingInNWQuadrantFound = false;
   bool magHeadingInNEQuadrantFound = false;
 
@@ -271,10 +270,11 @@ template <typename T> double calculateTiltCompensatedHeading(vec<T> from)
   accel.getEvent(&event);
   accelerometer_vector = {event.acceleration.x, event.acceleration.y, event.acceleration.z};
 
-  // Important: subtract average of min and max from magnetometer calibration
+  // Hard iron calibration only - subtract center point
   magnetometer_vector.x -= (magnetometer_min.x + magnetometer_max.x) / 2.0;
   magnetometer_vector.y -= (magnetometer_min.y + magnetometer_max.y) / 2.0;
   magnetometer_vector.z -= (magnetometer_min.z + magnetometer_max.z) / 2.0;
+
   // Compute east and north vectors
   vec<double> east;
   vec<double> north;
