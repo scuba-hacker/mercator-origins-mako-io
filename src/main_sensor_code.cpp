@@ -1,5 +1,46 @@
 #ifdef BUILD_INCLUDE_MAIN_SENSOR_CODE
 
+// Calibration data collection functions
+void startCalibrationDataCollection()
+{
+  collectingCalibrationData = true;
+  calibrationSampleCount = 0;
+  lastCalibrationSampleTime = 0;
+  USB_SERIAL_PRINTLN("Started calibration data collection");
+}
+
+void stopCalibrationDataCollection()
+{
+  collectingCalibrationData = false;
+  USB_SERIAL_PRINTF("Stopped calibration data collection. Collected %d samples\n", calibrationSampleCount);
+}
+
+void collectCalibrationSample()
+{
+  if (!collectingCalibrationData || calibrationSampleCount >= maxCalibrationSamples) {
+    return;
+  }
+
+  uint32_t currentTime = millis();
+  if (currentTime - lastCalibrationSampleTime < calibrationSampleInterval) {
+    return; // Not time for next sample yet
+  }
+
+  sensors_event_t magEvent;
+  mag.getEvent(&magEvent);
+
+  // Store raw magnetometer reading
+  calibrationData[calibrationSampleCount].x = magEvent.magnetic.x;
+  calibrationData[calibrationSampleCount].y = magEvent.magnetic.y;
+  calibrationData[calibrationSampleCount].z = magEvent.magnetic.z;
+
+  calibrationSampleCount++;
+  lastCalibrationSampleTime = currentTime;
+
+  if (calibrationSampleCount % 100 == 0) {
+    USB_SERIAL_PRINTF("Collected %d calibration samples\n", calibrationSampleCount);
+  }
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

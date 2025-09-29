@@ -221,6 +221,10 @@ void publishToSilkyStopPlayback();
 void drawCompassCalibration();
 void drawThisTarget();
 void notifySoundsOnOffChanged();
+void startCalibrationDataCollection();
+void stopCalibrationDataCollection();
+void collectCalibrationSample();
+void setupCalibrationWebEndpoint();
 void rotateToNextGuidanceSounds();
 bool connectESPNow();
 void configESPNowDeviceAP();
@@ -723,6 +727,17 @@ vec<double> magnetometer_min;
 vec<double> magnetometer_vector, accelerometer_vector;
 vec<float> imu_gyro_vector, imu_lin_acc_vector, imu_rot_acc_vector;
 float imu_temperature = 0.0;
+
+// Calibration data collection for soft iron compensation
+const uint16_t maxCalibrationSamples = 3000;
+const uint32_t calibrationSampleInterval = 20; // Sample every 10ms during calibration
+struct CalibrationSample {
+  double x, y, z;
+};
+CalibrationSample calibrationData[maxCalibrationSamples];
+uint16_t calibrationSampleCount = 0;
+bool collectingCalibrationData = false;
+uint32_t lastCalibrationSampleTime = 0;
 
 void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
                         float* lin_acc_x, float* lin_acc_y, float* lin_acc_z,

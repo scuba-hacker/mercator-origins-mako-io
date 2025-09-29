@@ -173,14 +173,17 @@ void checkForButtonPresses()
 
       if (p_secondButton->wasReleasefor(1000)) // stop calibration
       {
-        M5.Lcd.print("Saving\nCalibration");  
+        M5.Lcd.print("Saving\nCalibration");
+
+        // Stop collecting calibration data
+        stopCalibrationDataCollection();
 
         // save current max/min vectors to magnetometer_min and magnetometer_max
         magnetometer_min = calib_magnetometer_min;
         magnetometer_max = calib_magnetometer_max;
-        
+
         smoothedCompassCalcInProgress = true;
-        
+
         delay(10000);
         switchToNextDisplayToShow();
       }
@@ -190,7 +193,10 @@ void checkForButtonPresses()
         M5.Lcd.fillScreen(TFT_BLACK);
 
         smoothedCompassCalcInProgress = false;
-        
+
+        // Start collecting calibration data for soft iron compensation
+        startCalibrationDataCollection();
+
         // save current max/min vectors to magnetometer_min and magnetometer_max
         calib_magnetometer_min = vec<double>(initial_min_mag,initial_min_mag,initial_min_mag);
         calib_magnetometer_max = vec<double>(initial_max_mag,initial_max_mag,initial_max_mag);

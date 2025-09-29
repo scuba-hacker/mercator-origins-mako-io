@@ -264,9 +264,67 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
   {
     if (wifiOnly == false && !otaActive)
     {
-      asyncWebServer.on("/", HTTP_GET, [](AsyncWebServerRequest * request) 
+      asyncWebServer.on("/", HTTP_GET, [](AsyncWebServerRequest * request)
       {
-        request->send(200, "text/plain", "To upload firmware use /update");
+        request->send(200, "text/plain", "To upload firmware use /update. For compass calibration data use /calibration-data");
+      });
+
+      // Compass calibration data endpoint
+      asyncWebServer.on("/calibration-data", HTTP_GET, [](AsyncWebServerRequest * request)
+      {
+        if (calibrationSampleCount == 0) {
+          request->send(200, "text/plain", "No calibration data available. Start compass calibration first.");
+          return;
+        }
+
+        AsyncWebServerResponse *response = request->beginChunkedResponse("text/csv", [](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
+          static uint16_t currentSample = 0;
+
+          // Reset on first chunk
+          if (index == 0) {
+            currentSample = 0;
+          }
+
+          size_t written = 0;
+
+          // Write CSV header on first chunk
+          if (currentSample == 0) {
+            const char* header = "x,y,z\n";
+            size_t headerLen = strlen(header);
+            if (headerLen <= maxLen) {
+              memcpy(buffer, header, headerLen);
+              written = headerLen;
+            }
+          }
+
+          // Write samples in chunks
+          const size_t maxSamplesPerChunk = 50; // Process 50 samples per chunk
+          size_t samplesInThisChunk = 0;
+
+          while (currentSample < calibrationSampleCount &&
+                 samplesInThisChunk < maxSamplesPerChunk &&
+                 written < maxLen - 36) { // Leave room for one complete line
+
+            char line[100];
+            int lineLen = snprintf(line, sizeof(line), "%.6f,%.6f,%.6f\n",
+                                 calibrationData[currentSample].x,
+                                 calibrationData[currentSample].y,
+                                 calibrationData[currentSample].z);
+
+            if (written + lineLen > maxLen) {
+              break; // Not enough space for this line
+            }
+
+            memcpy(buffer + written, line, lineLen);
+            written += lineLen;
+            currentSample++;
+            samplesInThisChunk++;
+          }
+
+          return written;
+        });
+
+        request->send(response);
       });
         
       AsyncElegantOTA.setID(MERCATOR_OTA_DEVICE_LABEL);
@@ -407,7 +465,65 @@ void toggleOTAActive()
     if (WiFi.status() == WL_CONNECTED)
     {
       asyncWebServer.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
-        request->send(200, "text/plain", "To upload firmware use /update");
+        request->send(200, "text/plain", "To upload firmware use /update. For compass calibration data use /calibration-data");
+      });
+
+      // Compass calibration data endpoint
+      asyncWebServer.on("/calibration-data", HTTP_GET, [](AsyncWebServerRequest * request)
+      {
+        if (calibrationSampleCount == 0) {
+          request->send(200, "text/plain", "No calibration data available. Start compass calibration first.");
+          return;
+        }
+
+        AsyncWebServerResponse *response = request->beginChunkedResponse("text/csv", [](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
+          static uint16_t currentSample = 0;
+
+          // Reset on first chunk
+          if (index == 0) {
+            currentSample = 0;
+          }
+
+          size_t written = 0;
+
+          // Write CSV header on first chunk
+          if (currentSample == 0) {
+            const char* header = "x,y,z\n";
+            size_t headerLen = strlen(header);
+            if (headerLen <= maxLen) {
+              memcpy(buffer, header, headerLen);
+              written = headerLen;
+            }
+          }
+
+          // Write samples in chunks
+          const size_t maxSamplesPerChunk = 50; // Process 50 samples per chunk
+          size_t samplesInThisChunk = 0;
+
+          while (currentSample < calibrationSampleCount &&
+                 samplesInThisChunk < maxSamplesPerChunk &&
+                 written < maxLen - 36) { // Leave room for one complete line
+
+            char line[100];
+            int lineLen = snprintf(line, sizeof(line), "%.6f,%.6f,%.6f\n",
+                                 calibrationData[currentSample].x,
+                                 calibrationData[currentSample].y,
+                                 calibrationData[currentSample].z);
+
+            if (written + lineLen > maxLen) {
+              break; // Not enough space for this line
+            }
+
+            memcpy(buffer + written, line, lineLen);
+            written += lineLen;
+            currentSample++;
+            samplesInThisChunk++;
+          }
+
+          return written;
+        });
+
+        request->send(response);
       });
 
       AsyncElegantOTA.setID(MERCATOR_OTA_DEVICE_LABEL);

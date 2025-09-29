@@ -712,11 +712,11 @@ void drawLocationStats()
 
   M5.Lcd.setCursor(5, 85);
 //  M5.Lcd.printf("T-Reeds: %s\n",tigerReeds);
-  M5.Lcd.printf("Rx: %lu\n",bytesReceivedFromLemon);
+  M5.Lcd.printf("Rx/Tx: %lu / %lu\n",bytesReceivedFromLemon,bytesTransmittedToLemon);
   
   M5.Lcd.setCursor(5, 102);
-  M5.Lcd.printf("Tx: %lu\n",bytesTransmittedToLemon);
-
+  multi_heap_info_t info;
+  M5.Lcd.printf("Heap/Largest: %lu / %lu \n",info.total_free_bytes,info.largest_free_block);
 
 //  M5.Lcd.printf("Silky: %s",silkyMessage);  
 //  M5.Lcd.printf("T: (%d)\n%s", (int)(nextWaypoint - currentDiveWaypoints)+1, nextWaypoint->_m5label);
@@ -798,25 +798,33 @@ void drawCompassCalibration()
   if (smoothedCompassCalcInProgress == false)
   {
     M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);
-  
+
     M5.Lcd.printf("Calib Start\n           \n");
 
     sensors_event_t magEvent;
 
     mag.getEvent(&magEvent);
-  
+
+    // Collect calibration data for soft iron compensation
+    collectCalibrationSample();
+
     if (magEvent.magnetic.x < calib_magnetometer_min.x) calib_magnetometer_min.x = magEvent.magnetic.x;
     if (magEvent.magnetic.x > calib_magnetometer_max.x) calib_magnetometer_max.x = magEvent.magnetic.x;
-  
+
     if (magEvent.magnetic.y < calib_magnetometer_min.y) calib_magnetometer_min.y = magEvent.magnetic.y;
     if (magEvent.magnetic.y > calib_magnetometer_max.y) calib_magnetometer_max.y = magEvent.magnetic.y;
-  
+
     if (magEvent.magnetic.z < calib_magnetometer_min.z) calib_magnetometer_min.z = magEvent.magnetic.z;
     if (magEvent.magnetic.z > calib_magnetometer_max.z) calib_magnetometer_max.z = magEvent.magnetic.z;
-    
+
     M5.Lcd.printf("x %.3f\n  %.3f\n\n",calib_magnetometer_min.x,calib_magnetometer_max.x);
     M5.Lcd.printf("y %.3f\n  %.3f\n\n",calib_magnetometer_min.y,calib_magnetometer_max.y);
     M5.Lcd.printf("z %.3f\n  %.3f\n\n",calib_magnetometer_min.z,calib_magnetometer_max.z);
+
+    // Show calibration data collection status
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+    M5.Lcd.printf("\nData samples: %d/%d", calibrationSampleCount, maxCalibrationSamples);
   }
   else
   {
