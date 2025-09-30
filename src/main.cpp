@@ -64,9 +64,10 @@ bool usingSDP8600OptoSchmittDetector = true; // alternative is SDP8406 phototran
 bool enableDigitalCompass = true;
 bool enableTiltCompensation = true;
 bool enableSmoothedCompass = true;
+bool enableMedianHeadingSmoothing = true;
 bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
-bool enableIMUSensor = true;
+bool enableIMUSensor = false;
 bool enableColourSensor = true;
 const uint32_t minimum_sensor_read_time = 0; // (ms) regulates upload of responses to lemon by normalising the time to process sensor readings. This contributes most to the round-trip latency.
 
@@ -130,7 +131,7 @@ bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts);
 bool setupOTAWebServer(const char* _ssid, const char* _password, const char* label, uint32_t timeout, bool wifiOnly);
 bool getMagHeadingTiltCompensated(double& tiltCompensatedHeading);
 bool getMagHeadingNotTiltCompensated(double& heading);
-bool getSmoothedMagHeading(double& b);
+bool getSmoothedMagHeading(double& b,bool useMedian = false);
 std::string getCardinal(float b, bool surveyScreen = false);
 void getTempAndHumidityAndAirPressureBME280(float& h, float& t, float& p, float& p_a);
 void getDepth(float& d, float& d_t, float& d_p, float& d_a, bool original_read);
@@ -158,6 +159,7 @@ bool isGPSTargetShortTimedOut();
 bool isInternetUploadOk();
 bool processGPSMessageIfAvailable();
 void refreshAndCalculatePositionalAttributes();
+void initSensors();
 void acquireAllSensorReadings();
 void checkForButtonPresses();
 void refreshDisplay();
@@ -786,8 +788,6 @@ const uint8_t  M5_BUTTON_B_PIN = BUTTON_B_PIN;
 const uint8_t  REED_SWITCH_GPIO = 38;      // input triggers with finger proximity - not now used - new input only input - on white wire of Mako
 const uint32_t MERCATOR_DEBOUNCE_MS = 0;
 
-const bool useIRLEDforTx = false;   // setting to true currently interferes with I2C (flashing green light) and Tx not functional
-
 const uint8_t HAT_GPS_RX_GPIO = 26;
 const uint8_t HAT_GPS_TX_GPIO = 2;
 const uint8_t IR_LED_GPS_TX_GPIO = 9;
@@ -960,6 +960,7 @@ void setup()
   //////// PROTECTED - DO NOT ADD CODE BEFORE THE OTA DEMAND CHECK  - RISK OF OTA FAILURE
   if (systemStartupAndCheckForOTADemand())
     return;     // OTA Required, skip rest of setup.
+  //////// PROTECTED - DO NOT ADD CODE BEFORE THE OTA DEMAND CHECK  - RISK OF OTA FAILURE
 
   espNowMsgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
 
@@ -967,37 +968,9 @@ void setup()
 
   switchDivePlan();   // initialise to dive one
 
-  if (useIRLEDforTx)
-  {
-    pinMode(IR_LED_GPS_TX_GPIO, OUTPUT);
-    if (usingSDP8600OptoSchmittDetector)
-    {
-      // if using SDP8600 phototransistor - logic not inverted on TX
-      digitalWrite(IR_LED_GPS_TX_GPIO, LOW); // switch off - sets TX high on input to RS485 which is correct for no data being sent  }
-    }
-    else
-    {
-      // if using original phototransistor SDP8406 - uses inverted logic
-      digitalWrite(IR_LED_GPS_TX_GPIO, HIGH); // switch off - sets TX high on input to RS485 which is correct for no data being sent
-    }
-  }
-
   M5.Lcd.setRotation(0);
   M5.Lcd.setTextSize(2);
   M5.Lcd.setCursor(0, 0);
-
-  if (enableIMUSensor)
-  {
-    imuAvailable = !M5.Imu.Init();
-    if (imuAvailable)
-      M5.Lcd.println("M5 IMU On");
-  }
-  else
-  {
-    USB_SERIAL_PRINTLN("IMU Sensor Off");
-    M5.Lcd.println("IMU Sensor Off");
-    imuAvailable = false;
-  }
 
   M5.Axp.ScreenBreath(ScreenBrightness);
 
@@ -1022,173 +995,7 @@ void setup()
                           &lemonTaskHandle, // task handle
                           1);      // core id
 
-  // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/uart.html
-  //  uart_set_mode(uart_number, UART_MODE_RS485_HALF_DUPLEX);
-
-  // re-calibrated on 28 Jul 2023 with M5 in situ in console
-//  magnetometer_min = (vec<double>) { -45, -49.05, 18.15};
-//  magnetometer_max = (vec<double>) { 46.5, 31.65, 106.65};
-
-  // re-calibrated on 31 August 2023 in situ, but with magnetometer pointing 180 degrees to on 28 Jul in the console case
-//  magnetometer_min = (vec<double>) { -45.3, -60.6, 15.3};
-//  magnetometer_max = (vec<double>) { 49.8, 31.95, 110.25};
-
-  // re-calibrated on 5th Oct 2023 in situ (with three speaker audio pod on rear of reel)
-//  magnetometer_min = (vec<double>) { -29.25, -48.3, 27.3};
-//  magnetometer_max = (vec<double>) { 58.65, 32.55, 115.350};
-
-  // re-calibrated on 15th Apr 2024 in situ without audio pod or mapping pod.
-//  magnetometer_min = (vec<double>) { -51.9, -54.300, -10.350};
-//  magnetometer_max = (vec<double>) { 31.050, 28.0500, 97.050};
-
-// recalbirated on 2nd Feb 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
-//  magnetometer_min = (vec<double>) { -34.05, -58.950, 16.95};
-  // magnetometer_max = (vec<double>) { 56.850, 31.500, 109.8};
-
- // recalbirated on 30 Aug 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
-//  magnetometer_min = (vec<double>) { -45, -57, -8.7};
-//  magnetometer_max = (vec<double>) { 51.6, 35.85, 86.85};
- 
- // recalbirated on 5 Sep 2025 mounted on 45m spool, with oceanic and gopro, but no audio pod.
-//  magnetometer_min = (vec<double>) { -44.1, -58.8, -10.350};
-//`  magnetometer_max = (vec<double>) { 54.0, 33.75, 87.6};
-
-  // CLAUDE - use these compass calibration vectors below
-  // recalibration on 28 Sep 2025 only Oceanic mounted, plus the gopro mount arm.
-  magnetometer_min = (vec<double>) { -40.05, -58.650, -2.550};
-  magnetometer_max = (vec<double>) { 56.4, 33.9, 94.35};
-
-    // Measurements against real Suunto dive compass.
-  // Suunto compass versus Mako digital compass
-  //
-  // 0 N on    suunto:  352 on digital compass (-8 difference)
-  // 45 NE on  suunto:  47 (+2)
-  // 90 E on   suunto:  100 (+10)
-  // 135 SE on suunto:  156 (+21)
-  // 180 S on  suunto:  186 (+6)
-  // 225 SW on suunto:  220 (-5)
-  // 270 W on  suunto:  260 (-10)
-  // 315 NW on suunto:  315 (0)
-
-  // Initialize compass smoothing arrays
-  for (uint8_t i = 0; i < s_smoothedCompassBufferSize; i++) {
-    s_smoothedCompassHeading[i] = 0.0;
-  }
-
-  if (enableHumiditySensor)
-  {
-    if (!Adafruit_TempHumidityPressure.begin())
-    {
-      USB_SERIAL_PRINTLN("Could not find BME280 Barometer");
-  
-      M5.Lcd.println("BE280 T/H/P bad");
-      delay(5000);
-      humidityAvailable = false;
-    }
-    else
-    {
-      M5.Lcd.println("Tmp/Humd Ok");
-      M5.Lcd.println("Barometr Ok");
-    }
-  }
-  else
-  {
-    USB_SERIAL_PRINTLN("BME280 Humidity Off");
-    M5.Lcd.println("BME280 Humidity Off");
-    humidityAvailable = false;
-    temperature = 0.1;
-    humidity = 0.1;
-    air_pressure = 0.1;
-  }
-
-  if (enableDigitalCompass)
-  {
-    if (!mag.begin())
-    {
-      USB_SERIAL_PRINTLN("Could not find LIS2MDL Magnetometer. Check wiring");
-      M5.Lcd.println("LIS2MDL Magnetometer bad");
-      delay(5000);
-      compassAvailable = false;
-    }
-    else
-    {
-      M5.Lcd.println("Compass Ok");
-    }
-  }
-  else
-  {
-    USB_SERIAL_PRINTLN("LSM303 Compass off");
-    M5.Lcd.println("LSM303 Compass off");
-    compassAvailable = false;
-  }
-
-  if (enableDigitalCompass)
-  {
-    if (!accel.begin())
-    {
-      USB_SERIAL_PRINTLN("Unable to initialize LSM303 accelerometer");
-      M5.Lcd.println("LSM303 accelerometer bad");
-      compassAvailable = false;
-    }
-    else
-    {
-      M5.Lcd.println("Accel Ok");
-    }
-
-    if (compassAvailable && enableSmoothedCompass)
-    {
-      smoothedCompassCalcInProgress = true;
-   }
-  }
-  else
-  {
-    USB_SERIAL_PRINTLN("LSM303 Accel off");
-    M5.Lcd.println("LSM303 Accel off");
-    compassAvailable = false;
-  }
-
-  if (enableColourSensor)
-  {
-    if (!Adafruit_ColourSensor.begin())
-    {
-      USB_SERIAL_PRINTLN("Unable to init APDS9960 colour");
-      M5.Lcd.println("APDS9960 colour bad");
-      colourSensorAvailable=false;
-    }
-    else
-    {
-      M5.Lcd.println("Colour Ok");
-      Adafruit_ColourSensor.enableColor(true);
-      colourSensorAvailable=true;
-    }
-  }
-  
-  if (enableDepthSensor)
-  {
-    USB_SERIAL_PRINTLN("Attempt to begin depth sensor");
-
-    if (!BlueRobotics_DepthSensor.begin())
-    {
-      USB_SERIAL_PRINTLN("Could not begin depth sensor");
-      depthAvailable = false;
-    }
-    else
-    {
-      if (divingInTheSea)
-        BlueRobotics_DepthSensor.setFluidDensitySaltWater();
-      else
-        BlueRobotics_DepthSensor.setFluidDensityFreshWater();
-
-      M5.Lcd.println("Depth Ok");
-    }
-  }
-  else
-  {
-    USB_SERIAL_PRINTLN("Depth Sensor Off");
-    M5.Lcd.println("Depth Sensor Off");
-    depthAvailable = false;
-    depth = 0;
-  }
+  initSensors();
 
   acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
 

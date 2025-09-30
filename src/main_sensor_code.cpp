@@ -1,5 +1,185 @@
 #ifdef BUILD_INCLUDE_MAIN_SENSOR_CODE
 
+// Calibration for Oceanic being present and gopro mount for real gopro - but without the camera.
+//
+// Advanced calibration: Hard iron + Soft iron compensation
+// Calibration from ellipsoid fit (magcal_ellipsoid.txt)
+vec<double> hard_iron_offset = { 8.331061080431581445, -12.71955273800613107, 45.12891163824074425 };
+
+// Apply soft iron compensation matrix
+// Transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
+const double soft_iron_matrix[3][3] = {
+  { 0.9719287820482613860,   0.006939862106518941871, -0.01086593702250229256 },
+  { 0.006939862106518939269, 1.042324789021345177,     0.006598418562658864804 },
+  { -0.01086593702250229082,  0.006598418562658867406,  0.9873142116148320158 },
+};
+
+// LIS2MDL I2C address and offset registers
+#define LIS2MDL_I2C_ADDR 0x1E
+#define LIS2MDL_OFFSET_X_REG_L 0x45
+#define LIS2MDL_OFFSET_X_REG_H 0x46
+#define LIS2MDL_OFFSET_Y_REG_L 0x47
+#define LIS2MDL_OFFSET_Y_REG_H 0x48
+#define LIS2MDL_OFFSET_Z_REG_L 0x49
+#define LIS2MDL_OFFSET_Z_REG_H 0x4A
+#define LIS2MDL_MAG_LSB_UT 0.15  // LSB value in microTesla
+
+void setMagHardIronOffsets(vec<double> hard_iron_offset, TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
+void resetMagHardIronOffsets(TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
+
+bool setHardIronOffsetsInHardwareRegisters = true;
+
+void initSensors()
+{
+  if (enableIMUSensor)
+  {
+    imuAvailable = !M5.Imu.Init();
+    if (imuAvailable)
+      M5.Lcd.println("M5 IMU On");
+  }
+  else
+  {
+    USB_SERIAL_PRINTLN("IMU Sensor Off");
+    M5.Lcd.println("IMU Sensor Off");
+    imuAvailable = false;
+  }
+
+  if (enableHumiditySensor)
+  {
+    if (!Adafruit_TempHumidityPressure.begin())
+    {
+      USB_SERIAL_PRINTLN("Could not find BME280 Barometer");
+  
+      M5.Lcd.println("BE280 T/H/P bad");
+      delay(5000);
+      humidityAvailable = false;
+    }
+    else
+    {
+      M5.Lcd.println("Tmp/Humd Ok");
+      M5.Lcd.println("Barometr Ok");
+    }
+  }
+  else
+  {
+    USB_SERIAL_PRINTLN("BME280 Humidity Off");
+    M5.Lcd.println("BME280 Humidity Off");
+    humidityAvailable = false;
+    temperature = 0.1;
+    humidity = 0.1;
+    air_pressure = 0.1;
+  }
+
+  // CLAUDE - use these compass calibration vectors below
+  // recalibration on 28 Sep 2025 only Oceanic mounted, plus the gopro mount arm.
+  magnetometer_min = (vec<double>) { -40.05, -58.650, -2.550};
+  magnetometer_max = (vec<double>) { 56.4, 33.9, 94.35};
+
+    // Measurements against real Suunto dive compass.
+  // Suunto compass versus Mako digital compass
+  //
+  // 0 N on    suunto:  352 on digital compass (-8 difference)
+  // 45 NE on  suunto:  47 (+2)
+  // 90 E on   suunto:  100 (+10)
+  // 135 SE on suunto:  156 (+21)
+  // 180 S on  suunto:  186 (+6)
+  // 225 SW on suunto:  220 (-5)
+  // 270 W on  suunto:  260 (-10)
+  // 315 NW on suunto:  315 (0)
+
+  if (enableDigitalCompass)
+  {
+    // Initialize compass smoothing arrays
+    for (uint8_t i = 0; i < s_smoothedCompassBufferSize; i++) {
+      s_smoothedCompassHeading[i] = 0.0;
+    }
+
+    if (!mag.begin())
+    {
+      USB_SERIAL_PRINTLN("Could not find LIS2MDL Magnetometer. Check wiring");
+      M5.Lcd.println("LIS2MDL Magnetometer bad");
+      delay(5000);
+      compassAvailable = false;
+    }
+    else
+    {
+      if (setHardIronOffsetsInHardwareRegisters)
+          setMagHardIronOffsets(hard_iron_offset);
+
+      M5.Lcd.println("Compass Ok");
+    }
+
+    if (!accel.begin())
+    {
+      // In begin() the code Enables the accelerometer to 100Hz sampling using
+      //    ctrl1.write(0x57);
+      // This could be changed to 25Hz or 50Hz to reduce noise
+      //     ctrl1.write(0x37);    // 25 Hz
+      // or  ctrl1.write(0x47);    // 50 Hz
+      USB_SERIAL_PRINTLN("Unable to initialize LSM303 accelerometer");
+      M5.Lcd.println("LSM303 accelerometer bad");
+      compassAvailable = false;
+    }
+    else
+    {
+      M5.Lcd.println("Accel Ok");
+      accel.setMode(LSM303_MODE_HIGH_RESOLUTION); // 12 bit instead of default 10 bit resolution for acceleration - better tilt compensation
+    }
+
+    if (compassAvailable && enableSmoothedCompass)
+      smoothedCompassCalcInProgress = true;
+  }
+  else
+  {
+    USB_SERIAL_PRINTLN("LSM303 Compass off");
+    M5.Lcd.println("LSM303 Compass off");
+    compassAvailable = false;
+  }
+
+  if (enableColourSensor)
+  {
+    if (!Adafruit_ColourSensor.begin())
+    {
+      USB_SERIAL_PRINTLN("Unable to init APDS9960 colour");
+      M5.Lcd.println("APDS9960 colour bad");
+      colourSensorAvailable=false;
+    }
+    else
+    {
+      M5.Lcd.println("Colour Ok");
+      Adafruit_ColourSensor.enableColor(true);
+      colourSensorAvailable=true;
+    }
+  }
+  
+  if (enableDepthSensor)
+  {
+    USB_SERIAL_PRINTLN("Attempt to begin depth sensor");
+
+    if (!BlueRobotics_DepthSensor.begin())
+    {
+      USB_SERIAL_PRINTLN("Could not begin depth sensor");
+      depthAvailable = false;
+    }
+    else
+    {
+      if (divingInTheSea)
+        BlueRobotics_DepthSensor.setFluidDensitySaltWater();
+      else
+        BlueRobotics_DepthSensor.setFluidDensityFreshWater();
+
+      M5.Lcd.println("Depth Ok");
+    }
+  }
+  else
+  {
+    USB_SERIAL_PRINTLN("Depth Sensor Off");
+    M5.Lcd.println("Depth Sensor Off");
+    depthAvailable = false;
+    depth = 0;
+  }
+}
+
 // Calibration data collection functions
 void startCalibrationDataCollection()
 {
@@ -137,7 +317,7 @@ void acquireAllSensorReadings()
     {
       if (enableSmoothedCompass)
       {
-        getSmoothedMagHeading(magnetic_heading);
+        getSmoothedMagHeading(magnetic_heading,enableMedianHeadingSmoothing);
       }
       else
       {
@@ -232,7 +412,7 @@ void acquireAllSensorReadings()
     max_sensor_acquisition_time = sensor_acquisition_time;
 }
 
-bool getSmoothedMagHeading(double& magHeading)
+bool getSmoothedMagHeading(double& magHeading, bool useMedian)
 {
   magHeading = 0;
 
@@ -268,19 +448,52 @@ bool getSmoothedMagHeading(double& magHeading)
       magHeadingInNWQuadrantFound = true;
   }
 
-  double offset = (magHeadingInNWQuadrantFound && magHeadingInNEQuadrantFound ? 90.0 : 0.0);
+  double offset = (magHeadingInNWQuadrantFound && magHeadingInNEQuadrantFound ? 180.0 : 0.0);
 
-  double shifted = 0.0;
-  for (uint8_t index = s_nextCompassSampleIndex; index < s_nextCompassSampleIndex + s_smoothedCompassBufferSize; index++)
+  if (useMedian)
   {
-    shifted = s_smoothedCompassHeading[index % s_smoothedCompassBufferSize] + offset;
-    if (shifted >= 360.0)
-      shifted -= 360.0;
+    // Calculate median
+    double sorted[s_smoothedCompassBufferSize];
+    for (uint8_t i = 0; i < s_smoothedCompassBufferSize; i++)
+    {
+      uint8_t index = (s_nextCompassSampleIndex + i) % s_smoothedCompassBufferSize;
+      sorted[i] = s_smoothedCompassHeading[index] + offset;
+      if (sorted[i] >= 360.0)
+        sorted[i] -= 360.0;
+    }
 
-    magHeading = magHeading + shifted;
+    // Simple bubble sort (small array, performance ok)
+    for (uint8_t i = 0; i < s_smoothedCompassBufferSize - 1; i++)
+    {
+      for (uint8_t j = 0; j < s_smoothedCompassBufferSize - i - 1; j++)
+      {
+        if (sorted[j] > sorted[j + 1])
+        {
+          double temp = sorted[j];
+          sorted[j] = sorted[j + 1];
+          sorted[j + 1] = temp;
+        }
+      }
+    }
+
+    // Median is average of middle two values for even-sized array
+    magHeading = (sorted[s_smoothedCompassBufferSize / 2 - 1] + sorted[s_smoothedCompassBufferSize / 2]) / 2.0 - offset;
   }
+  else
+  {
+    // Calculate mean
+    double shifted = 0.0;
+    for (uint8_t index = s_nextCompassSampleIndex; index < s_nextCompassSampleIndex + s_smoothedCompassBufferSize; index++)
+    {
+      shifted = s_smoothedCompassHeading[index % s_smoothedCompassBufferSize] + offset;
+      if (shifted >= 360.0)
+        shifted -= 360.0;
 
-  magHeading = (magHeading / (double)s_smoothedCompassBufferSize)  - offset;
+      magHeading = magHeading + shifted;
+    }
+
+    magHeading = (magHeading / (double)s_smoothedCompassBufferSize) - offset;
+  }
 
   if (magHeading < 0.0)
     magHeading += 360.0;
@@ -311,24 +524,63 @@ template <typename T> double calculateTiltCompensatedHeading(vec<T> from)
   accel.getEvent(&event);
   accelerometer_vector = {event.acceleration.x, event.acceleration.y, event.acceleration.z};
 
-  // Hard iron calibration only - subtract center point
-  magnetometer_vector.x -= (magnetometer_min.x + magnetometer_max.x) / 2.0;
-  magnetometer_vector.y -= (magnetometer_min.y + magnetometer_max.y) / 2.0;
-  magnetometer_vector.z -= (magnetometer_min.z + magnetometer_max.z) / 2.0;
+  if (!setHardIronOffsetsInHardwareRegisters)
+  {
+    // Remove hard iron offset
+    magnetometer_vector.x -= hard_iron_offset.x;
+    magnetometer_vector.y -= hard_iron_offset.y;
+    magnetometer_vector.z -= hard_iron_offset.z;
+  }
 
-  // Compute east and north vectors
+  double corrected_x = soft_iron_matrix[0][0] * magnetometer_vector.x +
+                       soft_iron_matrix[0][1] * magnetometer_vector.y +
+                       soft_iron_matrix[0][2] * magnetometer_vector.z;
+  double corrected_y = soft_iron_matrix[1][0] * magnetometer_vector.x +
+                       soft_iron_matrix[1][1] * magnetometer_vector.y +
+                       soft_iron_matrix[1][2] * magnetometer_vector.z;
+  double corrected_z = soft_iron_matrix[2][0] * magnetometer_vector.x +
+                       soft_iron_matrix[2][1] * magnetometer_vector.y +
+                       soft_iron_matrix[2][2] * magnetometer_vector.z;
+
+  magnetometer_vector.x = corrected_x;
+  magnetometer_vector.y = corrected_y;
+  magnetometer_vector.z = corrected_z;
+
+  // new
+  // ---- Tilt compensation basis vectors ----
+  // Normalize accelerometer to get gravity direction (unit "down" vector)
+  vector_normalize(&accelerometer_vector);
+
+  // Build horizontal basis: East = m × g; North = g × East
   vec<double> east;
-  vec<double> north;
   vector_cross(&magnetometer_vector, &accelerometer_vector, &east);
+
+  // Guard against degenerate cross when m || g
+  if (east.x == 0.0 && east.y == 0.0 && east.z == 0.0) {
+    // Small nudge: if degenerate, tweak magnetometer slightly (rare)
+    vec<double> m_eps = magnetometer_vector;
+    m_eps.x += 1e-9;
+    vector_cross(&m_eps, &accelerometer_vector, &east);
+  }
   vector_normalize(&east);
+
+  vec<double> north;
   vector_cross(&accelerometer_vector, &east, &north);
   vector_normalize(&north);
 
-  // compute heading
-  float heading = atan2(vector_dot(&east, &from), vector_dot(&north, &from)) * 180.0 / PI;
-  if (heading < 0.0) {
-    heading += 360.0;
-  }
+  // ---- Heading computation ----
+  // Normalize 'from' (the forward/body vector we project into the horizontal plane)
+  vec<double> from_n = { static_cast<double>(from.x),
+                         static_cast<double>(from.y),
+                         static_cast<double>(from.z) };
+  vector_normalize(&from_n);
+
+  const double x_proj = vector_dot(&east,  &from_n);
+  const double y_proj = vector_dot(&north, &from_n);
+
+  double heading = std::atan2(x_proj, y_proj) * 180.0 / PI;
+  if (heading < 0.0) heading += 360.0;
+
   return heading;
 }
 
@@ -660,6 +912,83 @@ void toggleAsyncDepthDisplay()
   M5.Lcd.fillScreen(TFT_BLACK);
 }
 
+
+
+void setMagHardIronOffsets(vec<double> hard_iron_offset, TwoWire *wire, uint8_t i2c_addr)
+{
+  // Convert from µT to raw int16_t (LSB = 0.15 µT)
+  // Negate because hardware ADDS these values to readings
+  int16_t offset_x = (int16_t)(-hard_iron_offset.x / LIS2MDL_MAG_LSB_UT);
+  int16_t offset_y = (int16_t)(-hard_iron_offset.y / LIS2MDL_MAG_LSB_UT);
+  int16_t offset_z = (int16_t)(-hard_iron_offset.z / LIS2MDL_MAG_LSB_UT);
+
+  // Write X offset (low byte then high byte)
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_X_REG_L);
+  wire->write(offset_x & 0xFF);
+  wire->endTransmission();
+
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_X_REG_H);
+  wire->write((offset_x >> 8) & 0xFF);
+  wire->endTransmission();
+
+  // Write Y offset
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_Y_REG_L);
+  wire->write(offset_y & 0xFF);
+  wire->endTransmission();
+
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_Y_REG_H);
+  wire->write((offset_y >> 8) & 0xFF);
+  wire->endTransmission();
+
+  // Write Z offset
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_Z_REG_L);
+  wire->write(offset_z & 0xFF);
+  wire->endTransmission();
+
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_Z_REG_H);
+  wire->write((offset_z >> 8) & 0xFF);
+  wire->endTransmission();
+}
+
+void resetMagHardIronOffsets(TwoWire *wire, uint8_t i2c_addr)
+{
+  // Write zeros to all offset registers
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_X_REG_L);
+  wire->write(0x00);
+  wire->endTransmission();
+
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_X_REG_H);
+  wire->write(0x00);
+  wire->endTransmission();
+
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_Y_REG_L);
+  wire->write(0x00);
+  wire->endTransmission();
+
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_Y_REG_H);
+  wire->write(0x00);
+  wire->endTransmission();
+
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_Z_REG_L);
+  wire->write(0x00);
+  wire->endTransmission();
+
+  wire->beginTransmission(i2c_addr);
+  wire->write(LIS2MDL_OFFSET_Z_REG_H);
+  wire->write(0x00);
+  wire->endTransmission();
+}
 
 
 #endif
