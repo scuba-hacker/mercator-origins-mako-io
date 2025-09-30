@@ -230,7 +230,8 @@ void initSensors()
       else
         BlueRobotics_DepthSensor.setFluidDensityFreshWater();
 
-      M5.Lcd.println("Depth Ok");
+    	bool calibrated = BlueRobotics_DepthSensor.calibrateAtSurfaceForAtmosphericPressure();
+      M5.Lcd.println(calibrated ? "Depth Ok (Cal)" : "Depth Ok (No Cal)");
     }
   }
   else
