@@ -57,7 +57,12 @@ ESPNow Commands
 #include <NavigationWaypoints.h>
 #include <Preferences.h>
 
+enum e_spool_setup { SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA, SPOOL_45M_WITH_OCEANIC_AND_CAMERA, SPOOL_45_MAKO_TIGER_ONLY, SPOOL_SETUP_UNKNOWN};
+const char* getSpoolSetupDescription(e_spool_setup setup);
+
 // ************** Mako Control Parameters **************
+
+e_spool_setup spool_setup = SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA;
 bool enableDigitalCompass = true;
 bool enableTiltCompensation = true;
 bool enableSmoothedCompass = true;

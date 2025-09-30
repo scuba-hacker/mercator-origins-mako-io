@@ -1,21 +1,58 @@
 #ifdef BUILD_INCLUDE_MAIN_SENSOR_CODE
 
-double tilt_compensation_v1(vec<double>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector);
-double tilt_compensation_v2(vec<double>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector);
+template <typename T> double compensate_calibrated_heading_for_tilt(vec<T>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector);
+void apply_full_corrections_to_raw_magnetometer_readings(vec<double>& magnetometer_vector);
+void apply_legacy_hard_iron_only_correction_to_raw_magnetometer_readings(vec<double>& magnetometer_vector);
 
-  // Calibration for Oceanic being present and gopro mount for real gopro - but without the camera.
-//
 // Advanced calibration: Hard iron + Soft iron compensation
 // Calibration from ellipsoid fit (magcal_ellipsoid.txt)
-vec<double> hard_iron_offset = { 8.331061080431581445, -12.71955273800613107, 45.12891163824074425 };
 
-// Apply soft iron compensation matrix
-// Transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
-const double soft_iron_matrix[3][3] = {
+vec<double> hard_iron_offset;
+double soft_iron_matrix[3][3];
+
+// Calibration for Oceanic being present and gopro mount for real gopro - but without the camera.
+// hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
+vec<double> hard_iron_offset_without_camera = { 8.331061080431581445, -12.71955273800613107, 45.12891163824074425 };
+//
+// soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
+const double soft_iron_matrix_without_camara[3][3] = {
   { 0.9719287820482613860,   0.006939862106518941871, -0.01086593702250229256 },
   { 0.006939862106518939269, 1.042324789021345177,     0.006598418562658864804 },
   { -0.01086593702250229082,  0.006598418562658867406,  0.9873142116148320158 },
 };
+
+// TO DO - Calibration for Oceanic being present and gopro camera mounted
+// hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
+vec<double> hard_iron_offset_with_camera = { 1, 1, 1 };
+//
+// soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
+const double soft_iron_matrix_with_camara[3][3] = {
+  { 1, 1, 1},
+  { 1, 1, 1},
+  { 1, 1, 1},
+};
+
+// TO DO - Calibration for no Oceanic or GoPro Mount/Camera being present
+// hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
+vec<double> hard_iron_offset_mako_tiger_only = { 1, 1, 1 };
+//
+// soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
+const double soft_iron_matrix_mako_tiger_only[3][3] = {
+  { 1, 1, 1},
+  { 1, 1, 1},
+  { 1, 1, 1},
+};
+
+const char* getSpoolSetupDescription(e_spool_setup setup)
+{
+  switch (setup)
+  {
+    case SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA: return "45M Spool, Oceanic";
+    case SPOOL_45M_WITH_OCEANIC_AND_CAMERA:         return "45M Spool, Oceanic, Camera";
+    case SPOOL_45_MAKO_TIGER_ONLY:                  return "45M Spool only";
+    default:                                        return "Unknown";
+  }  
+}
 
 // LIS2MDL I2C address and offset registers
 #define LIS2MDL_I2C_ADDR 0x1E
@@ -31,6 +68,31 @@ void setMagHardIronOffsets(vec<double> hard_iron_offset, TwoWire *wire = &Wire, 
 void resetMagHardIronOffsets(TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
 
 bool setHardIronOffsetsInHardwareRegisters = true;
+
+void setCompassCalibrationSpoolSetup(e_spool_setup setup)
+{
+  switch (setup)
+  {
+    case SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA:
+    {
+      hard_iron_offset = hard_iron_offset_without_camera;
+      memcpy(soft_iron_matrix, soft_iron_matrix_without_camara,sizeof(soft_iron_matrix));
+      break;
+    }
+    case SPOOL_45M_WITH_OCEANIC_AND_CAMERA:
+    {
+      hard_iron_offset = hard_iron_offset_with_camera;
+      memcpy(soft_iron_matrix, soft_iron_matrix_with_camara,sizeof(soft_iron_matrix));
+    }
+    case SPOOL_45_MAKO_TIGER_ONLY:
+    default:
+    {
+      hard_iron_offset = hard_iron_offset_mako_tiger_only;
+      memcpy(soft_iron_matrix, soft_iron_matrix_mako_tiger_only,sizeof(soft_iron_matrix));
+    }
+  }
+}
+
 
 void initSensors()
 {
@@ -73,11 +135,6 @@ void initSensors()
     air_pressure = 0.1;
   }
 
-  // CLAUDE - use these compass calibration vectors below
-  // recalibration on 28 Sep 2025 only Oceanic mounted, plus the gopro mount arm.
-//  magnetometer_min = (vec<double>) { -40.05, -58.650, -2.550};
-//  magnetometer_max = (vec<double>) { 56.4, 33.9, 94.35};
-
     // Measurements against real Suunto dive compass.
   // Suunto compass versus Mako digital compass
   //
@@ -96,6 +153,8 @@ void initSensors()
     for (uint8_t i = 0; i < s_smoothedCompassBufferSize; i++) {
       s_smoothedCompassHeading[i] = 0.0;
     }
+
+    setCompassCalibrationSpoolSetup(spool_setup);
 
     if (!mag.begin())
     {
@@ -507,41 +566,15 @@ bool getSmoothedMagHeading(double& magHeading, bool useMedian)
   return s_smoothedCompassBufferInitialised;
 }
 
-/*
-   Returns the angular difference in the horizontal plane between the "from" vector and north, in degrees.
-   Description of heading algorithm:
-   Shift and scale the magnetic reading based on calibration data to find
-   the North vector. Use the acceleration readings to determine the Up
-   vector (gravity is measured as an upward acceleration). The cross
-   product of North and Up vectors is East. The vectors East and North
-   form a basis for the horizontal plane. The From vector is projected
-   into the horizontal plane and the angle between the projected vector
-   and horizontal north is returned.
-*/
-template <typename T> double calculateTiltCompensatedHeading(vec<T> from_vector)
+void apply_full_corrections_to_raw_magnetometer_readings(vec<double>& magnetometer_vector)
 {
-  sensors_event_t event;
-  mag.getEvent(&event);
-  magnetometer_vector = {event.magnetic.x, event.magnetic.y, event.magnetic.z};
-
-  accel.getEvent(&event);
-  accelerometer_vector = {event.acceleration.x, event.acceleration.y, event.acceleration.z};
-
-  /*
-  // Hard iron calibration only - subtract center point - old way of doing it
-  magnetometer_vector.x -= (magnetometer_min.x + magnetometer_max.x) / 2.0;
-  magnetometer_vector.y -= (magnetometer_min.y + magnetometer_max.y) / 2.0;
-  magnetometer_vector.z -= (magnetometer_min.z + magnetometer_max.z) / 2.0;
-  */
-
   if (!setHardIronOffsetsInHardwareRegisters)
   {
-    // Remove hard iron offset - new values
+    // Remove hard iron offset (calculate in software rather than on chip)
     magnetometer_vector.x -= hard_iron_offset.x;
     magnetometer_vector.y -= hard_iron_offset.y;
     magnetometer_vector.z -= hard_iron_offset.z;
   }
-
 
   double corrected_x = soft_iron_matrix[0][0] * magnetometer_vector.x +
                         soft_iron_matrix[0][1] * magnetometer_vector.y +
@@ -556,13 +589,35 @@ template <typename T> double calculateTiltCompensatedHeading(vec<T> from_vector)
   magnetometer_vector.x = corrected_x;
   magnetometer_vector.y = corrected_y;
   magnetometer_vector.z = corrected_z;
-
-  return tilt_compensation_v1(from_vector, magnetometer_vector, accelerometer_vector);
-
 }
 
-// original tilt compensation calculation
-template <typename T> double tilt_compensation_v1(vec<T>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector)
+template <typename T> double calculateTiltCompensatedHeading(vec<T> from_vector)
+{
+  sensors_event_t event;
+  
+  mag.getEvent(&event);
+  magnetometer_vector = {event.magnetic.x, event.magnetic.y, event.magnetic.z};
+
+  apply_full_corrections_to_raw_magnetometer_readings(magnetometer_vector);
+
+  accel.getEvent(&event);
+  accelerometer_vector = {event.acceleration.x, event.acceleration.y, event.acceleration.z};
+
+  return compensate_calibrated_heading_for_tilt(from_vector, magnetometer_vector, accelerometer_vector);
+}
+  
+/*
+   Returns the angular difference in the horizontal plane between the "from" vector and north, in degrees.
+   Description of heading algorithm:
+   Shift and scale the magnetic reading based on calibration data to find
+   the North vector. Use the acceleration readings to determine the Up
+   vector (gravity is measured as an upward acceleration). The cross
+   product of North and Up vectors is East. The vectors East and North
+   form a basis for the horizontal plane. The From vector is projected
+   into the horizontal plane and the angle between the projected vector
+   and horizontal north is returned.
+*/
+template <typename T> double compensate_calibrated_heading_for_tilt(vec<T>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector)
 {
   // Compute east and north vectors
   vec<double> east;
@@ -580,44 +635,17 @@ template <typename T> double tilt_compensation_v1(vec<T>& from_vector, vec<doubl
   return heading;
 }
 
-  // new way of doing tilt compensation - does not work properly!
- template <typename T> double tilt_compensation_v2(vec<T>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector)
-  {
-    // ---- Tilt compensation basis vectors ----
-    // Normalize accelerometer to get gravity direction (unit "down" vector)
-    vector_normalize(&accelerometer_vector);
+void apply_legacy_hard_iron_only_correction_to_raw_magnetometer_readings(vec<double>& magnetometer_vector)
+{
+  // recalibration on 28 Sep 2025 only Oceanic mounted, plus the gopro mount arm.
+  // Values obtained using Mako's calibration screen - just max and min as measured on device.
+  const vec<double> magnetometer_min = { -40.05, -58.650, -2.550};
+  const vec<double> magnetometer_max = { 56.4, 33.9, 94.35};
 
-    // Build horizontal basis: East = m × g; North = g × East
-    vec<double> east;
-    vector_cross(&magnetometer_vector, &accelerometer_vector, &east);
-
-    // Guard against degenerate cross when m || g
-    if (east.x == 0.0 && east.y == 0.0 && east.z == 0.0) {
-      // Small nudge: if degenerate, tweak magnetometer slightly (rare)
-      vec<double> m_eps = magnetometer_vector;
-      m_eps.x += 1e-9;
-      vector_cross(&m_eps, &accelerometer_vector, &east);
-    }
-    vector_normalize(&east);
-
-    vec<double> north;
-    vector_cross(&accelerometer_vector, &east, &north);
-    vector_normalize(&north);
-
-    // ---- Heading computation ----
-    // Normalize 'from_vector' (the forward/body vector we project into the horizontal plane)
-    vec<double> from_n = { static_cast<double>(from_vector.x),
-                          static_cast<double>(from_vector.y),
-                          static_cast<double>(from_vector.z) };
-    vector_normalize(&from_n);
-
-    const double x_proj = vector_dot(&east,  &from_n);
-    const double y_proj = vector_dot(&north, &from_n);
-
-    double heading = std::atan2(x_proj, y_proj) * 180.0 / PI;
-    if (heading < 0.0) heading += 360.0;
-    
-    return heading;
+  // Hard iron calibration only - subtract center point
+  magnetometer_vector.x -= (magnetometer_min.x + magnetometer_max.x) / 2.0;
+  magnetometer_vector.y -= (magnetometer_min.y + magnetometer_max.y) / 2.0;
+  magnetometer_vector.z -= (magnetometer_min.z + magnetometer_max.z) / 2.0;
 }
 
 template <typename Ta, typename Tb, typename To> void vector_cross(const vec<Ta> *a, const vec<Tb> *b, vec<To> *out)
@@ -646,6 +674,7 @@ void vector_normalize(vec<double> *a)
 */
 bool getMagHeadingTiltCompensated(double& tiltCompensatedHeading)
 {
+  // Apply callibration corrections to magnetometer readings and then apply tilt compensation
   double tch = calculateTiltCompensatedHeading((vec<int>) {1, 0, 0});  // was 1
 
   if (isnan(tch))
@@ -664,8 +693,7 @@ bool getMagHeadingTiltCompensated(double& tiltCompensatedHeading)
   if (tiltCompensatedHeading >= 359.5)
     tiltCompensatedHeading = 0.0;
 
-  // correct for reversed dev module in gopro case - points south instead of north when north is reported.
- 
+  // correct for reversed dev module in gopro case - points south instead of north when north is reported. 
   const bool magnetometerReversedInCase = true; // set to false if module points towards north when reporting north
 
   if (magnetometerReversedInCase)
