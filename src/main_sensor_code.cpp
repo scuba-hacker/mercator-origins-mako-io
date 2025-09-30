@@ -232,6 +232,8 @@ void initSensors()
 
     	bool calibrated = BlueRobotics_DepthSensor.calibrateAtSurfaceForAtmosphericPressure();
       M5.Lcd.println(calibrated ? "Depth Ok (Cal)" : "Depth Ok (No Cal)");
+      // select fastest conversion rate (smallest oversample rate) - approx 2ms total for D1 (pressure conversion) + D2 (temperature conversion)
+      BlueRobotics_DepthSensor.setOSR(MS5837::OSR_256); 
     }
   }
   else
