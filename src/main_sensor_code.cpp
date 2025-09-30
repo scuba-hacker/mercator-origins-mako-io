@@ -1,6 +1,9 @@
 #ifdef BUILD_INCLUDE_MAIN_SENSOR_CODE
 
-// Calibration for Oceanic being present and gopro mount for real gopro - but without the camera.
+double tilt_compensation_v1(vec<double>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector);
+double tilt_compensation_v2(vec<double>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector);
+
+  // Calibration for Oceanic being present and gopro mount for real gopro - but without the camera.
 //
 // Advanced calibration: Hard iron + Soft iron compensation
 // Calibration from ellipsoid fit (magcal_ellipsoid.txt)
@@ -72,8 +75,8 @@ void initSensors()
 
   // CLAUDE - use these compass calibration vectors below
   // recalibration on 28 Sep 2025 only Oceanic mounted, plus the gopro mount arm.
-  magnetometer_min = (vec<double>) { -40.05, -58.650, -2.550};
-  magnetometer_max = (vec<double>) { 56.4, 33.9, 94.35};
+//  magnetometer_min = (vec<double>) { -40.05, -58.650, -2.550};
+//  magnetometer_max = (vec<double>) { 56.4, 33.9, 94.35};
 
     // Measurements against real Suunto dive compass.
   // Suunto compass versus Mako digital compass
@@ -515,7 +518,7 @@ bool getSmoothedMagHeading(double& magHeading, bool useMedian)
    into the horizontal plane and the angle between the projected vector
    and horizontal north is returned.
 */
-template <typename T> double calculateTiltCompensatedHeading(vec<T> from)
+template <typename T> double calculateTiltCompensatedHeading(vec<T> from_vector)
 {
   sensors_event_t event;
   mag.getEvent(&event);
@@ -524,64 +527,97 @@ template <typename T> double calculateTiltCompensatedHeading(vec<T> from)
   accel.getEvent(&event);
   accelerometer_vector = {event.acceleration.x, event.acceleration.y, event.acceleration.z};
 
+  /*
+  // Hard iron calibration only - subtract center point - old way of doing it
+  magnetometer_vector.x -= (magnetometer_min.x + magnetometer_max.x) / 2.0;
+  magnetometer_vector.y -= (magnetometer_min.y + magnetometer_max.y) / 2.0;
+  magnetometer_vector.z -= (magnetometer_min.z + magnetometer_max.z) / 2.0;
+  */
+
   if (!setHardIronOffsetsInHardwareRegisters)
   {
-    // Remove hard iron offset
+    // Remove hard iron offset - new values
     magnetometer_vector.x -= hard_iron_offset.x;
     magnetometer_vector.y -= hard_iron_offset.y;
     magnetometer_vector.z -= hard_iron_offset.z;
   }
 
+
   double corrected_x = soft_iron_matrix[0][0] * magnetometer_vector.x +
-                       soft_iron_matrix[0][1] * magnetometer_vector.y +
-                       soft_iron_matrix[0][2] * magnetometer_vector.z;
+                        soft_iron_matrix[0][1] * magnetometer_vector.y +
+                        soft_iron_matrix[0][2] * magnetometer_vector.z;
   double corrected_y = soft_iron_matrix[1][0] * magnetometer_vector.x +
-                       soft_iron_matrix[1][1] * magnetometer_vector.y +
-                       soft_iron_matrix[1][2] * magnetometer_vector.z;
+                        soft_iron_matrix[1][1] * magnetometer_vector.y +
+                        soft_iron_matrix[1][2] * magnetometer_vector.z;
   double corrected_z = soft_iron_matrix[2][0] * magnetometer_vector.x +
-                       soft_iron_matrix[2][1] * magnetometer_vector.y +
-                       soft_iron_matrix[2][2] * magnetometer_vector.z;
+                        soft_iron_matrix[2][1] * magnetometer_vector.y +
+                        soft_iron_matrix[2][2] * magnetometer_vector.z;
 
   magnetometer_vector.x = corrected_x;
   magnetometer_vector.y = corrected_y;
   magnetometer_vector.z = corrected_z;
 
-  // new
-  // ---- Tilt compensation basis vectors ----
-  // Normalize accelerometer to get gravity direction (unit "down" vector)
-  vector_normalize(&accelerometer_vector);
+  return tilt_compensation_v1(from_vector, magnetometer_vector, accelerometer_vector);
 
-  // Build horizontal basis: East = m × g; North = g × East
+}
+
+// original tilt compensation calculation
+template <typename T> double tilt_compensation_v1(vec<T>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector)
+{
+  // Compute east and north vectors
   vec<double> east;
-  vector_cross(&magnetometer_vector, &accelerometer_vector, &east);
-
-  // Guard against degenerate cross when m || g
-  if (east.x == 0.0 && east.y == 0.0 && east.z == 0.0) {
-    // Small nudge: if degenerate, tweak magnetometer slightly (rare)
-    vec<double> m_eps = magnetometer_vector;
-    m_eps.x += 1e-9;
-    vector_cross(&m_eps, &accelerometer_vector, &east);
-  }
-  vector_normalize(&east);
-
   vec<double> north;
+  vector_cross(&magnetometer_vector, &accelerometer_vector, &east);
+  vector_normalize(&east);
   vector_cross(&accelerometer_vector, &east, &north);
   vector_normalize(&north);
 
-  // ---- Heading computation ----
-  // Normalize 'from' (the forward/body vector we project into the horizontal plane)
-  vec<double> from_n = { static_cast<double>(from.x),
-                         static_cast<double>(from.y),
-                         static_cast<double>(from.z) };
-  vector_normalize(&from_n);
-
-  const double x_proj = vector_dot(&east,  &from_n);
-  const double y_proj = vector_dot(&north, &from_n);
-
-  double heading = std::atan2(x_proj, y_proj) * 180.0 / PI;
-  if (heading < 0.0) heading += 360.0;
-
+  // compute heading
+  float heading = atan2(vector_dot(&east, &from_vector), vector_dot(&north, &from_vector)) * 180.0 / PI;
+  if (heading < 0.0) {
+    heading += 360.0;
+  }
   return heading;
+}
+
+  // new way of doing tilt compensation - does not work properly!
+ template <typename T> double tilt_compensation_v2(vec<T>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector)
+  {
+    // ---- Tilt compensation basis vectors ----
+    // Normalize accelerometer to get gravity direction (unit "down" vector)
+    vector_normalize(&accelerometer_vector);
+
+    // Build horizontal basis: East = m × g; North = g × East
+    vec<double> east;
+    vector_cross(&magnetometer_vector, &accelerometer_vector, &east);
+
+    // Guard against degenerate cross when m || g
+    if (east.x == 0.0 && east.y == 0.0 && east.z == 0.0) {
+      // Small nudge: if degenerate, tweak magnetometer slightly (rare)
+      vec<double> m_eps = magnetometer_vector;
+      m_eps.x += 1e-9;
+      vector_cross(&m_eps, &accelerometer_vector, &east);
+    }
+    vector_normalize(&east);
+
+    vec<double> north;
+    vector_cross(&accelerometer_vector, &east, &north);
+    vector_normalize(&north);
+
+    // ---- Heading computation ----
+    // Normalize 'from_vector' (the forward/body vector we project into the horizontal plane)
+    vec<double> from_n = { static_cast<double>(from_vector.x),
+                          static_cast<double>(from_vector.y),
+                          static_cast<double>(from_vector.z) };
+    vector_normalize(&from_n);
+
+    const double x_proj = vector_dot(&east,  &from_n);
+    const double y_proj = vector_dot(&north, &from_n);
+
+    double heading = std::atan2(x_proj, y_proj) * 180.0 / PI;
+    if (heading < 0.0) heading += 360.0;
+    
+    return heading;
 }
 
 template <typename Ta, typename Tb, typename To> void vector_cross(const vec<Ta> *a, const vec<Tb> *b, vec<To> *out)
@@ -912,83 +948,54 @@ void toggleAsyncDepthDisplay()
   M5.Lcd.fillScreen(TFT_BLACK);
 }
 
-
-
-void setMagHardIronOffsets(vec<double> hard_iron_offset, TwoWire *wire, uint8_t i2c_addr)
+void setMagHardIronOffsets(const vec<double> off, TwoWire* wire, uint8_t addr)
 {
-  // Convert from µT to raw int16_t (LSB = 0.15 µT)
-  // Negate because hardware ADDS these values to readings
-  int16_t offset_x = (int16_t)(-hard_iron_offset.x / LIS2MDL_MAG_LSB_UT);
-  int16_t offset_y = (int16_t)(-hard_iron_offset.y / LIS2MDL_MAG_LSB_UT);
-  int16_t offset_z = (int16_t)(-hard_iron_offset.z / LIS2MDL_MAG_LSB_UT);
+  // Convert from µT to LSB (values from getEvent are scaled by 0.15)
+  // Hardware SUBTRACTS: H_out = H_meas - H_offset, so NO negation
+  const int16_t ox = (int16_t)lround(off.x / LIS2MDL_MAG_LSB_UT);
+  const int16_t oy = (int16_t)lround(off.y / LIS2MDL_MAG_LSB_UT);
+  const int16_t oz = (int16_t)lround(off.z / LIS2MDL_MAG_LSB_UT);
 
-  // Write X offset (low byte then high byte)
-  wire->beginTransmission(i2c_addr);
+  // Write each axis separately (LSB and MSB in separate transactions)
+  // Cast to uint16_t first to avoid sign extension issues
+  uint16_t ux = static_cast<uint16_t>(ox);
+  uint16_t uy = static_cast<uint16_t>(oy);
+  uint16_t uz = static_cast<uint16_t>(oz);
+
+  wire->beginTransmission(addr);
   wire->write(LIS2MDL_OFFSET_X_REG_L);
-  wire->write(offset_x & 0xFF);
+  wire->write(static_cast<uint8_t>(ux & 0xFF));
   wire->endTransmission();
 
-  wire->beginTransmission(i2c_addr);
+  wire->beginTransmission(addr);
   wire->write(LIS2MDL_OFFSET_X_REG_H);
-  wire->write((offset_x >> 8) & 0xFF);
+  wire->write(static_cast<uint8_t>(ux >> 8));
   wire->endTransmission();
 
-  // Write Y offset
-  wire->beginTransmission(i2c_addr);
+  wire->beginTransmission(addr);
   wire->write(LIS2MDL_OFFSET_Y_REG_L);
-  wire->write(offset_y & 0xFF);
+  wire->write(static_cast<uint8_t>(uy & 0xFF));
   wire->endTransmission();
 
-  wire->beginTransmission(i2c_addr);
+  wire->beginTransmission(addr);
   wire->write(LIS2MDL_OFFSET_Y_REG_H);
-  wire->write((offset_y >> 8) & 0xFF);
+  wire->write(static_cast<uint8_t>(uy >> 8));
   wire->endTransmission();
 
-  // Write Z offset
-  wire->beginTransmission(i2c_addr);
+  wire->beginTransmission(addr);
   wire->write(LIS2MDL_OFFSET_Z_REG_L);
-  wire->write(offset_z & 0xFF);
+  wire->write(static_cast<uint8_t>(uz & 0xFF));
   wire->endTransmission();
 
-  wire->beginTransmission(i2c_addr);
+  wire->beginTransmission(addr);
   wire->write(LIS2MDL_OFFSET_Z_REG_H);
-  wire->write((offset_z >> 8) & 0xFF);
+  wire->write(static_cast<uint8_t>(uz >> 8));
   wire->endTransmission();
 }
 
 void resetMagHardIronOffsets(TwoWire *wire, uint8_t i2c_addr)
 {
-  // Write zeros to all offset registers
-  wire->beginTransmission(i2c_addr);
-  wire->write(LIS2MDL_OFFSET_X_REG_L);
-  wire->write(0x00);
-  wire->endTransmission();
-
-  wire->beginTransmission(i2c_addr);
-  wire->write(LIS2MDL_OFFSET_X_REG_H);
-  wire->write(0x00);
-  wire->endTransmission();
-
-  wire->beginTransmission(i2c_addr);
-  wire->write(LIS2MDL_OFFSET_Y_REG_L);
-  wire->write(0x00);
-  wire->endTransmission();
-
-  wire->beginTransmission(i2c_addr);
-  wire->write(LIS2MDL_OFFSET_Y_REG_H);
-  wire->write(0x00);
-  wire->endTransmission();
-
-  wire->beginTransmission(i2c_addr);
-  wire->write(LIS2MDL_OFFSET_Z_REG_L);
-  wire->write(0x00);
-  wire->endTransmission();
-
-  wire->beginTransmission(i2c_addr);
-  wire->write(LIS2MDL_OFFSET_Z_REG_H);
-  wire->write(0x00);
-  wire->endTransmission();
+  setMagHardIronOffsets(vec<double>(0,0,0),wire,i2c_addr);
 }
-
 
 #endif

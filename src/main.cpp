@@ -58,9 +58,6 @@ ESPNow Commands
 #include <Preferences.h>
 
 // ************** Mako Control Parameters **************
-
-bool usingSDP8600OptoSchmittDetector = true; // alternative is SDP8406 phototransistor which was the original detector
-
 bool enableDigitalCompass = true;
 bool enableTiltCompensation = true;
 bool enableSmoothedCompass = true;
@@ -731,7 +728,7 @@ vec<float> imu_gyro_vector, imu_lin_acc_vector, imu_rot_acc_vector;
 float imu_temperature = 0.0;
 
 // Calibration data collection for soft iron compensation
-const uint16_t maxCalibrationSamples = 3000;
+const uint16_t maxCalibrationSamples = 500;
 const uint32_t calibrationSampleInterval = 20; // Sample every 10ms during calibration
 struct CalibrationSample {
   double x, y, z;
@@ -818,6 +815,7 @@ uint32_t latestGPSMessageTimeStamp = 0;
 
 // Magnetic heading calculation functions
 template <typename T> double calculateTiltCompensatedHeading(vec<T> from);
+template <typename T> double calculateTiltCompensatedHeading_new(vec<T> from);
 template <typename Ta, typename Tb, typename To> void vector_cross(const vec<Ta> *a, const vec<Tb> *b, vec<To> *out);
 template <typename Ta, typename Tb> float vector_dot(const vec<Ta> *a, const vec<Tb> *b);
 void vector_normalize(vec<double> *a);
