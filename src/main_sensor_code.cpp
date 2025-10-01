@@ -1,21 +1,21 @@
 #ifdef BUILD_INCLUDE_MAIN_SENSOR_CODE
 
-template <typename T> double compensate_calibrated_heading_for_tilt(vec<T>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector);
-void apply_full_corrections_to_raw_magnetometer_readings(vec<double>& magnetometer_vector);
-void apply_legacy_hard_iron_only_correction_to_raw_magnetometer_readings(vec<double>& magnetometer_vector);
+template <typename T> float compensate_calibrated_heading_for_tilt(vec<T>& from_vector, vec<float>& magnetometer_vector, vec<float>& accelerometer_vector);
+void apply_full_corrections_to_raw_magnetometer_readings(vec<float>& magnetometer_vector);
+void apply_legacy_hard_iron_only_correction_to_raw_magnetometer_readings(vec<float>& magnetometer_vector);
 
 // Advanced calibration: Hard iron + Soft iron compensation
 // Calibration from ellipsoid fit (magcal_ellipsoid.txt)
 
-vec<double> hard_iron_offset;
-double soft_iron_matrix[3][3];
+vec<float> hard_iron_offset;
+float soft_iron_matrix[3][3];
 
 // Calibration for Oceanic being present and gopro mount for real gopro - but without the camera.
 // hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
-vec<double> hard_iron_offset_without_camera = { 8.331061080431581445, -12.71955273800613107, 45.12891163824074425 };
+vec<float> hard_iron_offset_without_camera = { 8.331061080431581445, -12.71955273800613107, 45.12891163824074425 };
 //
 // soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
-const double soft_iron_matrix_without_camara[3][3] = {
+const float soft_iron_matrix_without_camara[3][3] = {
   { 0.9719287820482613860,   0.006939862106518941871, -0.01086593702250229256 },
   { 0.006939862106518939269, 1.042324789021345177,     0.006598418562658864804 },
   { -0.01086593702250229082,  0.006598418562658867406,  0.9873142116148320158 },
@@ -23,10 +23,10 @@ const double soft_iron_matrix_without_camara[3][3] = {
 
 // TO DO - Calibration for Oceanic being present and gopro camera mounted
 // hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
-vec<double> hard_iron_offset_with_camera = { 1, 1, 1 };
+vec<float> hard_iron_offset_with_camera = { 1, 1, 1 };
 //
 // soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
-const double soft_iron_matrix_with_camara[3][3] = {
+const float soft_iron_matrix_with_camara[3][3] = {
   { 1, 1, 1},
   { 1, 1, 1},
   { 1, 1, 1},
@@ -34,10 +34,10 @@ const double soft_iron_matrix_with_camara[3][3] = {
 
 // TO DO - Calibration for no Oceanic or GoPro Mount/Camera being present
 // hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
-vec<double> hard_iron_offset_mako_tiger_only = { 1, 1, 1 };
+vec<float> hard_iron_offset_mako_tiger_only = { 1, 1, 1 };
 //
 // soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
-const double soft_iron_matrix_mako_tiger_only[3][3] = {
+const float soft_iron_matrix_mako_tiger_only[3][3] = {
   { 1, 1, 1},
   { 1, 1, 1},
   { 1, 1, 1},
@@ -64,7 +64,7 @@ const char* getSpoolSetupDescription(e_spool_setup setup)
 #define LIS2MDL_OFFSET_Z_REG_H 0x4A
 #define LIS2MDL_MAG_LSB_UT 0.15  // LSB value in microTesla
 
-void setMagHardIronOffsets(vec<double> hard_iron_offset, TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
+void setMagHardIronOffsets(vec<float> hard_iron_offset, TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
 void resetMagHardIronOffsets(TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
 
 bool setHardIronOffsetsInHardwareRegisters = true;
@@ -321,7 +321,7 @@ void refreshAndCalculatePositionalAttributes()
   {
     if (millis() - last_journey_commit_time > journey_calc_period)
     {
-      double distanceTravelled = gps.distanceBetween(Lat, Lng, journey_lat, journey_lng);
+      float distanceTravelled = gps.distanceBetween(Lat, Lng, journey_lat, journey_lng);
 
       if (distanceTravelled > journey_min_dist)
       {
@@ -477,7 +477,7 @@ void acquireAllSensorReadings()
     max_sensor_acquisition_time = sensor_acquisition_time;
 }
 
-bool getSmoothedMagHeading(double& magHeading, bool useMedian)
+bool getSmoothedMagHeading(float& magHeading, bool useMedian)
 {
   magHeading = 0;
 
@@ -513,12 +513,12 @@ bool getSmoothedMagHeading(double& magHeading, bool useMedian)
       magHeadingInNWQuadrantFound = true;
   }
 
-  double offset = (magHeadingInNWQuadrantFound && magHeadingInNEQuadrantFound ? 180.0 : 0.0);
+  float offset = (magHeadingInNWQuadrantFound && magHeadingInNEQuadrantFound ? 180.0 : 0.0);
 
   if (useMedian)
   {
     // Calculate median
-    double sorted[s_smoothedCompassBufferSize];
+    float sorted[s_smoothedCompassBufferSize];
     for (uint8_t i = 0; i < s_smoothedCompassBufferSize; i++)
     {
       uint8_t index = (s_nextCompassSampleIndex + i) % s_smoothedCompassBufferSize;
@@ -534,7 +534,7 @@ bool getSmoothedMagHeading(double& magHeading, bool useMedian)
       {
         if (sorted[j] > sorted[j + 1])
         {
-          double temp = sorted[j];
+          float temp = sorted[j];
           sorted[j] = sorted[j + 1];
           sorted[j + 1] = temp;
         }
@@ -547,7 +547,7 @@ bool getSmoothedMagHeading(double& magHeading, bool useMedian)
   else
   {
     // Calculate mean
-    double shifted = 0.0;
+    float shifted = 0.0;
     for (uint8_t index = s_nextCompassSampleIndex; index < s_nextCompassSampleIndex + s_smoothedCompassBufferSize; index++)
     {
       shifted = s_smoothedCompassHeading[index % s_smoothedCompassBufferSize] + offset;
@@ -557,7 +557,7 @@ bool getSmoothedMagHeading(double& magHeading, bool useMedian)
       magHeading = magHeading + shifted;
     }
 
-    magHeading = (magHeading / (double)s_smoothedCompassBufferSize) - offset;
+    magHeading = (magHeading / (float)s_smoothedCompassBufferSize) - offset;
   }
 
   if (magHeading < 0.0)
@@ -569,7 +569,7 @@ bool getSmoothedMagHeading(double& magHeading, bool useMedian)
   return s_smoothedCompassBufferInitialised;
 }
 
-void apply_full_corrections_to_raw_magnetometer_readings(vec<double>& magnetometer_vector)
+void apply_full_corrections_to_raw_magnetometer_readings(vec<float>& magnetometer_vector)
 {
   if (!setHardIronOffsetsInHardwareRegisters)
   {
@@ -579,13 +579,13 @@ void apply_full_corrections_to_raw_magnetometer_readings(vec<double>& magnetomet
     magnetometer_vector.z -= hard_iron_offset.z;
   }
 
-  double corrected_x = soft_iron_matrix[0][0] * magnetometer_vector.x +
+  float corrected_x = soft_iron_matrix[0][0] * magnetometer_vector.x +
                         soft_iron_matrix[0][1] * magnetometer_vector.y +
                         soft_iron_matrix[0][2] * magnetometer_vector.z;
-  double corrected_y = soft_iron_matrix[1][0] * magnetometer_vector.x +
+  float corrected_y = soft_iron_matrix[1][0] * magnetometer_vector.x +
                         soft_iron_matrix[1][1] * magnetometer_vector.y +
                         soft_iron_matrix[1][2] * magnetometer_vector.z;
-  double corrected_z = soft_iron_matrix[2][0] * magnetometer_vector.x +
+  float corrected_z = soft_iron_matrix[2][0] * magnetometer_vector.x +
                         soft_iron_matrix[2][1] * magnetometer_vector.y +
                         soft_iron_matrix[2][2] * magnetometer_vector.z;
 
@@ -594,7 +594,7 @@ void apply_full_corrections_to_raw_magnetometer_readings(vec<double>& magnetomet
   magnetometer_vector.z = corrected_z;
 }
 
-template <typename T> double calculateTiltCompensatedHeading(vec<T> from_vector)
+template <typename T> float calculateTiltCompensatedHeading(vec<T> from_vector)
 {
   sensors_event_t event;
   
@@ -620,11 +620,11 @@ template <typename T> double calculateTiltCompensatedHeading(vec<T> from_vector)
    into the horizontal plane and the angle between the projected vector
    and horizontal north is returned.
 */
-template <typename T> double compensate_calibrated_heading_for_tilt(vec<T>& from_vector, vec<double>& magnetometer_vector, vec<double>& accelerometer_vector)
+template <typename T> float compensate_calibrated_heading_for_tilt(vec<T>& from_vector, vec<float>& magnetometer_vector, vec<float>& accelerometer_vector)
 {
   // Compute east and north vectors
-  vec<double> east;
-  vec<double> north;
+  vec<float> east;
+  vec<float> north;
   vector_cross(&magnetometer_vector, &accelerometer_vector, &east);
   vector_normalize(&east);
   vector_cross(&accelerometer_vector, &east, &north);
@@ -638,12 +638,12 @@ template <typename T> double compensate_calibrated_heading_for_tilt(vec<T>& from
   return heading;
 }
 
-void apply_legacy_hard_iron_only_correction_to_raw_magnetometer_readings(vec<double>& magnetometer_vector)
+void apply_legacy_hard_iron_only_correction_to_raw_magnetometer_readings(vec<float>& magnetometer_vector)
 {
   // recalibration on 28 Sep 2025 only Oceanic mounted, plus the gopro mount arm.
   // Values obtained using Mako's calibration screen - just max and min as measured on device.
-  const vec<double> magnetometer_min = { -40.05, -58.650, -2.550};
-  const vec<double> magnetometer_max = { 56.4, 33.9, 94.35};
+  const vec<float> magnetometer_min = { -40.05, -58.650, -2.550};
+  const vec<float> magnetometer_max = { 56.4, 33.9, 94.35};
 
   // Hard iron calibration only - subtract center point
   magnetometer_vector.x -= (magnetometer_min.x + magnetometer_max.x) / 2.0;
@@ -663,9 +663,9 @@ template <typename Ta, typename Tb> float vector_dot(const vec<Ta> *a, const vec
   return (a->x * b->x) + (a->y * b->y) + (a->z * b->z);
 }
 
-void vector_normalize(vec<double> *a)
+void vector_normalize(vec<float> *a)
 {
-  double mag = sqrt(vector_dot(a, a));
+  float mag = sqrtf(vector_dot(a, a));
   a->x /= mag;
   a->y /= mag;
   a->z /= mag;
@@ -675,10 +675,10 @@ void vector_normalize(vec<double> *a)
    Returns the angular difference in the horizontal plane between a default vector and north, in degrees.
    The default vector here is the +X axis as indicated by the silkscreen.
 */
-bool getMagHeadingTiltCompensated(double& tiltCompensatedHeading)
+bool getMagHeadingTiltCompensated(float& tiltCompensatedHeading)
 {
   // Apply callibration corrections to magnetometer readings and then apply tilt compensation
-  double tch = calculateTiltCompensatedHeading((vec<int>) {1, 0, 0});  // was 1
+  float tch = calculateTiltCompensatedHeading((vec<int>) {1, 0, 0});  // was 1
 
   if (isnan(tch))
   {
@@ -710,11 +710,11 @@ bool getMagHeadingTiltCompensated(double& tiltCompensatedHeading)
   return true;
 }
 
-bool getMagHeadingNotTiltCompensated(double& newHeading)
+bool getMagHeadingNotTiltCompensated(float& newHeading)
 {
   sensors_event_t magEvent;
   mag.getEvent(&magEvent);
-  double heading = (atan2(magEvent.magnetic.y, magEvent.magnetic.x) * 180.0) / PI;
+  float heading = (atan2f(magEvent.magnetic.y, magEvent.magnetic.x) * 180.0) / PI;
 
   if (isnan(heading))
     return false;
@@ -979,7 +979,7 @@ void toggleAsyncDepthDisplay()
   M5.Lcd.fillScreen(TFT_BLACK);
 }
 
-void setMagHardIronOffsets(const vec<double> off, TwoWire* wire, uint8_t addr)
+void setMagHardIronOffsets(const vec<float> off, TwoWire* wire, uint8_t addr)
 {
   // Convert from µT to LSB (values from getEvent are scaled by 0.15)
   // Hardware SUBTRACTS: H_out = H_meas - H_offset, so NO negation
@@ -1026,7 +1026,7 @@ void setMagHardIronOffsets(const vec<double> off, TwoWire* wire, uint8_t addr)
 
 void resetMagHardIronOffsets(TwoWire *wire, uint8_t i2c_addr)
 {
-  setMagHardIronOffsets(vec<double>(0,0,0),wire,i2c_addr);
+  setMagHardIronOffsets(vec<float>(0,0,0),wire,i2c_addr);
 }
 
 #endif
