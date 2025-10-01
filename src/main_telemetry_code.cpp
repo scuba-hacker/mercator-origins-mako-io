@@ -97,17 +97,17 @@ void sendUplinkTelemetryMessageV5()
     float uplink_mako_lsm_acc_y = accelerometer_vector.y;
     float uplink_mako_lsm_acc_z = accelerometer_vector.z;
 
-    float uplink_mako_imu_gyro_x = imu_gyro_vector.x;
-    float uplink_mako_imu_gyro_y = imu_gyro_vector.y;
-    float uplink_mako_imu_gyro_z = imu_gyro_vector.z;
+    float uplink_mako_imu_gyro_x = angular_velocity.x;
+    float uplink_mako_imu_gyro_y = angular_velocity.y;
+    float uplink_mako_imu_gyro_z = angular_velocity.z;
 
-    float uplink_mako_imu_lin_acc_x = imu_lin_acc_vector.x;
-    float uplink_mako_imu_lin_acc_y = imu_lin_acc_vector.y;
-    float uplink_mako_imu_lin_acc_z = imu_lin_acc_vector.z;
+    float uplink_mako_imu_lin_acc_x = linear_acceleration.x;
+    float uplink_mako_imu_lin_acc_y = linear_acceleration.y;
+    float uplink_mako_imu_lin_acc_z = linear_acceleration.z;
 
-    float uplink_mako_imu_rot_acc_x = imu_rot_acc_vector.x;
-    float uplink_mako_imu_rot_acc_y = imu_rot_acc_vector.y;
-    float uplink_mako_imu_rot_acc_z = imu_rot_acc_vector.z;
+    float uplink_mako_diver_roll_orientation = diver_roll_orientation;
+    float uplink_mako_diver_pitch_orientation = diver_pitch_orientation;
+    float uplink_mako_diver_yaw_orientation = diver_yaw_orientation;
 
     uint16_t uplink_mako_good_checksum_msgs = newPassedChecksum;
 
@@ -184,9 +184,9 @@ void sendUplinkTelemetryMessageV5()
     p = (char*) &uplink_mako_imu_lin_acc_x;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
     p = (char*) &uplink_mako_imu_lin_acc_y;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
     p = (char*) &uplink_mako_imu_lin_acc_z;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_imu_rot_acc_x;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_imu_rot_acc_y;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_imu_rot_acc_z;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
+    p = (char*) &uplink_mako_diver_roll_orientation;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
+    p = (char*) &uplink_mako_diver_pitch_orientation;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
+    p = (char*) &uplink_mako_diver_yaw_orientation;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
 
     // 2 x 16 bit words (2 x 2 byte metrics)
     *(nextMetric++) = uplink_mako_good_checksum_msgs;

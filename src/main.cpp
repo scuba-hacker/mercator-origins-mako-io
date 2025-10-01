@@ -69,7 +69,7 @@ bool enableSmoothedCompass = true;
 bool enableMedianHeadingSmoothing = true;
 bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
-bool enableIMUSensor = false;
+bool enableIMUSensor = true;      // used for Gyro to show pitch and roll
 bool enableColourSensor = true;
 const uint32_t minimum_sensor_read_time = 0; // (ms) regulates upload of responses to lemon by normalising the time to process sensor readings. This contributes most to the round-trip latency.
 
@@ -122,11 +122,28 @@ enum e_soundFX {SFX_PIANO_AHEAD='0', SFX_PIANO_BEHIND='1',SFX_PIANO_LEFT='2',SFX
                 SFX_ORGAN_AHEAD='4', SFX_ORGAN_BEHIND='5',SFX_ORGAN_LEFT='6',SFX_ORGAN_RIGHT='7',
                 SFX_PAD_AHEAD='8', SFX_PAD_BEHIND='9',SFX_PAD_LEFT=':',SFX_PAD_RIGHT=';',SFX_NONE='_'};
 
+enum e_diver_trim {TRIM_OPTIMAL, TRIM_TOO_UP, TRIM_TOO_DOWN, LEVEL_TOO_LEFT, LEVEL_TOO_RIGHT, TRIM_IMU_OFF, TRIM_UNKNOWN};
+e_diver_trim diver_trim = TRIM_UNKNOWN;
+
+const char* getDiverTrimDescription(e_diver_trim trim)
+{
+  switch (trim)
+  {
+    case TRIM_OPTIMAL: return "OPTIMAL";
+    case TRIM_TOO_UP: return "TOO UP";
+    case TRIM_TOO_DOWN: return "TOO DOWN";
+    case LEVEL_TOO_LEFT: return "TOO LEFT";
+    case LEVEL_TOO_RIGHT: return "TOO RIGHT";
+    case TRIM_IMU_OFF: return "IMU OFF";
+    default: return "TRIM_UNKNOWN";
+  }
+}
+
 void switchDivePlan();
 void switchToNextDisplayToShow();
 void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
                         float* lin_acc_x, float* lin_acc_y, float* lin_acc_z,
-                        float* rot_acc_x, float* rot_acc_y, float* rot_acc_z,
+                        float* roll, float* pitch, float* yaw,
                         float* IMU_temperature);
 const char* scanForKnownNetwork();
 bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts);
@@ -730,7 +747,10 @@ vec<float> calib_magnetometer_min;
 vec<float> magnetometer_max;
 vec<float> magnetometer_min;
 vec<float> magnetometer_vector, accelerometer_vector;
-vec<float> imu_gyro_vector, imu_lin_acc_vector, imu_rot_acc_vector;
+vec<float> angular_velocity, linear_acceleration;
+float diver_roll_orientation = 0.0;
+float diver_pitch_orientation = 0.0;
+float diver_yaw_orientation = 0.0;
 float imu_temperature = 0.0;
 
 // Calibration data collection for soft iron compensation
@@ -746,19 +766,37 @@ uint32_t lastCalibrationSampleTime = 0;
 
 void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
                         float* lin_acc_x, float* lin_acc_y, float* lin_acc_z,
-                        float* rot_acc_x, float* rot_acc_y, float* rot_acc_z,
+                        float* roll, float* pitch, float* yaw,
                         float* IMU_temperature)
 {
   if (enableIMUSensor)
   {
     M5.IMU.getGyroData(gyro_x, gyro_y, gyro_z);
     M5.IMU.getAccelData(lin_acc_x, lin_acc_y, lin_acc_z);
-    M5.IMU.getAhrsData(rot_acc_x, rot_acc_y, rot_acc_z);
+    M5.IMU.getAhrsData(pitch, roll, yaw);
     M5.IMU.getTempData(IMU_temperature);
+
+    float goodTrim = 20.0f;
+    float goodLevel = 10.0f;
+
+    if (abs(*pitch) < goodTrim && abs(*roll) < goodLevel) {
+        // Diver is nearly horizontal and level - efficient swimming
+        diver_trim = TRIM_OPTIMAL;
+    } else if (*pitch >= goodTrim) {
+        diver_trim = TRIM_TOO_UP;
+    }
+    else if (*pitch < -goodTrim) {
+        diver_trim = TRIM_TOO_DOWN;
+    }  else if (*roll >= goodLevel) {
+        diver_trim = LEVEL_TOO_RIGHT;
+    }else if (*roll < -goodLevel) {
+        diver_trim = LEVEL_TOO_LEFT;
+    } 
   }
   else
   {
-    *gyro_x = *gyro_y = *gyro_z = *lin_acc_x = *lin_acc_y = *lin_acc_z = *rot_acc_x = *rot_acc_y = *rot_acc_z = *IMU_temperature = 0.0;
+    *gyro_x = *gyro_y = *gyro_z = *lin_acc_x = *lin_acc_y = *lin_acc_z = *roll = *pitch = *yaw = *IMU_temperature = 0.0;
+    diver_trim = TRIM_IMU_OFF;
   }
 }
 

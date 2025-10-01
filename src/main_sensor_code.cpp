@@ -414,9 +414,9 @@ void acquireAllSensorReadings()
       getDepth(depth, water_temperature, water_pressure, depth_altitude, read_original_algorithm);
     }
 
-    getM5ImuSensorData(&imu_gyro_vector.x, &imu_gyro_vector.y, &imu_gyro_vector.z,
-                     &imu_lin_acc_vector.x, &imu_lin_acc_vector.y, &imu_lin_acc_vector.z,
-                     &imu_rot_acc_vector.x, &imu_rot_acc_vector.y, &imu_rot_acc_vector.z,
+    getM5ImuSensorData(&angular_velocity.x, &angular_velocity.y, &angular_velocity.z,
+                     &linear_acceleration.x, &linear_acceleration.y, &linear_acceleration.z,
+                     &diver_pitch_orientation, &diver_roll_orientation, &diver_yaw_orientation,
                      &imu_temperature);
   }
 
