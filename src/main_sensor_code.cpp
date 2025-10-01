@@ -321,7 +321,7 @@ void refreshAndCalculatePositionalAttributes()
   {
     if (millis() - last_journey_commit_time > journey_calc_period)
     {
-      float distanceTravelled = gps.distanceBetween(Lat, Lng, journey_lat, journey_lng);
+      float distanceTravelled = gps.distanceBetweenAccurate(Lat, Lng, journey_lat, journey_lng);
 
       if (distanceTravelled > journey_min_dist)
       {
@@ -360,7 +360,7 @@ void refreshAndCalculatePositionalAttributes()
   {
     // UPDATED NEEDED HERE TO USE MASTER LAT AND LONG IN NAV WAYPOINTS ARRAY/////
     heading_to_target = gps.courseTo(Lat, Lng, nextWaypoint->_lat, nextWaypoint->_long);
-    distance_to_target = gps.distanceBetween(Lat, Lng, nextWaypoint->_lat, nextWaypoint->_long);
+    distance_to_target = gps.distanceBetweenAccurate(Lat, Lng, nextWaypoint->_lat, nextWaypoint->_long);
   }
   else
   {
