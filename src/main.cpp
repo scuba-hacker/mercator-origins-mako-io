@@ -131,9 +131,9 @@ void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
 const char* scanForKnownNetwork();
 bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts);
 bool setupOTAWebServer(const char* _ssid, const char* _password, const char* label, uint32_t timeout, bool wifiOnly);
-bool getMagHeadingTiltCompensated(double& tiltCompensatedHeading);
-bool getMagHeadingNotTiltCompensated(double& heading);
-bool getSmoothedMagHeading(double& b,bool useMedian = false);
+bool getMagHeadingTiltCompensated(float& tiltCompensatedHeading);
+bool getMagHeadingNotTiltCompensated(float& heading);
+bool getSmoothedMagHeading(float& b,bool useMedian = false);
 std::string getCardinal(float b, bool surveyScreen = false);
 void getTempAndHumidityAndAirPressureBME280(float& h, float& t, float& p, float& p_a);
 void getDepth(float& d, float& d_t, float& d_p, float& d_a, bool original_read);
@@ -186,8 +186,8 @@ uint16_t getOneShotUserActionForUplink();
 void sendUplinkTelemetryMessageV5();
 void sendUplinkTestMessage();
 void refreshDirectionGraphic( float directionOfTravel,  float headingToTarget);
-void vector_normalize(vec<double> *a);
-bool getMagHeadingNotTiltCompensated(double& newHeading);
+void vector_normalize(vec<float> *a);
+bool getMagHeadingNotTiltCompensated(float& newHeading);
 float testDepthTimer();
 void checkDivingDepthForTimer(const float& d);
 void startDiveTimer();
@@ -214,7 +214,7 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget);
 void publishToTigerAndOceanicCurrentTarget(const char* currentTarget);
 void publishToOceanicLightLevel(uint16_t lightLevel);
 void publishToOceanicBreadCrumbRecord(const bool record);
-void publishToOceanicPinPlaced(double latitude, double longitude, double heading, double depth);
+void publishToOceanicPinPlaced(double latitude, double longitude, float heading, float depth);
 void toggleSound();
 void publishToSilkyPlayAudioGuidance(enum e_soundFX sound);
 void publishToSilkySkipToNextTrack();
@@ -624,9 +624,10 @@ void switchDivePlan()
 enum e_way_marker {BLACKOUT_MARKER, GO_ANTICLOCKWISE_MARKER, GO_AHEAD_MARKER, GO_CLOCKWISE_MARKER, GO_TURN_AROUND_MARKER, UNKNOWN_MARKER};
 enum e_direction_metric {JOURNEY_COURSE, COMPASS_HEADING};
 
-double heading_to_target = 0, distance_to_target = 0;
-double journey_lat = 0, journey_lng = 0, journey_course = 0, journey_distance = 0;
-double magnetic_heading = 0;
+float heading_to_target = 0, distance_to_target = 0;
+float journey_course = 0, journey_distance = 0;
+double journey_lat = 0, journey_lng = 0;
+float magnetic_heading = 0;
 float mag_accel_x = 0, mag_accel_y = 0, mag_accel_z = 0;
 float mag_tesla_x = 0, mag_tesla_y = 0, mag_tesla_z = 0;
 float humidity = 0, temperature = 0, air_pressure = 0, pressure_altitude = 0, depth = 0, water_temperature = 0, water_pressure = 0, depth_altitude = 0;
@@ -687,12 +688,12 @@ struct LemonDataPacket
 
 HardwareSerial lemon_float_serial(UART_NUMBER_LEMON_FLOAT);   // UART number 2: This uses Grove SCL=GPIO33 and SDA=GPIO32 for Hardware UART Tx and Rx
 
-double Lat, Lng;
+float Lat, Lng;
 String  lat_str , lng_str;
 int satellites = 0;
 char internetUploadStatusGood = false;
 int  overrideTarget = -1;
-double b, c = 0;
+float b, c = 0;
 int power_up_no_fix_byte_loop_count = 0;
 
 uint8_t nextUplinkMessage = 0;
@@ -721,14 +722,14 @@ MS5837 BlueRobotics_DepthSensor;
 
 // Stores min and max magnetometer values from calibration
 
-const double initial_min_mag = 1000;
-const double initial_max_mag = -1000;
+const float initial_min_mag = 1000;
+const float initial_max_mag = -1000;
 
-vec<double> calib_magnetometer_max;
-vec<double> calib_magnetometer_min;
-vec<double> magnetometer_max;
-vec<double> magnetometer_min;
-vec<double> magnetometer_vector, accelerometer_vector;
+vec<float> calib_magnetometer_max;
+vec<float> calib_magnetometer_min;
+vec<float> magnetometer_max;
+vec<float> magnetometer_min;
+vec<float> magnetometer_vector, accelerometer_vector;
 vec<float> imu_gyro_vector, imu_lin_acc_vector, imu_rot_acc_vector;
 float imu_temperature = 0.0;
 
@@ -736,7 +737,7 @@ float imu_temperature = 0.0;
 const uint16_t maxCalibrationSamples = 500;
 const uint32_t calibrationSampleInterval = 20; // Sample every 10ms during calibration
 struct CalibrationSample {
-  double x, y, z;
+  float x, y, z;
 };
 CalibrationSample calibrationData[maxCalibrationSamples];
 uint16_t calibrationSampleCount = 0;
@@ -763,7 +764,7 @@ void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
 
 // Magnetic Compass averaging and refresh rate control
 const uint8_t s_smoothedCompassBufferSize = 10;
-double s_smoothedCompassHeading[s_smoothedCompassBufferSize];
+float s_smoothedCompassHeading[s_smoothedCompassBufferSize];
 uint8_t s_nextCompassSampleIndex = 0;
 bool s_smoothedCompassBufferInitialised = false;
 
@@ -819,11 +820,11 @@ uint32_t newNoFixCount = 0;
 uint32_t latestGPSMessageTimeStamp = 0;
 
 // Magnetic heading calculation functions
-template <typename T> double calculateTiltCompensatedHeading(vec<T> from);
-template <typename T> double calculateTiltCompensatedHeading_new(vec<T> from);
+template <typename T> float calculateTiltCompensatedHeading(vec<T> from);
+template <typename T> float calculateTiltCompensatedHeading_new(vec<T> from);
 template <typename Ta, typename Tb, typename To> void vector_cross(const vec<Ta> *a, const vec<Tb> *b, vec<To> *out);
 template <typename Ta, typename Tb> float vector_dot(const vec<Ta> *a, const vec<Tb> *b);
-void vector_normalize(vec<double> *a);
+void vector_normalize(vec<float> *a);
 bool useGetDepthAsync = true;
 
 bool enableButtonTestMode = false;

@@ -714,7 +714,7 @@ bool getMagHeadingNotTiltCompensated(float& newHeading)
 {
   sensors_event_t magEvent;
   mag.getEvent(&magEvent);
-  float heading = (atan2f(magEvent.magnetic.y, magEvent.magnetic.x) * 180.0) / PI;
+  float heading = (atan2(magEvent.magnetic.y, magEvent.magnetic.x) * 180.0) / PI;
 
   if (isnan(heading))
     return false;

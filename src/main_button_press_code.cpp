@@ -198,8 +198,8 @@ void checkForButtonPresses()
         startCalibrationDataCollection();
 
         // save current max/min vectors to magnetometer_min and magnetometer_max
-        calib_magnetometer_min = vec<double>(initial_min_mag,initial_min_mag,initial_min_mag);
-        calib_magnetometer_max = vec<double>(initial_max_mag,initial_max_mag,initial_max_mag);
+        calib_magnetometer_min = vec<float>(initial_min_mag,initial_min_mag,initial_min_mag);
+        calib_magnetometer_max = vec<float>(initial_max_mag,initial_max_mag,initial_max_mag);
       }
 
       break;

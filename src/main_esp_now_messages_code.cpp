@@ -232,7 +232,7 @@ void publishToOceanicBreadCrumbRecord(const bool record)
   }
 }
 
-void publishToOceanicPinPlaced(double latitude, double longitude, double heading, double depth)
+void publishToOceanicPinPlaced(double latitude, double longitude, float heading, float depth)
 {
   if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
   {
