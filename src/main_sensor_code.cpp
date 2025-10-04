@@ -414,10 +414,7 @@ void acquireAllSensorReadings()
       getDepth(depth, water_temperature, water_pressure, depth_altitude, read_original_algorithm);
     }
 
-    getM5ImuSensorData(&angular_velocity.x, &angular_velocity.y, &angular_velocity.z,
-                     &linear_acceleration.x, &linear_acceleration.y, &linear_acceleration.z,
-                     &diver_pitch_orientation, &diver_roll_orientation, &diver_yaw_orientation,
-                     &imu_temperature);
+    getM5ImuSensorData(&diver_pitch_orientation, &diver_roll_orientation, &imu_temperature);
   }
 
   if (colourSensorAvailable &&

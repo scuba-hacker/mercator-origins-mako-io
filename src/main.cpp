@@ -141,10 +141,7 @@ const char* getDiverTrimDescription(e_diver_trim trim)
 
 void switchDivePlan();
 void switchToNextDisplayToShow();
-void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
-                        float* lin_acc_x, float* lin_acc_y, float* lin_acc_z,
-                        float* roll, float* pitch, float* yaw,
-                        float* IMU_temperature);
+void getM5ImuSensorData(float* roll, float* pitch, float* IMU_temperature);
 const char* scanForKnownNetwork();
 bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts);
 bool setupOTAWebServer(const char* _ssid, const char* _password, const char* label, uint32_t timeout, bool wifiOnly);
@@ -750,11 +747,12 @@ vec<float> magnetometer_vector, accelerometer_vector;
 vec<float> angular_velocity, linear_acceleration;
 float diver_roll_orientation = 0.0;
 float diver_pitch_orientation = 0.0;
-float diver_yaw_orientation = 0.0;
 float imu_temperature = 0.0;
 
 // Calibration data collection for soft iron compensation
-const uint16_t maxCalibrationSamples = 500;
+// set to 1 to disable calibration sample collection
+// Maximum is approx 2800
+const uint16_t maxCalibrationSamples = 2000;
 const uint32_t calibrationSampleInterval = 20; // Sample every 10ms during calibration
 struct CalibrationSample {
   float x, y, z;
@@ -764,16 +762,12 @@ uint16_t calibrationSampleCount = 0;
 bool collectingCalibrationData = false;
 uint32_t lastCalibrationSampleTime = 0;
 
-void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
-                        float* lin_acc_x, float* lin_acc_y, float* lin_acc_z,
-                        float* roll, float* pitch, float* yaw,
-                        float* IMU_temperature)
+void getM5ImuSensorData(float* roll, float* pitch, float* IMU_temperature)
 {
   if (enableIMUSensor)
   {
-    M5.IMU.getGyroData(gyro_x, gyro_y, gyro_z);
-    M5.IMU.getAccelData(lin_acc_x, lin_acc_y, lin_acc_z);
-    M5.IMU.getAhrsData(pitch, roll, yaw);
+    float yaw = 0; // not interested in this metric - not meaningful, use compass instead
+    M5.IMU.getAhrsData(pitch, roll, &yaw);
     M5.IMU.getTempData(IMU_temperature);
 
     float goodTrim = 20.0f;
@@ -795,7 +789,7 @@ void getM5ImuSensorData(float* gyro_x, float* gyro_y, float* gyro_z,
   }
   else
   {
-    *gyro_x = *gyro_y = *gyro_z = *lin_acc_x = *lin_acc_y = *lin_acc_z = *roll = *pitch = *yaw = *IMU_temperature = 0.0;
+    *roll = *pitch = *IMU_temperature = 0.0;
     diver_trim = TRIM_IMU_OFF;
   }
 }

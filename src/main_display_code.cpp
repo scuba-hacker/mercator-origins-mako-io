@@ -822,9 +822,9 @@ void drawCompassCalibration()
     M5.Lcd.printf("z %.3f\n  %.3f\n\n",calib_magnetometer_min.z,calib_magnetometer_max.z);
 
     // Show calibration data collection status
-    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextSize(2);
     M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
-    M5.Lcd.printf("\nData samples: %d/%d", calibrationSampleCount, maxCalibrationSamples);
+    M5.Lcd.printf("Samples:\b %d/%d", calibrationSampleCount, maxCalibrationSamples);
   }
   else
   {

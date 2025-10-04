@@ -62,11 +62,11 @@ void sendUplinkTelemetryMessageV5()
 //  {
     latestFixTimeStamp = CLEARED_FIX_TIME_STAMP;
 
-    // this is 57 words, 114 bytes including checksum (56 metrics)
+    // this is 44 words, 86 bytes including checksum
 
     // fixed format
 
-    uint16_t uplink_length = 114;   // bytes to transmit in this message - including length and checksum. 57 x 2 byte words == 114 bytes
+    uint16_t uplink_length = 86;   // bytes to transmit in this message - including length and checksum. 44 x 2 byte words == 86 bytes
     uint16_t uplink_msgtype = 0;   // 0 is full fat telemetry message zero!
     uint16_t uplink_depth = depth * 10.0;
     uint16_t uplink_water_pressure = water_pressure * 100.0;
@@ -92,22 +92,12 @@ void sendUplinkTelemetryMessageV5()
     uint16_t uplink_mako_usb_voltage = M5.Axp.GetVBusVoltage() * 1000.0;
     uint16_t uplink_mako_usb_current = M5.Axp.GetVBusCurrent() * 100.0;
 
-
     float uplink_mako_lsm_acc_x = accelerometer_vector.x;
     float uplink_mako_lsm_acc_y = accelerometer_vector.y;
     float uplink_mako_lsm_acc_z = accelerometer_vector.z;
 
-    float uplink_mako_imu_gyro_x = angular_velocity.x;
-    float uplink_mako_imu_gyro_y = angular_velocity.y;
-    float uplink_mako_imu_gyro_z = angular_velocity.z;
-
-    float uplink_mako_imu_lin_acc_x = linear_acceleration.x;
-    float uplink_mako_imu_lin_acc_y = linear_acceleration.y;
-    float uplink_mako_imu_lin_acc_z = linear_acceleration.z;
-
     float uplink_mako_diver_roll_orientation = diver_roll_orientation;
     float uplink_mako_diver_pitch_orientation = diver_pitch_orientation;
-    float uplink_mako_diver_yaw_orientation = diver_yaw_orientation;
 
     uint16_t uplink_mako_good_checksum_msgs = newPassedChecksum;
 
@@ -170,23 +160,14 @@ void sendUplinkTelemetryMessageV5()
     *(nextMetric++) = actual_sensor_acquisition_time;
     *(nextMetric++) = max_actual_sensor_acquisition_time;
 
-    char* p = NULL;
+    // 3x32 bit words (floats)
+    *((float*)nextMetric) = uplink_mako_lsm_acc_x; nextMetric += 2;
+    *((float*)nextMetric) = uplink_mako_lsm_acc_y; nextMetric += 2;
+    *((float*)nextMetric) = uplink_mako_lsm_acc_z; nextMetric += 2;
 
-    // 3x32 bit words (floats) - (6 x 2 byte metrics)
-    p = (char*) &uplink_mako_lsm_acc_x;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_lsm_acc_y;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_lsm_acc_z;         *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-
-    // 9x32 bit words (floats) - (18 x 2 byte metrics)
-    p = (char*) &uplink_mako_imu_gyro_x;        *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_imu_gyro_y;        *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_imu_gyro_z;        *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_imu_lin_acc_x;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_imu_lin_acc_y;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_imu_lin_acc_z;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_diver_roll_orientation;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_diver_pitch_orientation;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
-    p = (char*) &uplink_mako_diver_yaw_orientation;     *(nextMetric++) = *(p++) | (*(p++) << 8); *(nextMetric++) = *(p++) | (*(p++) << 8);
+    // 2x32 bit words (floats)
+    *((float*)nextMetric) = uplink_mako_diver_roll_orientation; nextMetric += 2;
+    *((float*)nextMetric) = uplink_mako_diver_pitch_orientation; nextMetric += 2;
 
     // 2 x 16 bit words (2 x 2 byte metrics)
     *(nextMetric++) = uplink_mako_good_checksum_msgs;
