@@ -9,7 +9,7 @@ bool waitForBothButtonsReleased()
   return true;
 }
 
-const uint32_t buttonPressDurationToChangeScreen = 50;
+const uint32_t buttonPressDurationToChangeScreen = 100;
 
 void checkForButtonPresses()
 {
