@@ -193,7 +193,6 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
 
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
   {
-    toggleRedLED();
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
   }
 
