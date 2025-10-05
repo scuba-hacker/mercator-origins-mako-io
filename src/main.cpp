@@ -241,7 +241,6 @@ void drawThisTarget();
 void notifySoundsOnOffChanged();
 void startCalibrationDataCollection();
 void stopCalibrationDataCollection();
-void collectCalibrationSample();
 void setupCalibrationWebEndpoint();
 void rotateToNextGuidanceSounds();
 bool connectESPNow();
@@ -960,7 +959,7 @@ void lemonRxTask(void *arg)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool systemStartupAndCheckForOTADemand()
 {
-  delay(1000);
+  delay(500); // avoid all MCU starting simultaneously to avoid power spikes
   M5.begin(/* LCD Enable */ true, /* Power Enable */ true,/* Serial Enable */ false, /* Buzzer Enable */ false);
 
   readPreferencesFromEEPROM();

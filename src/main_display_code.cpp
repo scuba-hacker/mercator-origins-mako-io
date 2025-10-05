@@ -803,10 +803,8 @@ void drawCompassCalibration()
 
     sensors_event_t magEvent;
 
-    mag.getEvent(&magEvent);
-
     // Collect calibration data for soft iron compensation
-    collectCalibrationSample();
+    collectCalibrationSample(magEvent);
 
     if (magEvent.magnetic.x < calib_magnetometer_min.x) calib_magnetometer_min.x = magEvent.magnetic.x;
     if (magEvent.magnetic.x > calib_magnetometer_max.x) calib_magnetometer_max.x = magEvent.magnetic.x;

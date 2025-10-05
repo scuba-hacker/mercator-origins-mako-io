@@ -260,8 +260,10 @@ void stopCalibrationDataCollection()
   USB_SERIAL_PRINTF("Stopped calibration data collection. Collected %d samples\n", calibrationSampleCount);
 }
 
-void collectCalibrationSample()
+void collectCalibrationSample(sensors_event_t& magEvent)
 {
+  mag.getEvent(&magEvent);
+
   if (!collectingCalibrationData || calibrationSampleCount >= maxCalibrationSamples) {
     return;
   }
@@ -270,10 +272,7 @@ void collectCalibrationSample()
   if (currentTime - lastCalibrationSampleTime < calibrationSampleInterval) {
     return; // Not time for next sample yet
   }
-
-  sensors_event_t magEvent;
-  mag.getEvent(&magEvent);
-
+  
   // Store raw magnetometer reading
   calibrationData[calibrationSampleCount].x = magEvent.magnetic.x;
   calibrationData[calibrationSampleCount].y = magEvent.magnetic.y;
