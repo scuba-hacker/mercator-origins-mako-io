@@ -701,7 +701,7 @@ struct LemonDataPacket
 
 HardwareSerial lemon_float_serial(UART_NUMBER_LEMON_FLOAT);   // UART number 2: This uses Grove SCL=GPIO33 and SDA=GPIO32 for Hardware UART Tx and Rx
 
-float Lat, Lng;
+double Lat, Lng;
 String  lat_str , lng_str;
 int satellites = 0;
 char internetUploadStatusGood = false;

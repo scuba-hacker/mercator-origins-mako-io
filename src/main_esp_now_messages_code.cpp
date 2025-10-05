@@ -163,7 +163,7 @@ void publishToTigerAndOceanicCurrentTarget(const char* currentTarget)
 }
 
 void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
-{     
+{ 
   memset(tiger_espnow_buffer,0,sizeof(tiger_espnow_buffer));
   
   tiger_espnow_buffer[0] = 'X';  // command c=target code, location, heading, target
@@ -184,14 +184,16 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
 
   tiger_espnow_buffer[endOfCode - currentTarget + 1] = '\0';
 
+  double dblHeading = magnetic_heading;   // send as double (now stored as a float, but Tiger and Oceanic expect a double)
   memcpy(tiger_espnow_buffer+latitudeOffset,&Lat,sizeof(Lat));
   memcpy(tiger_espnow_buffer+longitudeOffset,&Lng,sizeof(Lng));
-  memcpy(tiger_espnow_buffer+headingOffset,&magnetic_heading,sizeof(magnetic_heading));
+  memcpy(tiger_espnow_buffer+headingOffset,&dblHeading,sizeof(dblHeading));
 
   strncpy(tiger_espnow_buffer+currentTargetOffset,currentTarget,sizeof(tiger_espnow_buffer)-2-currentTargetOffset);
 
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
   {
+    toggleRedLED();
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
   }
 
