@@ -826,12 +826,19 @@ void drawCompassCalibration()
   }
   else
   {
-    M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
-
-    M5.Lcd.printf("Bottom\nbutton\nto start\ncalibration\n\n");    
-    M5.Lcd.printf("x %.3f\n  %.3f\n\n",calib_magnetometer_min.x,calib_magnetometer_max.x);
-    M5.Lcd.printf("y %.3f\n  %.3f\n\n",calib_magnetometer_min.y,calib_magnetometer_max.y);
-    M5.Lcd.printf("z %.3f\n  %.3f\n\n",calib_magnetometer_min.z,calib_magnetometer_max.z);
+    if (setHardIronOffsetsInHardwareRegisters)
+    {
+      M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
+      M5.Lcd.println("To\ncalibrate\ndisable\nhardware\nregisters");
+    }
+    else
+    {
+      M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
+      M5.Lcd.printf("Bottom\nbutton\nto start\ncalibration\n\n");    
+      M5.Lcd.printf("x %.3f\n  %.3f\n\n",calib_magnetometer_min.x,calib_magnetometer_max.x);
+      M5.Lcd.printf("y %.3f\n  %.3f\n\n",calib_magnetometer_min.y,calib_magnetometer_max.y);
+      M5.Lcd.printf("z %.3f\n  %.3f\n\n",calib_magnetometer_min.z,calib_magnetometer_max.z);
+    }
   }
 }
 

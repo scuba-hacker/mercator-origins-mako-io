@@ -12,7 +12,7 @@ float soft_iron_matrix[3][3];
 
 // Calibration for Oceanic being present and gopro mount for real gopro - but without the camera.
 // hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
-vec<float> hard_iron_offset_without_camera = { 8.331061080431581445, -12.71955273800613107, 45.12891163824074425 };
+const vec<float> hard_iron_offset_without_camera = { 8.331061080431581445, -12.71955273800613107, 45.12891163824074425 };
 //
 // soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
 const float soft_iron_matrix_without_camara[3][3] = {
@@ -22,25 +22,28 @@ const float soft_iron_matrix_without_camara[3][3] = {
 };
 
 // TO DO - Calibration for Oceanic being present and gopro camera mounted
+// captured outside at 10pm on 6th October 2025
 // hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
-vec<float> hard_iron_offset_with_camera = { 1, 1, 1 };
+const vec<float> hard_iron_offset_with_camera = {6.83588168, -11.88443105, 42.22867387};
 //
 // soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
 const float soft_iron_matrix_with_camara[3][3] = {
-  { 1, 1, 1},
-  { 1, 1, 1},
-  { 1, 1, 1},
+  { 0.9745975,    0.00710121, -0.00512571 },
+  { 0.00710121,   1.04144114, -0.00671628 },
+  { -0.00512571, -0.00671628,  0.98535407 }
 };
 
 // TO DO - Calibration for no Oceanic or GoPro Mount/Camera being present
 // hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
-vec<float> hard_iron_offset_mako_tiger_only = { 1, 1, 1 };
+// no translation
+vec<float> hard_iron_offset_mako_tiger_only = { 0, 0, 0 };
 //
 // soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
+// identity
 const float soft_iron_matrix_mako_tiger_only[3][3] = {
-  { 1, 1, 1},
-  { 1, 1, 1},
-  { 1, 1, 1},
+  { 1, 0, 0},
+  { 0, 1, 0},
+  { 0, 0, 1},
 };
 
 const char* getSpoolSetupDescription(e_spool_setup setup)
@@ -67,8 +70,6 @@ const char* getSpoolSetupDescription(e_spool_setup setup)
 void setMagHardIronOffsets(vec<float> hard_iron_offset, TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
 void resetMagHardIronOffsets(TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
 
-bool setHardIronOffsetsInHardwareRegisters = true;
-
 void setCompassCalibrationSpoolSetup(e_spool_setup setup)
 {
   switch (setup)
@@ -83,16 +84,17 @@ void setCompassCalibrationSpoolSetup(e_spool_setup setup)
     {
       hard_iron_offset = hard_iron_offset_with_camera;
       memcpy(soft_iron_matrix, soft_iron_matrix_with_camara,sizeof(soft_iron_matrix));
+      break;
     }
     case SPOOL_45_MAKO_TIGER_ONLY:
     default:
     {
       hard_iron_offset = hard_iron_offset_mako_tiger_only;
       memcpy(soft_iron_matrix, soft_iron_matrix_mako_tiger_only,sizeof(soft_iron_matrix));
-    }
+      break;
+   }
   }
 }
-
 
 void initSensors()
 {

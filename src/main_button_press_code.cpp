@@ -187,9 +187,8 @@ void checkForButtonPresses()
         delay(10000);
         switchToNextDisplayToShow();
       }
-      else if (p_secondButton->wasReleasefor(50)) // start calibration
+      else if (p_secondButton->wasReleasefor(50) && !setHardIronOffsetsInHardwareRegisters) // start calibration
       {
-
         M5.Lcd.fillScreen(TFT_BLACK);
 
         smoothedCompassCalcInProgress = false;

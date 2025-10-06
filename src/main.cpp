@@ -10,8 +10,16 @@ bool goProButtonsPrimaryControl = true;     // false means use the M5 Stick phys
 
 bool divingInTheSea = false;                 // Salt / Fresh water depth sensor calibration
 
+bool setHardIronOffsetsInHardwareRegisters = true;
+
+const int maxCalibrationSamples = 1;        // Calibration data collection for soft iron compensation (max 2500, set to 1 to disable)
+
 bool testTigerOutsidePod = false;
 bool writeLogToSerial = false;
+
+enum e_spool_setup { SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA, SPOOL_45M_WITH_OCEANIC_AND_CAMERA, SPOOL_45_MAKO_TIGER_ONLY, SPOOL_SETUP_UNKNOWN};
+e_spool_setup spool_setup = SPOOL_45M_WITH_OCEANIC_AND_CAMERA;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,12 +65,10 @@ ESPNow Commands
 #include <NavigationWaypoints.h>
 #include <Preferences.h>
 
-enum e_spool_setup { SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA, SPOOL_45M_WITH_OCEANIC_AND_CAMERA, SPOOL_45_MAKO_TIGER_ONLY, SPOOL_SETUP_UNKNOWN};
 const char* getSpoolSetupDescription(e_spool_setup setup);
 
 // ************** Mako Control Parameters **************
 
-e_spool_setup spool_setup = SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA;
 bool enableDigitalCompass = true;
 bool enableTiltCompensation = true;
 bool enableSmoothedCompass = true;
@@ -748,16 +754,12 @@ float diver_roll_orientation = 0.0;
 float diver_pitch_orientation = 0.0;
 float imu_temperature = 0.0;
 
-// Calibration data collection for soft iron compensation
-// set to 1 to disable calibration sample collection
-// Maximum is approx 2800
-const uint16_t maxCalibrationSamples = 2000;
 const uint32_t calibrationSampleInterval = 20; // Sample every 10ms during calibration
 struct CalibrationSample {
   float x, y, z;
 };
 CalibrationSample calibrationData[maxCalibrationSamples];
-uint16_t calibrationSampleCount = 0;
+int calibrationSampleCount = 0;
 bool collectingCalibrationData = false;
 uint32_t lastCalibrationSampleTime = 0;
 
@@ -959,7 +961,6 @@ void lemonRxTask(void *arg)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool systemStartupAndCheckForOTADemand()
 {
-  delay(500); // avoid all MCU starting simultaneously to avoid power spikes
   M5.begin(/* LCD Enable */ true, /* Power Enable */ true,/* Serial Enable */ false, /* Buzzer Enable */ false);
 
   readPreferencesFromEEPROM();
@@ -997,6 +998,8 @@ void setup()
     return;     // OTA Required, skip rest of setup.
   //////// PROTECTED - DO NOT ADD CODE BEFORE THE OTA DEMAND CHECK  - RISK OF OTA FAILURE
 
+  delay(1000); // avoid all MCU starting simultaneously to avoid power spikes
+
   espNowMsgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
 
   lemonRxQueue = xQueueCreate(LEMON_RX_QUEUE_SIZE, sizeof(LemonDataPacket));
@@ -1033,8 +1036,6 @@ void setup()
   initSensors();
 
   acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
-
-  delay(1000);
 
   M5.Lcd.fillScreen(TFT_BLACK);
   M5.Lcd.setRotation(1);

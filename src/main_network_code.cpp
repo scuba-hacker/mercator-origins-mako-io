@@ -278,7 +278,7 @@ bool setupOTAWebServer(const char* _ssid, const char* _password, const char* lab
         }
 
         AsyncWebServerResponse *response = request->beginChunkedResponse("text/csv", [](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
-          static uint16_t currentSample = 0;
+          static int currentSample = 0;
 
           // Reset on first chunk
           if (index == 0) {
