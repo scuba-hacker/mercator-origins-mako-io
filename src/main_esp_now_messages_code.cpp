@@ -174,7 +174,9 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
   const int latitudeOffset = 8;
   const int longitudeOffset = 16;
   const int headingOffset = 24;
-  const int currentTargetOffset = 32;
+  const int depthOffset = 32;
+  const int x_message_flags_offset = 36;
+  const int currentTargetOffset = 40;
         
   const char* endOfCode=currentTarget;
   while (endOfCode - currentTarget < maxCodeLength && std::isalnum(*endOfCode++));
@@ -185,9 +187,13 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
   tiger_espnow_buffer[endOfCode - currentTarget + 1] = '\0';
 
   double dblHeading = magnetic_heading;   // send as double (now stored as a float, but Tiger and Oceanic expect a double)
+  uint32_t x_message_flags = isLatestGPSMsgFix();   // location has fix (bit 1)
+
   memcpy(tiger_espnow_buffer+latitudeOffset,&Lat,sizeof(Lat));
   memcpy(tiger_espnow_buffer+longitudeOffset,&Lng,sizeof(Lng));
   memcpy(tiger_espnow_buffer+headingOffset,&dblHeading,sizeof(dblHeading));
+  memcpy(tiger_espnow_buffer+depthOffset,&depth,sizeof(depth));
+  memcpy(tiger_espnow_buffer+x_message_flags_offset,&x_message_flags,sizeof(x_message_flags));
 
   strncpy(tiger_espnow_buffer+currentTargetOffset,currentTarget,sizeof(tiger_espnow_buffer)-2-currentTargetOffset);
 
