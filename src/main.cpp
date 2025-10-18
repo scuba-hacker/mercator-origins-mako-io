@@ -15,7 +15,7 @@ bool setHardIronOffsetsInHardwareRegisters = true;
 const int maxCalibrationSamples = 1;        // Calibration data collection for soft iron compensation (max 2500, set to 1 to disable)
 
 bool testTigerOutsidePod = false;
-bool writeLogToSerial = true;
+bool writeLogToSerial = false;
 
 enum e_spool_setup { SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA, SPOOL_45M_WITH_OCEANIC_AND_CAMERA, SPOOL_45_MAKO_TIGER_ONLY, SPOOL_SETUP_UNKNOWN};
 

@@ -10,8 +10,8 @@ uint8_t SILKY_MAC[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      // BSSID: the 
 const char* silkyName = "Silky";
 
 uint8_t TIGER_MAC[6]      = {0,0,0,0,0,0};
-uint8_t TIGER_MAC_TEST[6]  = {0xE8, 0x9F, 0x6D, 0x00, 0x98, 0xA1};// BSSID: the AP Mac, not STA Mac shown in router
-uint8_t TIGER_MAC_POD[6] = {0xE8, 0x9F, 0x6D, 0x09, 0xA7, 0x91};  // BSSID: the AP Mac, not STA Mac shown in router
+uint8_t TIGER_MAC_TEST[6] = {0xE8, 0x9F, 0x6D, 0x00, 0x98, 0xA1};  // BSSID: the AP Mac, not STA Mac shown in router
+uint8_t TIGER_MAC_POD[6]  = {0xE8, 0x9F, 0x6D, 0x09, 0x3A, 0xE9};  // BSSID: the AP Mac, not STA Mac shown in router
 const char* tigerName = "Tiger";
 
 uint8_t OCEANIC_MAC[6] = {0x76, 0x4D, 0xBD, 0x7B, 0xA8, 0xE4};    // BSSID: the AP Mac, not STA Mac shown in router
