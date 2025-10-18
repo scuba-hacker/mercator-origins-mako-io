@@ -171,34 +171,38 @@ void checkForButtonPresses()
         switchToNextDisplayToShow();
       }
 
-      if (p_secondButton->wasReleasefor(1000)) // stop calibration
+      // Calibration cannot be done if hardware registers are being used - set in code
+      if (!setHardIronOffsetsInHardwareRegisters)
       {
-        M5.Lcd.print("Saving\nCalibration");
+        if (p_secondButton->wasReleasefor(1000)) // stop calibration
+        {
+          M5.Lcd.print("Saving\nCalibration");
 
-        // Stop collecting calibration data
-        stopCalibrationDataCollection();
+          // Stop collecting calibration data
+          stopCalibrationDataCollection();
 
-        // save current max/min vectors to magnetometer_min and magnetometer_max
-        magnetometer_min = calib_magnetometer_min;
-        magnetometer_max = calib_magnetometer_max;
+          // save current max/min vectors to magnetometer_min and magnetometer_max
+          magnetometer_min = calib_magnetometer_min;
+          magnetometer_max = calib_magnetometer_max;
 
-        smoothedCompassCalcInProgress = true;
+          smoothedCompassCalcInProgress = true;
 
-        delay(10000);
-        switchToNextDisplayToShow();
-      }
-      else if (p_secondButton->wasReleasefor(50) && !setHardIronOffsetsInHardwareRegisters) // start calibration
-      {
-        M5.Lcd.fillScreen(TFT_BLACK);
+          delay(10000);
+          switchToNextDisplayToShow();
+        }
+        else if (p_secondButton->wasReleasefor(50) && !setHardIronOffsetsInHardwareRegisters) // start calibration
+        {
+          M5.Lcd.fillScreen(TFT_BLACK);
 
-        smoothedCompassCalcInProgress = false;
+          smoothedCompassCalcInProgress = false;
 
-        // Start collecting calibration data for soft iron compensation
-        startCalibrationDataCollection();
+          // Start collecting calibration data for soft iron compensation
+          startCalibrationDataCollection();
 
-        // save current max/min vectors to magnetometer_min and magnetometer_max
-        calib_magnetometer_min = vec<float>(initial_min_mag,initial_min_mag,initial_min_mag);
-        calib_magnetometer_max = vec<float>(initial_max_mag,initial_max_mag,initial_max_mag);
+          // save current max/min vectors to magnetometer_min and magnetometer_max
+          calib_magnetometer_min = vec<float>(initial_min_mag,initial_min_mag,initial_min_mag);
+          calib_magnetometer_max = vec<float>(initial_max_mag,initial_max_mag,initial_max_mag);
+        }
       }
 
       break;

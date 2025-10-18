@@ -46,14 +46,30 @@ const float soft_iron_matrix_mako_tiger_only[3][3] = {
   { 0, 0, 1},
 };
 
-const char* getSpoolSetupDescription(e_spool_setup setup)
+const char* getSpoolSetupDescription(e_spool_setup setup, bool forM5Display)
 {
   switch (setup)
   {
-    case SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA: return "45M Spool, Oceanic";
-    case SPOOL_45M_WITH_OCEANIC_AND_CAMERA:         return "45M Spool, Oceanic, Camera";
-    case SPOOL_45_MAKO_TIGER_ONLY:                  return "45M Spool only";
-    default:                                        return "Unknown";
+    case SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA: 
+      if (forM5Display)
+        return "45M Spool +\nOceanic";
+      else
+        return "45M Spool + Oceanic";
+
+    case SPOOL_45M_WITH_OCEANIC_AND_CAMERA:
+      if (forM5Display)
+        return "45M Spool +\nOceanic +\nCamera";
+      else
+        return "45M Spool + Oceanic + Camera";
+
+    case SPOOL_45_MAKO_TIGER_ONLY:
+      if (forM5Display)
+        return "45M Spool\nOnly";
+      else
+        return "45M Spool Only";
+
+    default:
+      return "Unknown";
   }  
 }
 
@@ -222,11 +238,13 @@ void initSensors()
 
     if (!BlueRobotics_DepthSensor.begin())
     {
+      M5.Lcd.println("Depth bad");
       USB_SERIAL_PRINTLN("Could not begin depth sensor");
       depthAvailable = false;
     }
     else
     {
+      M5.Lcd.println("Depth Ok");
       if (divingInTheSea)
         BlueRobotics_DepthSensor.setFluidDensitySaltWater();
       else
@@ -245,6 +263,7 @@ void initSensors()
     depthAvailable = false;
     depth = 0;
   }
+  delay(1000);
 }
 
 // Calibration data collection functions

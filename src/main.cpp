@@ -15,10 +15,11 @@ bool setHardIronOffsetsInHardwareRegisters = true;
 const int maxCalibrationSamples = 1;        // Calibration data collection for soft iron compensation (max 2500, set to 1 to disable)
 
 bool testTigerOutsidePod = false;
-bool writeLogToSerial = false;
+bool writeLogToSerial = true;
 
 enum e_spool_setup { SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA, SPOOL_45M_WITH_OCEANIC_AND_CAMERA, SPOOL_45_MAKO_TIGER_ONLY, SPOOL_SETUP_UNKNOWN};
-e_spool_setup spool_setup = SPOOL_45M_WITH_OCEANIC_AND_CAMERA;
+
+e_spool_setup spool_setup = SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +66,7 @@ ESPNow Commands
 #include <NavigationWaypoints.h>
 #include <Preferences.h>
 
-const char* getSpoolSetupDescription(e_spool_setup setup);
+const char* getSpoolSetupDescription(e_spool_setup setup, bool forM5Display);
 
 // ************** Mako Control Parameters **************
 
@@ -998,7 +999,7 @@ void setup()
     return;     // OTA Required, skip rest of setup.
   //////// PROTECTED - DO NOT ADD CODE BEFORE THE OTA DEMAND CHECK  - RISK OF OTA FAILURE
 
-  delay(1000); // avoid all MCU starting simultaneously to avoid power spikes
+//  delay(1000); // avoid all MCU starting simultaneously to avoid power spikes
 
   espNowMsgsReceivedQueue = xQueueCreate(queueLength,sizeof(rxQueueItemBuffer));
 
@@ -1035,7 +1036,7 @@ void setup()
 
   initSensors();
 
-  acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
+//  acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
 
   M5.Lcd.fillScreen(TFT_BLACK);
   M5.Lcd.setRotation(1);
