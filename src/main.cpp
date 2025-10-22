@@ -347,26 +347,11 @@ void uploadOTABeginCallback(AsyncElegantOtaClass* originator);
 const int SCREEN_LENGTH = 240;
 const int SCREEN_WIDTH = 135;
 
-// const int UPLINK_BAUD_RATE = 9600;
-// works for rx from lemon: 922190, 1100000,1500000,1700000,1900000,2100000 (with linger = 3ms)
-// does not work for rx from lemon: 921600, 180000
-// does not work up to lemon: 91000
-// const int UPLINK_BAUD_RATE = 576000;  // max baudrate for mako Rx as Lemon Tx is using a real GPIO pin and this is Lemon Max that Mako can decode.
-
 const uint32_t lingerTimeMsBeforeUplink = 0;
-const int UPLINK_BAUD_RATE = 57600;
-
-/*
-// added 3ms delay before replying to Lemon when running at 2.1Mbit / sec
-// can experiment with 2ms and 1ms.
-// without the delay there's 14% loss/miss
-const uint32_t lingerTimeMsBeforeUplink = 3; 
-const int UPLINK_BAUD_RATE = 2100000 ;
-*/
+const int UPLINK_BAUD_RATE = 1000000;     // 1 Mbit max reliable with MAX485 ICs with no linger time back to lemon
 
 enum e_display_brightness {OFF_DISPLAY = 0, DIM_DISPLAY = 25, HALF_BRIGHT_DISPLAY = 50, BRIGHTEST_DISPLAY = 100};
 enum e_uplinkMode {SEND_NO_UPLINK_MSG, SEND_TEST_UPLINK_MSG, SEND_FULL_UPLINK_MSG};
-
 
 enum  e_mako_displays 
   {
@@ -612,6 +597,7 @@ NavigationWaypoint diveTwoWaypoints[] =
   { ._label = "10N Bus 2m", ._m5label = "10N\n\nBus\n\n2m", ._cat=NO_BUOY,._lat = 51.460073, ._long = -0.548515},
   { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
 };
+
 const uint8_t waypointCountDiveTwo =  sizeof(diveTwoWaypoints)/sizeof(NavigationWaypoint); const uint8_t waypointExitDiveTwo = waypointCountDiveTwo - 1;
 
 const uint8_t* p_currentDiveWaypointCount = nullptr;
@@ -1023,7 +1009,7 @@ void setup()
   // Had to solder to GPIO2 on the main board and cut the header pin to the HAT mezzenine board as there 
   // were some components there preventing the UART from working. Also was cutting power to I2C.
   const bool invert = false;
-  lemon_float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N2, HAT_GPS_RX_GPIO, HAT_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
+  lemon_float_serial.begin(UPLINK_BAUD_RATE, SERIAL_8N1, HAT_GPS_RX_GPIO, HAT_GPS_TX_GPIO, invert);   // pin 26=rx, 9=tx specifies the HAT pin for Rx and the IR LED for Tx (not used)                
 
   // Create Lemon RS485 receive task on Core 1
   xTaskCreatePinnedToCore(lemonRxTask,
