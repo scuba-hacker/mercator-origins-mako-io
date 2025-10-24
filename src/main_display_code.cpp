@@ -1015,7 +1015,9 @@ void drawLocationStats()
   
   M5.Lcd.setCursor(5, 102);
   multi_heap_info_t info;
-  M5.Lcd.printf("Heap/Largest: %lu / %lu \n",info.total_free_bytes,info.largest_free_block);
+  heap_caps_get_info(&info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT); // internal RAM, memory capable to store data or to create new task
+
+  M5.Lcd.printf("Heap/Largest: %lu / %lu \n",info.total_free_bytes / 1024,info.largest_free_block / 1024);
 
 //  M5.Lcd.printf("Silky: %s",silkyMessage);  
 //  M5.Lcd.printf("T: (%d)\n%s", (int)(nextWaypoint - currentDiveWaypoints)+1, nextWaypoint->_m5label);
