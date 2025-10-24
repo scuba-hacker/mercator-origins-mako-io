@@ -391,11 +391,13 @@ void refreshAndCalculatePositionalAttributes()
 
 void acquireAllSensorReadings()
 {    
+  uint32_t now = millis();
   uint32_t start_micros = micros(), full_acquire_start_micros = micros();
 
-  if (millis() > s_lastCompassNotSmoothedDisplayRefresh + s_compassNotSmoothedHeadingUpdateRate)
+  // 100ms refresh interval
+  if (now > s_lastCompassNotSmoothedDisplayRefresh + s_compassNotSmoothedHeadingUpdateRate)
   {
-    s_lastCompassNotSmoothedDisplayRefresh = millis();
+    s_lastCompassNotSmoothedDisplayRefresh = now;
 
     if (compassAvailable)
     {
@@ -421,10 +423,22 @@ void acquireAllSensorReadings()
       magnetic_heading = 0;
     }
   }
-  
-  if (millis() > s_lastTempHumidityDisplayRefresh + s_tempHumidityUpdatePeriod)
+
+  // 100ms refresh interval - if this changes then Mahoney algorithm Hz needs to be updated too
+  now = millis();
+  if (enableIMUSensor && now > s_lastIMUDisplayRefresh + s_imuUpdatePeriod)  // Do a new millis() sample as IMU sensitive to read time
   {
-    s_lastTempHumidityDisplayRefresh = millis();
+    start_micros = micros();
+    getM5ImuSensorData(&diver_pitch_orientation, &diver_roll_orientation, &imu_temperature);
+    imu_acquire_time_micros=micros() - start_micros;
+
+    s_lastIMUDisplayRefresh = now;
+  }
+
+  // 2 second refresh interval  
+  if (now > s_lastTempHumidityDisplayRefresh + s_tempHumidityUpdatePeriod)
+  {
+    s_lastTempHumidityDisplayRefresh = now;
 
     start_micros = micros();
     getTempAndHumidityAndAirPressureBME280(humidity, temperature, air_pressure, pressure_altitude);
@@ -435,21 +449,18 @@ void acquireAllSensorReadings()
       bool read_original_algorithm = (display_to_show == SURVEY_DISPLAY ? true : false);
       getDepth(depth, water_temperature, water_pressure, depth_altitude, read_original_algorithm);
     }
-
-    start_micros = micros();
-    getM5ImuSensorData(&diver_pitch_orientation, &diver_roll_orientation, &imu_temperature);
-    imu_acquire_time_micros=micros() - start_micros;
   }
 
+  // 10 second refresh interval  
   if (colourSensorAvailable &&
-      millis() > nextLightReadTime && 
+      now > nextLightReadTime && 
       Adafruit_ColourSensor.colorDataReady())
   {
     start_micros = micros();
     Adafruit_ColourSensor.getColorData(&red_light, &green_light, &blue_light, &clear_light);
     colour_acquire_time_micros = micros() - start_micros;
     currentLightLevel = clear_light;
-    nextLightReadTime = millis() + readLightTimeWait;
+    nextLightReadTime = now + readLightTimeWait;
     sendLightLevelToOceanic = true;
   }
 

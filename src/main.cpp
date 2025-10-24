@@ -804,10 +804,13 @@ uint32_t s_lastSendTestSerialBytesTest = 0;
 const uint32_t s_sendTestSerialBytesPeriodMs = 1000;
 
 uint32_t s_lastTempHumidityDisplayRefresh = 0;
-const uint32_t s_tempHumidityUpdatePeriod = 250; // time between each humidity and depth update to screen
+const uint32_t s_tempHumidityUpdatePeriod = 2000; // time between each humidity and depth update to screen
 
 uint32_t s_lastCallToAcquireSensorData = 0;
 const uint32_t s_acquireSensorDataUpdatePeriod = 100; // allow the compass to update ok even if there are not Messages being received from the surface.
+
+uint32_t s_lastIMUDisplayRefresh = 0;
+const uint32_t s_imuUpdatePeriod = 100; // For 100ms read, 10 Hertz update period needs to be set in Mahoney algorithm
 
 const uint8_t  BUTTON_GOPRO_TOP_GPIO = 25;
 const uint8_t  BUTTON_GOPRO_SIDE_GPIO = 0;    // can't use this at startup - strapping pin
