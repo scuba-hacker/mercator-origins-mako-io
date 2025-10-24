@@ -153,12 +153,13 @@ void sendUplinkTelemetryMessageV5()
     *(nextMetric++) = (uint16_t)(uplink_target_code[2]) + (((uint16_t)(uplink_target_code[3])) << 8);
     
 
-    *(nextMetric++) = minimum_sensor_read_time;
-    *(nextMetric++) = lingerTimeMsBeforeUplink;
-    *(nextMetric++) = sensor_acquisition_time;
-    *(nextMetric++) = max_sensor_acquisition_time;
-    *(nextMetric++) = actual_sensor_acquisition_time;
-    *(nextMetric++) = max_actual_sensor_acquisition_time;
+    *(nextMetric++) = total_sensor_acquisition_time_micros;  // uint_32t unused
+    *(nextMetric++) = lingerTimeMsBeforeUplink;  // uint_32t unused
+
+    *(nextMetric++) = (uint16_t)compass_acquire_time_micros;
+    *(nextMetric++) = (uint16_t)temp_humid_acquire_time_micros;
+    *(nextMetric++) = (uint16_t)imu_acquire_time_micros;
+    *(nextMetric++) = (uint16_t)colour_acquire_time_micros;
 
     // 3x32 bit words (floats)
     *((float*)nextMetric) = uplink_mako_lsm_acc_x; nextMetric += 2;

@@ -982,8 +982,7 @@ void drawLocationStats()
   M5.Lcd.printf("Lo:%.6f   ", Lng);
 
   M5.Lcd.setCursor(5, 34);
-  M5.Lcd.printf("Depth:%.0f m s:%hu ^%hu  ", depth,sensor_acquisition_time, max_sensor_acquisition_time);
-//  M5.Lcd.printf("OverTgt:%d s:%hu ^%hu  ", overrideTarget,sensor_acquisition_time, max_sensor_acquisition_time);
+  M5.Lcd.printf("Depth:%.0f m", depth);
 
   M5.Lcd.setCursor(5, 51);
   if (WiFi.status() == WL_CONNECTED)

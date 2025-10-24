@@ -78,7 +78,6 @@ bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
 bool enableIMUSensor = true;      // used for Gyro to show pitch and roll
 bool enableColourSensor = true;
-const uint32_t minimum_sensor_read_time = 0; // (ms) regulates upload of responses to lemon by normalising the time to process sensor readings. This contributes most to the round-trip latency.
 
 bool enableDownlinkComms = true; // enable reading the feed from Lemon at surface
 bool enableUplinkComms = true;  // enable writing of feed to Lemon. Can be toggled through UI
@@ -348,6 +347,7 @@ const int SCREEN_LENGTH = 240;
 const int SCREEN_WIDTH = 135;
 
 const uint32_t lingerTimeMsBeforeUplink = 0;
+const uint32_t minimum_sensor_read_time = 0;
 const int UPLINK_BAUD_RATE = 1000000;     // 1 Mbit max reliable with MAX485 ICs with no linger time back to lemon
 
 enum e_display_brightness {OFF_DISPLAY = 0, DIM_DISPLAY = 25, HALF_BRIGHT_DISPLAY = 50, BRIGHTEST_DISPLAY = 100};
@@ -391,10 +391,16 @@ void saveToEEPROMSkipDiagnosticDisplays();
 
 const e_uplinkMode uplinkMode = SEND_FULL_UPLINK_MSG;
 
-uint16_t sensor_acquisition_time = 0;         // how long the acquireSensorReadings function took to run (including forced wait)
-uint16_t max_sensor_acquisition_time = 0;     // maximum sensor acquistion time (including forced wait)
-uint16_t actual_sensor_acquisition_time = 0;  // actual sensor acquisition time without forced wait
-uint16_t max_actual_sensor_acquisition_time = 0;  // max val of above.
+uint16_t total_sensor_acquisition_time_micros = 0;
+uint16_t max_total_sensor_acquisition_time_micros = 0;
+uint32_t compass_acquire_time_micros = 0;
+uint32_t max_compass_acquire_time_micros = 0;
+uint32_t temp_humid_acquire_time_micros = 0;
+uint32_t max_temp_humid_acquire_time_micros = 0;
+uint32_t imu_acquire_time_micros = 0;
+uint32_t max_imu_acquire_time_micros = 0;
+uint32_t colour_acquire_time_micros = 0;
+uint32_t max_colour_acquire_time_micros = 0;
 
 bool enableESPNow = true;
 bool ESPNowActive = false;       // will be set to true on startup if set above - can be toggled through interface.

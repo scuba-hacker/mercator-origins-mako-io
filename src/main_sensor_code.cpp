@@ -390,10 +390,9 @@ void refreshAndCalculatePositionalAttributes()
 }
 
 void acquireAllSensorReadings()
-{        
-  uint32_t start_time_millis = millis();
-  uint32_t forced_standardised_sensor_read_time = start_time_millis+minimum_sensor_read_time;
-  
+{    
+  uint32_t start_micros = micros(), full_acquire_start_micros = micros();
+
   if (millis() > s_lastCompassNotSmoothedDisplayRefresh + s_compassNotSmoothedHeadingUpdateRate)
   {
     s_lastCompassNotSmoothedDisplayRefresh = millis();
@@ -415,6 +414,7 @@ void acquireAllSensorReadings()
           getMagHeadingNotTiltCompensated(magnetic_heading);
         }
       }
+      compass_acquire_time_micros = micros() - start_micros;
     }
     else
     {
@@ -426,7 +426,9 @@ void acquireAllSensorReadings()
   {
     s_lastTempHumidityDisplayRefresh = millis();
 
+    start_micros = micros();
     getTempAndHumidityAndAirPressureBME280(humidity, temperature, air_pressure, pressure_altitude);
+    temp_humid_acquire_time_micros = micros() - start_micros;
 
     if (!useGetDepthAsync)
     {
@@ -434,18 +436,39 @@ void acquireAllSensorReadings()
       getDepth(depth, water_temperature, water_pressure, depth_altitude, read_original_algorithm);
     }
 
+    start_micros = micros();
     getM5ImuSensorData(&diver_pitch_orientation, &diver_roll_orientation, &imu_temperature);
+    imu_acquire_time_micros=micros() - start_micros;
   }
 
   if (colourSensorAvailable &&
       millis() > nextLightReadTime && 
       Adafruit_ColourSensor.colorDataReady())
   {
+    start_micros = micros();
     Adafruit_ColourSensor.getColorData(&red_light, &green_light, &blue_light, &clear_light);
+    colour_acquire_time_micros = micros() - start_micros;
     currentLightLevel = clear_light;
     nextLightReadTime = millis() + readLightTimeWait;
     sendLightLevelToOceanic = true;
   }
+
+  total_sensor_acquisition_time_micros = micros() - full_acquire_start_micros;
+
+  if (total_sensor_acquisition_time_micros > max_total_sensor_acquisition_time_micros)
+    max_total_sensor_acquisition_time_micros = total_sensor_acquisition_time_micros;
+
+  if (compass_acquire_time_micros > max_compass_acquire_time_micros)
+    max_compass_acquire_time_micros = compass_acquire_time_micros;
+
+  if (temp_humid_acquire_time_micros > max_temp_humid_acquire_time_micros)
+    max_temp_humid_acquire_time_micros = temp_humid_acquire_time_micros;
+
+  if (imu_acquire_time_micros > max_imu_acquire_time_micros)
+    max_imu_acquire_time_micros = imu_acquire_time_micros;
+
+  if (colour_acquire_time_micros > max_colour_acquire_time_micros)
+    max_colour_acquire_time_micros = colour_acquire_time_micros;
 
 /*
   if (colourSensorAvailable && depth > minimumDivingDepthToActivateLightSensor &&
@@ -480,18 +503,6 @@ void acquireAllSensorReadings()
     }
   }
 */
-
-  actual_sensor_acquisition_time = (uint16_t)(millis() - start_time_millis);
-
-  if (actual_sensor_acquisition_time > max_actual_sensor_acquisition_time)
-    max_actual_sensor_acquisition_time = actual_sensor_acquisition_time;
-
-  // equalise acquisition time to be set to a minimum - BLOCKING - later make this asynchronous, and use lingerTimeMsBeforeUplink
-//  while (millis() < forced_standardised_sensor_read_time);
-  
-  sensor_acquisition_time = (uint16_t)(millis() - start_time_millis);
-  if (sensor_acquisition_time > max_sensor_acquisition_time)
-    max_sensor_acquisition_time = sensor_acquisition_time;
 }
 
 bool getSmoothedMagHeading(float& magHeading, bool useMedian)
