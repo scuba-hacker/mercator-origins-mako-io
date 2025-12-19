@@ -10,63 +10,59 @@ void apply_legacy_hard_iron_only_correction_to_raw_magnetometer_readings(vec<flo
 vec<float> hard_iron_offset;
 float soft_iron_matrix[3][3];
 
-// Calibration for Oceanic being present and gopro mount for real gopro - but without the camera.
-// hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
-const vec<float> hard_iron_offset_without_camera = { 8.331061080431581445, -12.71955273800613107, 45.12891163824074425 };
+// uncalibrated
+const vec<float> hard_iron_offset_10m_spool = { 0,0,0 };
 //
-// soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
-const float soft_iron_matrix_without_camara[3][3] = {
-  { 0.9719287820482613860,   0.006939862106518941871, -0.01086593702250229256 },
-  { 0.006939862106518939269, 1.042324789021345177,     0.006598418562658864804 },
-  { -0.01086593702250229082,  0.006598418562658867406,  0.9873142116148320158 },
+// uncalibrated
+const float soft_iron_offset_10m_spool[3][3] = {
+  { 1, 0, 0 },
+  { 0, 1, 0 },
+  { 0, 0, 1 }
 };
 
-// TO DO - Calibration for Oceanic being present and gopro camera mounted
-// captured outside at 10pm on 6th October 2025
-// hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
-const vec<float> hard_iron_offset_with_camera = {6.83588168, -11.88443105, 42.22867387};
-//
-// soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
-const float soft_iron_matrix_with_camara[3][3] = {
-  { 0.9745975,    0.00710121, -0.00512571 },
-  { 0.00710121,   1.04144114, -0.00671628 },
-  { -0.00512571, -0.00671628,  0.98535407 }
-};
-
-// TO DO - Calibration for no Oceanic or GoPro Mount/Camera being present
 // hard iron compensation matrix - linear shift in each axis to account for fixed magnetic disturbance, eg metal brackets
 // no translation
-vec<float> hard_iron_offset_mako_tiger_only = { 0, 0, 0 };
-//
+// Taken from the 'center' vector output from running get_callibration_ellipsoid.py
+// calibration check passed for software and hardware based hard iron compensation
+// works for 45m spool with any configuration of oceanic / gopro mount / gopro removed
+vec<float> hard_iron_offset_45m_spool_metal_brackets = { -8.01767401,  2.04425128, 56.45763078 };
+
 // soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
 // identity
-const float soft_iron_matrix_mako_tiger_only[3][3] = {
-  { 1, 0, 0},
-  { 0, 1, 0},
-  { 0, 0, 1},
+// Taken from the 'transformation' matrix output from running get_callibration_ellipsoid.py
+// calibration check passed for software and hardware based hard iron compensation
+// works for 45m spool with any configuration of oceanic / gopro mount / gopro removed
+const float soft_iron_offset_45m_spool_metal_brackets[3][3] = {
+ { 0.974303186, 0.00545529739, -0.00504822394 },
+ { 0.00545529739, 1.04250369,  0.000886941301 },
+ {-0.00504822394,  0.000886941301,  0.984584274 }
+};
+
+// uncalibrated
+const vec<float> hard_iron_offset_no_calibration = { 0,0,0 };
+//
+// uncalibrated
+const float soft_iron_offset_no_calibration[3][3] = {
+  { 1, 0, 0 },
+  { 0, 1, 0 },
+  { 0, 0, 1 }
 };
 
 const char* getSpoolSetupDescription(e_spool_setup setup, bool forM5Display)
 {
   switch (setup)
   {
-    case SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA: 
+    case SPOOL_10M: 
       if (forM5Display)
-        return "45M Spool +\nOceanic";
+        return "10M Spool";
       else
-        return "45M Spool + Oceanic";
+        return "10M Spool";
 
-    case SPOOL_45M_WITH_OCEANIC_AND_CAMERA:
-      if (forM5Display)
-        return "45M Spool +\nOceanic +\nCamera";
-      else
-        return "45M Spool + Oceanic + Camera";
+    case SPOOL_45M:
+      return "45M Spool";
 
-    case SPOOL_45_MAKO_TIGER_ONLY:
-      if (forM5Display)
-        return "45M Spool\nOnly";
-      else
-        return "45M Spool Only";
+    case NO_CALIBRATION:
+      return "Not Calibrated";
 
     default:
       return "Unknown";
@@ -90,23 +86,23 @@ void setCompassCalibrationSpoolSetup(e_spool_setup setup)
 {
   switch (setup)
   {
-    case SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA:
+    case SPOOL_10M: // not calibrated
     {
-      hard_iron_offset = hard_iron_offset_without_camera;
-      memcpy(soft_iron_matrix, soft_iron_matrix_without_camara,sizeof(soft_iron_matrix));
+      hard_iron_offset = hard_iron_offset_10m_spool;
+      memcpy(soft_iron_matrix, soft_iron_offset_10m_spool,sizeof(soft_iron_matrix));
       break;
     }
-    case SPOOL_45M_WITH_OCEANIC_AND_CAMERA:
+    case SPOOL_45M:
     {
-      hard_iron_offset = hard_iron_offset_with_camera;
-      memcpy(soft_iron_matrix, soft_iron_matrix_with_camara,sizeof(soft_iron_matrix));
+      hard_iron_offset = hard_iron_offset_45m_spool_metal_brackets;
+      memcpy(soft_iron_matrix, soft_iron_offset_45m_spool_metal_brackets,sizeof(soft_iron_matrix));
       break;
     }
-    case SPOOL_45_MAKO_TIGER_ONLY:
+    case NO_CALIBRATION:
     default:
     {
-      hard_iron_offset = hard_iron_offset_mako_tiger_only;
-      memcpy(soft_iron_matrix, soft_iron_matrix_mako_tiger_only,sizeof(soft_iron_matrix));
+      hard_iron_offset = hard_iron_offset_no_calibration;
+      memcpy(soft_iron_matrix, soft_iron_offset_no_calibration,sizeof(soft_iron_matrix));
       break;
    }
   }
@@ -174,6 +170,10 @@ void initSensors()
 
     setCompassCalibrationSpoolSetup(spool_setup);
 
+    USB_SERIAL_PRINTLN("===== Magnetometer Initialization =====");
+    USB_SERIAL_PRINTLN("WARNING: Ensure device is away from ferrous materials during startup!");
+    USB_SERIAL_PRINTLN("(Car roofs, metal tables, tools, etc. can corrupt initial calibration)");
+
     if (!mag.begin())
     {
       USB_SERIAL_PRINTLN("Could not find LIS2MDL Magnetometer. Check wiring");
@@ -184,8 +184,15 @@ void initSensors()
     else
     {
       if (setHardIronOffsetsInHardwareRegisters)
+      {
           setMagHardIronOffsets(hard_iron_offset);
+          USB_SERIAL_PRINTLN("Hard iron offsets loaded to hardware registers:");
+          USB_SERIAL_PRINTF("  X: %.2f µT, Y: %.2f µT, Z: %.2f µT\n",
+                           hard_iron_offset.x, hard_iron_offset.y, hard_iron_offset.z);
+      }
 
+      USB_SERIAL_PRINTLN("Magnetometer initialized successfully");
+      USB_SERIAL_PRINTLN("If compass readings are inaccurate, hold both buttons for 5 seconds to reinitialize");
       M5.Lcd.println("Compass Ok");
     }
 
@@ -785,7 +792,7 @@ std::string getCardinal(float b, bool surveyScreen)
   return result;
 }
 
-uint32_t nextDepthReadCompleteTime = 0xFFFFFFFF;
+uint32_t nextDepthReadCompleteTime = 0;
 const uint32_t depthReadCompletePeriod = 250;
 
 // Need a way to reset the depth sensor in dive - just a reboot.
@@ -800,7 +807,7 @@ bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a)
 
   uint32_t timeNow = millis();
   
-  if (nextDepthReadCompleteTime > timeNow && BlueRobotics_DepthSensor.readAsync() == MS5837::READ_COMPLETE)
+  if (nextDepthReadCompleteTime <= timeNow && BlueRobotics_DepthSensor.readAsync() == MS5837::READ_COMPLETE)
   {
     // Trigger a read of the depth sensor in one second's time once the read is complete.
     nextDepthReadCompleteTime = timeNow + depthReadCompletePeriod;
@@ -1066,6 +1073,58 @@ void setMagHardIronOffsets(const vec<float> off, TwoWire* wire, uint8_t addr)
 void resetMagHardIronOffsets(TwoWire *wire, uint8_t i2c_addr)
 {
   setMagHardIronOffsets(vec<float>(0,0,0),wire,i2c_addr);
+}
+
+// Call this function once you're away from ferrous materials (car roof, etc.)
+// to reinitialize the magnetometer in a clean magnetic environment
+void reinitializeMagnetometer()
+{
+  if (!compassAvailable)
+  {
+    USB_SERIAL_PRINTLN("Compass not available for reinitialization");
+    return;
+  }
+
+  USB_SERIAL_PRINTLN("===== Magnetometer Reinitialization Started =====");
+  USB_SERIAL_PRINTLN("IMPORTANT: Ensure device is away from ferrous materials (car, metal objects, etc.)");
+
+  // Perform the same initialization sequence that happens in mag.begin()
+  // but now in a clean magnetic environment
+  mag.reset();
+
+  USB_SERIAL_PRINTLN("Magnetometer reset complete");
+
+  // Reapply hard iron offsets to hardware registers
+  if (setHardIronOffsetsInHardwareRegisters)
+  {
+    setMagHardIronOffsets(hard_iron_offset);
+    USB_SERIAL_PRINTLN("Hard iron offsets reapplied to hardware registers:");
+    USB_SERIAL_PRINTF("  X offset: %.2f µT\n", hard_iron_offset.x);
+    USB_SERIAL_PRINTF("  Y offset: %.2f µT\n", hard_iron_offset.y);
+    USB_SERIAL_PRINTF("  Z offset: %.2f µT\n", hard_iron_offset.z);
+  }
+
+  // Clear the smoothing buffer
+  for (uint8_t i = 0; i < s_smoothedCompassBufferSize; i++) {
+    s_smoothedCompassHeading[i] = 0.0;
+  }
+  s_smoothedCompassBufferInitialised = false;
+  s_nextCompassSampleIndex = 0;
+
+  USB_SERIAL_PRINTLN("===== Magnetometer Reinitialization Complete =====");
+  USB_SERIAL_PRINTLN("Please wait a few seconds for readings to stabilize");
+
+  M5.Lcd.fillScreen(TFT_ORANGE);
+  M5.Lcd.setCursor(10, 10);
+  M5.Lcd.setTextSize(2);
+  M5.Lcd.setTextColor(TFT_WHITE, TFT_ORANGE);
+  M5.Lcd.println("Compass");
+  M5.Lcd.println("Reinitialized");
+  M5.Lcd.println("");
+  M5.Lcd.println("Wait for");
+  M5.Lcd.println("stabilization");
+  delay(3000);
+  M5.Lcd.fillScreen(TFT_BLACK);
 }
 
 #endif

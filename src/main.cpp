@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10,16 +12,23 @@ bool goProButtonsPrimaryControl = true;     // false means use the M5 Stick phys
 
 bool divingInTheSea = false;                 // Salt / Fresh water depth sensor calibration
 
+// WARNING - to callibrate max Samples must be set reasonably high - 1000 minimum, 2500 max and 
+// hardware registers to be disabled.
+// to download calibration data after collection use the /calibration-data web page
 bool setHardIronOffsetsInHardwareRegisters = true;
-
 const int maxCalibrationSamples = 1;        // Calibration data collection for soft iron compensation (max 2500, set to 1 to disable)
+const uint32_t calibrationSampleInterval = 20; // Sample every x ms during calibration
 
 bool testTigerOutsidePod = false;
 bool writeLogToSerial = false;
 
-enum e_spool_setup { SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA, SPOOL_45M_WITH_OCEANIC_AND_CAMERA, SPOOL_45_MAKO_TIGER_ONLY, SPOOL_SETUP_UNKNOWN};
+const int UPLINK_BAUD_RATE = 115200;
+//const int UPLINK_BAUD_RATE = 1000000;     // 1 Mbit max reliable with MAX485 ICs with no linger time back to lemon
 
-e_spool_setup spool_setup = SPOOL_45M_WITH_OCEANIC_AND_WITHOUT_CAMERA;
+// SPOOL_45M is good for with or without oceanic and with or without gopro camera
+enum e_spool_setup { SPOOL_10M, SPOOL_45M, NO_CALIBRATION };
+
+e_spool_setup spool_setup = SPOOL_45M;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,8 +53,6 @@ ESPNow Commands
 //possible fix to deepSleep with timer #31 - https://github.com/m5stack/M5StickC-Plus/pull/31
 //Sleep causing unresponsive device #13 https://github.com/m5stack/M5StickC-Plus/issues/13
 //AXP192.cpp SetSleep() is different than the one for M5StickC #1 https://github.com/m5stack/M5StickC-Plus/issues/1
-
-#include <Arduino.h>
 
 #include "SerialConfig.h"
 
@@ -227,6 +234,7 @@ void toggleOTAActive();
 void disableFeaturesForOTA();
 void toggleUptimeGlobalDisplay();
 void toggleAsyncDepthDisplay();
+void reinitializeMagnetometer();
 void toggleUplinkMessageProcessAndSend();
 void processIncomingESPNowMessages();
 void publishToTigerBrightLightEvent();
@@ -348,7 +356,6 @@ const int SCREEN_WIDTH = 135;
 
 const uint32_t lingerTimeMsBeforeUplink = 0;
 const uint32_t minimum_sensor_read_time = 0;
-const int UPLINK_BAUD_RATE = 1000000;     // 1 Mbit max reliable with MAX485 ICs with no linger time back to lemon
 
 enum e_display_brightness {OFF_DISPLAY = 0, DIM_DISPLAY = 25, HALF_BRIGHT_DISPLAY = 50, BRIGHTEST_DISPLAY = 100};
 enum e_uplinkMode {SEND_NO_UPLINK_MSG, SEND_TEST_UPLINK_MSG, SEND_FULL_UPLINK_MSG};
@@ -747,7 +754,6 @@ float diver_roll_orientation = 0.0;
 float diver_pitch_orientation = 0.0;
 float imu_temperature = 0.0;
 
-const uint32_t calibrationSampleInterval = 20; // Sample every 10ms during calibration
 struct CalibrationSample {
   float x, y, z;
 };

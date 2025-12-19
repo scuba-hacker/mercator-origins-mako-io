@@ -288,33 +288,45 @@ bool checkForDualButtonPresses()
 {
   static bool action500msReached = false;
   static bool action3000msReached = false;
+  static bool action5000msReached = false;
   static bool action8000msReached = false;
   static bool anyActionTriggered = false;
   static uint32_t lastActionTime = 0;
-  
+
   bool triggered = false;
-  
+
   // Prevent any action within 10 seconds of the last action
   if (millis() - lastActionTime < 10000)
   {
     return false;
   }
-  
+
   // Check if both buttons are currently pressed
   bool bothPressed = BtnGoProTop.isPressed() && BtnGoProSide.isPressed();
-  
+
   if (!bothPressed)
   {
     // Buttons released - check which action to trigger based on how long they were held
-    if (!anyActionTriggered && (action500msReached || action3000msReached || action8000msReached))
+    if (!anyActionTriggered && (action500msReached || action3000msReached || action5000msReached || action8000msReached))
     {
       anyActionTriggered = true;  // Set this first to prevent re-entry
       lastActionTime = millis();  // Record time of action execution
-      
+
       if (action8000msReached)
       {
         // 8 second hold completed - reboot
         esp_restart();
+      }
+      else if (action5000msReached)
+      {
+        // 5 second hold completed - reinitialize magnetometer
+        USB_SERIAL_PRINTLN("\n=== COMPASS REINITIALIZATION TRIGGERED ===");
+        USB_SERIAL_PRINTLN("Ensure device is away from ferrous materials!");
+        reinitializeMagnetometer();
+        M5.Lcd.setCursor(5, M5.Lcd.height() - 90);
+        M5.Lcd.printf("Re-init compass done");
+        delay(1000);
+        triggered = true;
       }
       else if (action3000msReached)
       {
@@ -323,6 +335,8 @@ bool checkForDualButtonPresses()
         saveToEEPROMSkipDiagnosticDisplays();  // Save to EEPROM
         M5.Lcd.setCursor(5, M5.Lcd.height() - 90);
         M5.Lcd.printf("Skip Mode: %s", skipDiagnosticDisplays ? "ON" : "OFF");
+        delay(1000);
+
         triggered = true;
       }
       else if (action500msReached)
@@ -337,24 +351,32 @@ bool checkForDualButtonPresses()
         triggered = true;
       }
     }
-    
+
     // Only reset flags if both buttons are completely released
     if (BtnGoProTop.isReleased() && BtnGoProSide.isReleased())
     {
       action500msReached = false;
       action3000msReached = false;
+      action5000msReached = false;
       action8000msReached = false;
       anyActionTriggered = false;
     }
-    
+
     return triggered;
   }
-  
+
   // Buttons are pressed - track which thresholds have been reached
   // Only set the highest threshold reached to ensure mutual exclusivity
   if (BtnGoProTop.pressedFor(8000) && BtnGoProSide.pressedFor(8000))
   {
     action8000msReached = true;
+    action5000msReached = false;  // Clear lower thresholds
+    action3000msReached = false;
+    action500msReached = false;
+  }
+  else if (BtnGoProTop.pressedFor(5000) && BtnGoProSide.pressedFor(5000))
+  {
+    action5000msReached = true;
     action3000msReached = false;  // Clear lower thresholds
     action500msReached = false;
   }
