@@ -175,8 +175,9 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
   const int longitudeOffset = 16;
   const int headingOffset = 24;
   const int depthOffset = 32;
-  const int x_message_flags_offset = 36;
-  const int currentTargetOffset = 40;
+  const int courseOffset = 36;
+  const int x_message_flags_offset = 40;
+  const int currentTargetOffset = 44;
         
   const char* endOfCode=currentTarget;
   while (endOfCode - currentTarget < maxCodeLength && std::isalnum(*endOfCode++));
@@ -193,6 +194,7 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
   memcpy(tiger_espnow_buffer+longitudeOffset,&Lng,sizeof(Lng));
   memcpy(tiger_espnow_buffer+headingOffset,&dblHeading,sizeof(dblHeading));
   memcpy(tiger_espnow_buffer+depthOffset,&depth,sizeof(depth));
+  memcpy(tiger_espnow_buffer+courseOffset,&journey_course,sizeof(courseOffset));
   memcpy(tiger_espnow_buffer+x_message_flags_offset,&x_message_flags,sizeof(x_message_flags));
 
   strncpy(tiger_espnow_buffer+currentTargetOffset,currentTarget,sizeof(tiger_espnow_buffer)-2-currentTargetOffset);
