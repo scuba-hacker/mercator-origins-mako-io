@@ -206,7 +206,6 @@ void drawAudioTest();
 void drawNullDisplay();
 void drawPowerOnTimeOverlay();
 void performUplinkTasks();
-void refreshGlobalStatusDisplay();
 void sendNoUplinkTelemetryMessages();
 void sendFullUplinkTelemetryMessage();
 uint16_t getOneShotUserActionForUplink();
@@ -1123,12 +1122,7 @@ void loop()
   //////// PROTECTED - DO NOT ADD CODE BEFORE OR WITHIN THE OTA DEMAND CHECK BELOW  - RISK OF OTA FAILURE
   if (cutShortLoopOnOTADemand())
     return;
-  ///////////////////////////////////////////////////////////////////////////////////////
-  
-  uint32_t now = millis();
-
-  updateButtons();
-
+  ///////////////////////////////////////////////////////////////////////////////////////  
   // check for incoming messages
   processIncomingESPNowMessages();
    
@@ -1136,6 +1130,8 @@ void loop()
     getDepthAsync(depth, water_temperature, water_pressure, depth_altitude);
   
   processGPSMessageIfAvailable();
+
+  uint32_t now = millis();
 
   if  (s_lastCallToAcquireSensorData + s_acquireSensorDataUpdatePeriod <= now)
   {
@@ -1168,11 +1164,8 @@ void loop()
     nextMapScreenRefresh = now + map_screen_refresh_minimum_interval;
   }  
 
-//  refreshGlobalStatusDisplay();     // I think needs some debugging
-
   refreshDiveTimer();
-
-  checkForButtonPresses();
+  checkForButtonPresses();  // needs to be at the end of the loop - prior to the cut short on demand call
 }
 
 void scanI2C()
@@ -1296,11 +1289,6 @@ bool processGPSMessageIfAvailable()
               acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
       
               checkDivingDepthForTimer(depth);
-    
-              refreshDisplay();
-      
-              checkForButtonPresses();
-                
               result = true;
             }
             else if (gps.isSentenceRMC())

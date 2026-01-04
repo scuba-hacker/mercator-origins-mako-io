@@ -135,12 +135,17 @@ void drawSurveyDisplay()
       if (millis() < recordHighlightExpireTime)
       {
         M5.Lcd.printf("-PIN-\n");
+
+        if (recordSurveyHighlight)
+        { // flag gets reset in telemetry code after being logged first time
+          // Also publish is rate-limited internally to max 1 call per 5 seconds
+          publishToOceanicPinPlaced(Lat,Lng,magnetic_heading,depth);
+        }
       }
       else
       {
         recordHighlightExpireTime = 0;
         M5.Lcd.print("     \n");
-        publishToOceanicPinPlaced(Lat,Lng,magnetic_heading,depth);
       }
     }
     else if (recordBreadCrumbTrail)
@@ -321,6 +326,11 @@ void drawTargetSection()
       if (millis() < recordHighlightExpireTime)
       {
         M5.Lcd.printf("-PIN-\n");
+        if (recordSurveyHighlight)
+        { // flag gets reset in telemetry code after being logged first time
+          // Also publish is rate-limited internally to max 1 call per 5 seconds
+          publishToOceanicPinPlaced(Lat,Lng,magnetic_heading,depth);
+        }
       }
       else
       {
@@ -580,6 +590,11 @@ void drawTargetSection_smooth()
       if (millis() < recordHighlightExpireTime)
       {
         M5.Lcd.printf("-PIN-\n");
+        if (recordSurveyHighlight)
+        { // flag gets reset in telemetry code after being logged first time
+          // Also publish is rate-limited internally to max 1 call per 5 seconds
+          publishToOceanicPinPlaced(Lat,Lng,magnetic_heading,depth);
+        }
       }
       else
       {
@@ -1220,50 +1235,6 @@ void showOTARecoveryScreen()
   M5.Lcd.println("");
   M5.Lcd.setTextSize(2);
   M5.Lcd.println(buildTimestamp);
-}
-
-void refreshGlobalStatusDisplay()
-{
-  if (power_up_no_fix_byte_loop_count > 0)
-  {
-    // Bytes have been received from the Float UART/Serial but no fix has been received since power on.
-    // The 'No Fix' only shown on first acquisition.
-    M5.Lcd.setCursor(55, 5);
-    M5.Lcd.setTextSize(4);
-    M5.Lcd.printf("No Fix\n");
-    M5.Lcd.setCursor(110, 45);
-
-    if (millis() > next_global_status_display_update)
-    {
-      next_global_status_display_update = millis() + global_status_display_update_period;
-      activity_count = (activity_count+1) % 4;
-    }
-
-    M5.Lcd.printf("%c", activity_indicator[activity_count]);
-  }
-  else if (power_up_no_fix_byte_loop_count != -1)
-  {
-    // No GPS is reported when no bytes have ever been received on the Float UART/Serial.
-    // Once messages start being received, this is blocked as it is normal
-    // to have gaps in the stream. There is no indication if GPS stream hangs
-    // after first byte received, eg no bytes within 10 seconds.
-    M5.Lcd.setCursor(55, 5);
-    M5.Lcd.setTextSize(4);
-    M5.Lcd.printf("No GPS\n");
-    M5.Lcd.setCursor(110, 45);
-
-    if (millis() > next_global_status_display_update)
-    {
-      next_global_status_display_update = millis() + global_status_display_update_period;
-      activity_count = (activity_count+1) % 4;
-    }
-
-    M5.Lcd.printf("%c", activity_indicator[activity_count]);
-  }
-  else
-  {
-    // do nothing - the two conditions above are dealing with initial conditions before any fix/msg received from float serial
-  }
 }
 
 const int32_t durationBetweenGuidanceSounds = 3000;

@@ -9,7 +9,7 @@ bool waitForBothButtonsReleased()
   return true;
 }
 
-const uint32_t buttonPressDurationToChangeScreen = 100;
+const uint32_t buttonPressDurationToChangeScreen = 50;
 
 void checkForButtonPresses()
 {
@@ -42,7 +42,7 @@ void checkForButtonPresses()
         switchToNextDisplayToShow();
       }
   
-      if (p_secondButton->wasReleasefor(500)) // Record Highlight
+      if (p_secondButton->wasReleasefor(500)) // Record Highlight from survey screen
       {
         recordSurveyHighlight = true;
         recordHighlightExpireTime = millis() + recordHighlightDisplayDuration;
@@ -226,7 +226,7 @@ void checkForButtonPresses()
         display_to_show = SHOW_LAT_LONG_DISPLAY_TEMP;
         M5.Lcd.fillScreen(TFT_BLACK);
       }
-      else if (p_primaryButton->wasReleasefor(2000)) // Record Highlight
+      else if (p_primaryButton->wasReleasefor(1000)) // Record Highlight from Nav Screens
       {
         recordSurveyHighlight = true;
         recordHighlightExpireTime = millis() + recordHighlightDisplayDuration;
@@ -345,6 +345,7 @@ bool checkForDualButtonPresses()
         static uint32_t lastOTAToggle = 0;
         if (millis() - lastOTAToggle > 5000)  // Prevent rapid OTA toggles
         {
+          delay(1000);
           lastOTAToggle = millis();
           toggleOTAActive();
         }

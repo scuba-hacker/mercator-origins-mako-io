@@ -241,13 +241,26 @@ void publishToOceanicBreadCrumbRecord(const bool record)
 
 void publishToOceanicPinPlaced(double latitude, double longitude, float heading, float depth)
 {
+  static uint32_t lastCallToPublishOceanicPinPlacedTime = 0;
+  const uint32_t minimumTimeBetweenPublish = 11000;
+
+  if (millis() - lastCallToPublishOceanicPinPlacedTime < minimumTimeBetweenPublish)
+  {
+    USB_SERIAL_PRINTLN("Rate Limiting - not sending ESP P msg to Oceanic...");
+    return; // rate limit to max 1 call per 11 seconds
+  }
+  else
+  {
+    lastCallToPublishOceanicPinPlacedTime = millis();
+  }
+
   if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
   {
     snprintf(oceanic_espnow_buffer,sizeof(oceanic_espnow_buffer),"P%.7f %.7f %.0f %.1f",latitude,longitude,heading,depth);
 
-      USB_SERIAL_PRINTLN("Sending ESP P msg to Oceanic...");
+    USB_SERIAL_PRINTLN("Sending ESP P msg to Oceanic...");
 
-      USB_SERIAL_PRINTLN(oceanic_espnow_buffer);
+    USB_SERIAL_PRINTLN(oceanic_espnow_buffer);
 
     ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, reinterpret_cast<uint8_t*>(oceanic_espnow_buffer), strlen(oceanic_espnow_buffer)+1);
   }

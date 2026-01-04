@@ -35,7 +35,7 @@ uint16_t getOneShotUserActionForUplink()
   
   if (recordSurveyHighlight || recordHighlightExpireTime != 0)
   {
-    // log the highlight in all messages for the time the highlight is shown on the screen (5 seconds)
+    // log the highlight in all messages for the time the highlight is shown on the screen (10 seconds)
     recordSurveyHighlight = false;
     userAction |= HIGHLIGHT_USER_ACTION;
   }
