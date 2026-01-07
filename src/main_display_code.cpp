@@ -23,6 +23,7 @@ void switchToNextDisplayToShow()
   requestDisplayRefresh=true;
   lastWayMarker = BLACKOUT_MARKER;
   lastWayMarkerChangeTimestamp = 0;
+  blackout_journey_no_movement=false;
 }
 
 void refreshDisplay()
