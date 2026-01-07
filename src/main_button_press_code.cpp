@@ -239,6 +239,12 @@ void checkForButtonPresses()
       if (p_secondButton->wasReleasefor(10000))     // Nav Screens: force reboot on
       {
         // force reboot
+        M5.Lcd.setRotation(1);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.setTextColor(TFT_RED, TFT_WHITE);
+        M5.Lcd.setTextSize(4);
+        M5.Lcd.print("Reboot-2");
+        delay(5000);
         esp_restart();
       }
       else if (p_secondButton->wasReleasefor(5000))     // Nav Screens: goto last dive target (jettie)
@@ -315,6 +321,13 @@ bool checkForDualButtonPresses()
       if (action8000msReached)
       {
         // 8 second hold completed - reboot
+        // force reboot
+        M5.Lcd.setRotation(1);
+        M5.Lcd.setCursor(0, 0);
+        M5.Lcd.setTextColor(TFT_RED, TFT_WHITE);
+        M5.Lcd.setTextSize(4);
+        M5.Lcd.print("Reboot-1");
+        delay(5000);
         esp_restart();
       }
       else if (action5000msReached)

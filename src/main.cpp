@@ -1221,7 +1221,8 @@ bool processGPSMessageIfAvailable()
   if (xQueueReceive(lemonRxQueue, &lemonPacket, 0) == pdTRUE)
   {
     result = true;
-
+    bytesReceivedFromLemon += lemonPacket.length;
+    
     for (int i = 0; i < lemonPacket.length; i++)
     {
       if (gps.encode(lemonPacket.data[i]))
