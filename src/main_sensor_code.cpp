@@ -781,13 +781,13 @@ std::string getCardinal(float b, bool surveyScreen)
   std::string result = "---";
 
   if      (b > 337.5 || b <= 22.5) result = (surveyScreen ? "North" : "N  ");  // 0
-  else if (b > 22.5 && b <= 67.5) result = (surveyScreen ? "  NE" : "NE ");  // 45
+  else if (b > 22.5 && b <= 67.5) result = (surveyScreen ? "NE" : "NE ");  // 45
   else if (b > 67.5 && b <= 112.5) result = (surveyScreen ? "East" : "E  ");  // 90
-  else if (b > 112.5 && b <= 157.5) result = (surveyScreen ? "  SE" : "SE "); // 135
+  else if (b > 112.5 && b <= 157.5) result = (surveyScreen ? "SE" : "SE "); // 135
   else if (b > 157.5 && b <= 202.5) result = (surveyScreen ? "South" : "S  "); // 180
-  else if (b > 202.5 && b <= 247.5) result = (surveyScreen ? "  SW" : "SW "); // 225
+  else if (b > 202.5 && b <= 247.5) result = (surveyScreen ? "SW" : "SW "); // 225
   else if (b > 247.5 && b <= 292.5) result = (surveyScreen ? "West" : "W  "); // 270
-  else if (b > 292.5 && b <= 337.5) result = (surveyScreen ? "  NW" : "NW "); // 315
+  else if (b > 292.5 && b <= 337.5) result = (surveyScreen ? "NW" : "NW "); // 315
 
   return result;
 }
