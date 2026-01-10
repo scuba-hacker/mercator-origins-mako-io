@@ -37,13 +37,13 @@ void refreshDisplay()
     }
     case NAV_COMPASS_DISPLAY:
     {
-      drawTargetSection();
-      drawCompassSection();
+      drawTargetSection_smooth();
+      drawCompassSection_smooth();
       break;
     }
     case NAV_COURSE_DISPLAY:
     {
-      drawTargetSection();
+      drawTargetSection_smooth();
       drawCourseSection();
       break;
     }
@@ -109,25 +109,29 @@ void refreshDisplay()
     drawPowerOnTimeOverlay();
   }
 }
-
+// total sprite RAM usage: 58652 bytes
 void drawSurveyDisplay()
 {
-    int16_t humiditySpriteWidth = TFT_WIDTH, temperatureSpriteWidth = TFT_WIDTH, pinSpriteWidth = TFT_WIDTH;
-    int16_t humiditySpriteHeight = 30, temperatureSpriteHeight = 20, pinSpriteHeight = 30;
-    int16_t humiditySpriteY = 216, temperatureSpriteY = 184, pinSpriteY = 72;
-    int16_t timerScreenY = 120;
+    int16_t humiditySpriteWidth = TFT_WIDTH, temperatureSpriteWidth = TFT_WIDTH, pinSpriteWidth = TFT_WIDTH, depthSpriteWidth = TFT_WIDTH, timerSpriteWidth = TFT_WIDTH;
+    int16_t humiditySpriteHeight = 30, temperatureSpriteHeight = 18, pinSpriteHeight = 30, depthSpriteHeight = 72, timerSpriteHeight = 80 /* was 64 */;
+    int16_t humiditySpriteY = 210, temperatureSpriteY = 184, pinSpriteY = 69 /*(was 72)*/, depthSpriteY = 0, timerSpriteY = 105 /* was 120 */;
 
     // sprites must not be deleted after use - affects the parent TFT_eSPI object for screen
     static TFT_eSprite humiditySprite(&M5.Lcd);
     static TFT_eSprite temperatureSprite(&M5.Lcd);
     static TFT_eSprite pinSprite(&M5.Lcd);
+    static TFT_eSprite depthSprite(&M5.Lcd);
+    static TFT_eSprite timerSprite(&M5.Lcd);
     static bool inited = false;
 
     if (!inited)
     {
       if (!humiditySprite.createSprite(humiditySpriteWidth,humiditySpriteHeight) ||
           !temperatureSprite.createSprite(temperatureSpriteWidth,temperatureSpriteHeight) || 
-          !pinSprite.createSprite(pinSpriteWidth,pinSpriteHeight))
+          !pinSprite.createSprite(pinSpriteWidth,pinSpriteHeight) ||
+          !depthSprite.createSprite(depthSpriteWidth,depthSpriteHeight) ||
+          !timerSprite.createSprite(timerSpriteWidth,timerSpriteHeight)
+        )
       {
         return;
       }
@@ -135,33 +139,58 @@ void drawSurveyDisplay()
     }
 
     int charWidth=0, offset=0;
+    char label[16];
     M5.Lcd.setRotation(0);
 
     // print to main display: depth
+    depthSprite.fillSprite(TFT_BLACK);
+
     bool filledBackground = true;
     if (useGetDepthAsync)
-      M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK,filledBackground);
+      depthSprite.setTextColor(TFT_CYAN, TFT_BLACK,filledBackground);
     else
-      M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK,filledBackground);
+      depthSprite.setTextColor(TFT_GREEN, TFT_BLACK,filledBackground);
 
-    M5.Lcd.setCursor(15, 0);
-    M5.Lcd.setTextSize(6);
+    depthSprite.setCursor(15, 0);
+    depthSprite.setFreeFont(&FreeSansBold18pt7b);
+    depthSprite.setTextSize(2);
+    depthSprite.setTextDatum(BL_DATUM);
+    depthSprite.setTextWrap(false);
     if (depth < 10.0)
-      M5.Lcd.printf("%.1f\n", depth);    
+    {
+      depthSprite.setCursor(0, 55);
+      depthSprite.printf("%.1f", depth);
+    }
     else
-      M5.Lcd.printf("%.0fm\n", depth);
+    {
+      depthSprite.setCursor(10, 55);
+      depthSprite.printf("%.0f", depth);
+    }
+
+    depthSprite.setFreeFont(&FreeSansBold12pt7b);
+    depthSprite.print("m");
+
+    depthSprite.pushSprite(0, depthSpriteY);
 
     // print to pin sprite: -PIN-, -REC-, journey course or blank
     pinSprite.fillSprite(TFT_BLACK);
     pinSprite.setTextColor(TFT_MAGENTA, TFT_BLACK,filledBackground);
-    pinSprite.setTextSize(4);
+    pinSprite.setFreeFont(&FreeSansBold18pt7b);
 
+    pinSprite.setTextDatum(TC_DATUM);
     if (recordHighlightExpireTime != 0)
     {
       if (millis() < recordHighlightExpireTime)
       {
-        pinSprite.setCursor(10, 0);        
-        pinSprite.print("-PIN-");
+        char pinLabel[] = "--PIN--";
+        int secondsLeft = (recordHighlightExpireTime - millis()) / 1000;
+
+        if (secondsLeft < 3)
+          snprintf(label, sizeof(label), "-- %d --", secondsLeft);
+        else
+          snprintf(label, sizeof(label), "%s", pinLabel);
+
+        pinSprite.drawString(label,  pinSprite.width() / 2, 0);  // Draw string using specified font number
 
         if (recordSurveyHighlight)
         { // flag gets reset in telemetry code after being logged first time
@@ -176,8 +205,7 @@ void drawSurveyDisplay()
     }
     else if (recordBreadCrumbTrail)
     {
-        pinSprite.setCursor(10, 0);        
-        pinSprite.print("-REC-");
+        pinSprite.drawString("--REC--",  pinSprite.width() / 2, 0);  // Draw string using specified font number
     }
     else
     {
@@ -189,32 +217,31 @@ void drawSurveyDisplay()
       {
         const bool surveyScreen = true;
         std::string cardinal = getCardinal(journey_course,surveyScreen).c_str();
-        charWidth = 23;
-        offset = (TFT_WIDTH - cardinal.length() * charWidth) / 2;
-        pinSprite.setCursor(offset, 0);
-        pinSprite.printf("%s", cardinal.c_str());
+        pinSprite.drawString(cardinal.c_str(),  pinSprite.width() / 2, 0);  // Draw string using specified font number
       }
     }
     pinSprite.pushSprite(0, pinSpriteY);
 
+    timerSprite.fillSprite(TFT_BLACK);
+
     // Print dive timer directly to display
     if (diveTimerRunning == false && minutesDurationDiving == 0)    
-      M5.Lcd.setTextColor(TFT_BLUE, TFT_BLACK, filledBackground);     // dive not started yet
+      timerSprite.setTextColor(TFT_BLUE, TFT_BLACK, filledBackground);     // dive not started yet
     else if (diveTimerRunning == false && minutesDurationDiving > 0)
-      M5.Lcd.setTextColor(TFT_RED, TFT_BLACK, filledBackground);      // dive finished
+      timerSprite.setTextColor(TFT_RED, TFT_BLACK, filledBackground);      // dive finished
     else if (diveTimerRunning == true && whenToStopTimerDueToLackOfDepth == 0)
-      M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK, filledBackground);    // dive in progress
+      timerSprite.setTextColor(TFT_GREEN, TFT_BLACK, filledBackground);    // dive in progress
     else if (diveTimerRunning == true && whenToStopTimerDueToLackOfDepth > 0)
-      M5.Lcd.setTextColor(TFT_ORANGE, TFT_BLACK, filledBackground);   // dive in progress but not at minimum depth
+      timerSprite.setTextColor(TFT_ORANGE, TFT_BLACK, filledBackground);   // dive in progress but not at minimum depth
     else
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);  // shouldn't get here.
+      timerSprite.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);  // shouldn't get here.
 
-    M5.Lcd.setTextSize(7);
-    M5.Lcd.setCursor(8, timerScreenY);
-    M5.Lcd.print(" ");
-    offset = (minutesDurationDiving < 10) ? 50 : 8;
-    M5.Lcd.setCursor(offset, timerScreenY);
-    M5.Lcd.printf("%hu'", minutesDurationDiving);
+    timerSprite.setFreeFont(&FreeSansBold24pt7b);
+    timerSprite.setTextSize(2);
+    offset = (minutesDurationDiving < 10) ? 40 : 5;
+    timerSprite.setCursor(offset, 68);
+    timerSprite.printf("%hu'", minutesDurationDiving);
+    timerSprite.pushSprite(0, timerSpriteY);
 
     // print to sprite water temperature and degrees sign
     temperatureSprite.fillSprite(TFT_BLACK);
@@ -232,9 +259,8 @@ void drawSurveyDisplay()
 
     // print to humidity sprite: gps status, humidity, internet status
     humiditySprite.fillSprite(TFT_BLACK);
-    humiditySprite.setTextSize(3);
-    humiditySprite.setCursor(0,0);
-    charWidth = 16;
+    humiditySprite.setFreeFont(&FreeMonoBold18pt7b);
+    humiditySprite.setTextDatum(TL_DATUM);
 
     // Set GPS 'G' character background color based on fix message timeout
     if (!isGPSStreamOk())
@@ -244,21 +270,26 @@ void drawSurveyDisplay()
     else
       humiditySprite.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);      // Black when GPS fixes current
 
-    humiditySprite.print("G");
+    humiditySprite.drawString("G",0,0);
+
+    humiditySprite.setFreeFont(&FreeMonoBold18pt7b); // FreeSansBold18pt7b
+    humiditySprite.setTextDatum(TC_DATUM);
     // print humidity value
     humiditySprite.setTextColor(TFT_YELLOW, TFT_BLACK, filledBackground);
-    len = (humidity < 9.99) ? 2 : ((humidity < 99.99) ? 3 : 4);
-    humiditySprite.setCursor((TFT_WIDTH-len*charWidth)/2, 0);
-    humiditySprite.printf("%.0f%%", humidity);
 
+    char humidityBuffer[5];
+    snprintf(humidityBuffer, sizeof(humidityBuffer), "%.0f%%", humidity);
+    humiditySprite.drawString(humidityBuffer,pinSprite.width() / 2,0);
+
+    humiditySprite.setFreeFont(&FreeMonoBold18pt7b);
+    humiditySprite.setTextDatum(TR_DATUM);
     // Set Internet upload 'Q' character background color based on internet upload status
-    humiditySprite.setCursor(115, humiditySprite.getCursorY()); 
     if (isInternetUploadOk())
       humiditySprite.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);
     else
       humiditySprite.setTextColor(TFT_WHITE, TFT_RED, filledBackground);
     
-    humiditySprite.print("Q");
+    humiditySprite.drawString("Q",pinSprite.width(),0);
 
     humiditySprite.pushSprite(0, humiditySpriteY);
 }
@@ -289,7 +320,7 @@ void drawTargetSection()
 
     M5.Lcd.setTextSize(2);
   }
-  else if (GPS_status == GPS_NO_FIX_FROM_FLOAT && !hasEverReceivedGPSFix)
+  else if (GPS_status == GPS_NO_FIX_FROM_FLOAT && hasEverReceivedGPSFix)
   {
     M5.Lcd.setCursor(5, 0);
     M5.Lcd.setTextColor(TFT_ORANGE, TFT_BLACK);
@@ -509,7 +540,28 @@ void drawCompassSection()
 
 
 void drawTargetSection_smooth()
-{
+{  M5.Lcd.setRotation(0);
+
+  char label[16];
+
+  int16_t targetSpriteWidth = TFT_WIDTH;
+  int16_t targetSpriteHeight = 79;
+  int16_t targetSpriteY = 0;
+  static TFT_eSprite targetSprite(&M5.Lcd);
+  static bool inited = false;
+
+  if (!inited)
+  {
+    if (!targetSprite.createSprite(targetSpriteWidth,targetSpriteHeight))
+    {
+      return;
+    }
+    inited = true;
+  }
+
+  // print to main display: depth
+  targetSprite.fillSprite(TFT_BLACK);
+
   directionMetric = (display_to_show == NAV_COURSE_DISPLAY ? JOURNEY_COURSE : COMPASS_HEADING);
 
   // Target Course and distance is shown in Green
@@ -517,119 +569,124 @@ void drawTargetSection_smooth()
   // HDOP quality shown in top right corner as square block. Blue best at <=1.
   // Sat count shown underneath HDOP. Red < 4, Orange < 6, Yellow < 10, Blue 10+
 
-  uint16_t width =  M5.Lcd.height();
-  uint16_t height = M5.Lcd.width();
-  uint16_t centre_x =  height/2;
-  uint16_t centre_y = width/2;
-
-  M5.Lcd.setRotation(0);
+  targetSprite.setTextSize(5);
+  targetSprite.setCursor(0, 0);
 
   uint16_t x = 0, y = 0, degree_offset = 0, cardinal_offset = 0, hdop = 0, metre_offset = 0;
 
   if (GPS_status == GPS_NO_GPS_LIVE_IN_FLOAT && !hasEverReceivedGPSFix)
   {
-    uint8_t textSize=2;
-    uint8_t textFont=4;  
-  
-    M5.Lcd.setTextSize(textSize);
-    M5.Lcd.setTextFont(textFont);
-    M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);
+    targetSprite.setFreeFont(&FreeSansBold24pt7b);
+    targetSprite.setTextWrap(false);
+    targetSprite.setTextSize(1);
+    targetSprite.setTextDatum(TC_DATUM);
+    targetSprite.setTextColor(TFT_RED, TFT_BLACK);
 
-    M5.Lcd.setTextDatum(TC_DATUM);
-    M5.Lcd.drawString("NO",centre_x,0);
-    M5.Lcd.drawString("GPS",centre_x,41);
-    M5.Lcd.setTextDatum(TL_DATUM);  // default
+    targetSprite.drawString("NO", targetSprite.width()/2, 0);
+    targetSprite.drawString("GPS", targetSprite.width()/2, 42);
   }
-  else if (GPS_status == GPS_NO_FIX_FROM_FLOAT && !hasEverReceivedGPSFix)
+  else if (GPS_status == GPS_NO_FIX_FROM_FLOAT && hasEverReceivedGPSFix)
   {
-    uint8_t textSize=2;
-    uint8_t textFont=4;  
+    targetSprite.setFreeFont(&FreeSansBold24pt7b);
+    targetSprite.setTextWrap(false);
+    targetSprite.setTextSize(1);
+    targetSprite.setTextDatum(TC_DATUM);
+    targetSprite.setTextColor(TFT_ORANGE, TFT_BLACK);
 
-    M5.Lcd.setTextSize(textSize);
-    M5.Lcd.setTextFont(textFont);
-    M5.Lcd.setTextColor(TFT_ORANGE, TFT_BLACK);
-
-    M5.Lcd.setTextDatum(TC_DATUM);
-    M5.Lcd.drawString("NO",centre_x,0);
-    M5.Lcd.drawString("FIX",centre_x,41);
-
-    M5.Lcd.setTextDatum(TL_DATUM);  // default
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setTextFont(1);
+    targetSprite.drawString("NO", targetSprite.width()/2, 0);
+    targetSprite.drawString("FIX", targetSprite.width()/2, 42);
   }
   else // GPS_FIX_FROM_FLOAT or post-first-fix states - use color coding
   {
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setTextFont(4);
+    targetSprite.setFreeFont(&FreeSansBold24pt7b);
+    targetSprite.setTextWrap(false);
+    targetSprite.setTextSize(1);
 
-    M5.Lcd.setCursor(5, 0);
+    targetSprite.setTextDatum(TR_DATUM);
     
     // Set color based on GPS message timeout
     if (!isGPSStreamOk())
-      M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);        // Red after 10 seconds
+      targetSprite.setTextColor(TFT_RED, TFT_BLACK);        // Red after 10 seconds
     else if (isGPSTargetShortTimedOut())
-      M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);     // Yellow after 2.5 seconds
+      targetSprite.setTextColor(TFT_YELLOW, TFT_BLACK);     // Yellow after 2.5 seconds
     else
-      M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);      // Green when GPS is current
-    
-    // Display heading to target at top with degrees sign suffix
-    M5.Lcd.printf("%3.0f", heading_to_target);      // 5,0
+      targetSprite.setTextColor(TFT_GREEN, TFT_BLACK);      // Green when GPS is current
 
-    // Degrees Sign
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setTextFont(2);
-    degree_offset = -2;
-    x = M5.Lcd.getCursorX();
-    y = M5.Lcd.getCursorY();
-    M5.Lcd.setCursor(x, y + degree_offset);         // ?, ?
-    M5.Lcd.print("o ");
+    snprintf(label, sizeof(label), "%3.0f", heading_to_target);
+    targetSprite.drawString(label, 85, 0);
 
+    targetSprite.setTextDatum(TL_DATUM);
+    targetSprite.setTextFont(1);
+
+    uint16_t x = 0, y = 0, degree_offset = 0;
+
+    targetSprite.setCursor(92,0);
+
+    x = targetSprite.getCursorX();
+    y = targetSprite.getCursorY();
+
+    targetSprite.setTextSize(2);
+    targetSprite.setCursor(x, y);
+
+    // Display degrees
+    targetSprite.printf("o ");
 
     // Display Cardinal underneath degrees sign
-    cardinal_offset = 21;
-    M5.Lcd.setCursor(x, y + cardinal_offset);
-    M5.Lcd.printf("%s ", getCardinal(heading_to_target).c_str());
-
+    const uint16_t cardinal_offset = 21;
+    targetSprite.setCursor(x, y + cardinal_offset);
+    // cardinal:  x=90 y=100
+    targetSprite.printf("%s ", getCardinal(heading_to_target).c_str());
+    
     // Display HDOP signal quality as small coloured dot
     hdop = gps.hdop.hdop();
     if (hdop > 10)
-      M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);
+      targetSprite.setTextColor(TFT_RED, TFT_BLACK);
     else if (hdop > 5)
-      M5.Lcd.setTextColor(TFT_ORANGE, TFT_BLACK);
+      targetSprite.setTextColor(TFT_ORANGE, TFT_BLACK);
     else if (hdop > 1)
-      M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+      targetSprite.setTextColor(TFT_YELLOW, TFT_BLACK);
     else
-      M5.Lcd.setTextColor(TFT_BLUE, TFT_BLACK);
+      targetSprite.setTextColor(TFT_BLUE, TFT_BLACK);
 
-    M5.Lcd.setTextSize(5);
-    M5.Lcd.setCursor(x + 10, y - 25);
-    M5.Lcd.print(".");
+    targetSprite.setTextSize(5);
+    targetSprite.setCursor(x + 10, y - 25);
+    targetSprite.print(".");
 
     // Display number of satellites
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setCursor(x + 8, y + 40);
+    targetSprite.setTextSize(2);
+    targetSprite.setCursor(x + 8, y + 40);
     if (satellites < 4.0)
-      M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);
+      targetSprite.setTextColor(TFT_RED, TFT_BLACK);
     else if (satellites < 6.0)
-      M5.Lcd.setTextColor(TFT_ORANGE, TFT_BLACK);
+      targetSprite.setTextColor(TFT_ORANGE, TFT_BLACK);
     else if (satellites < 10.0)
-      M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+      targetSprite.setTextColor(TFT_YELLOW, TFT_BLACK);
     else
-      M5.Lcd.setTextColor(TFT_BLUE, TFT_BLACK);
-      
-    M5.Lcd.printf("%2lu", satellites);
+      targetSprite.setTextColor(TFT_BLUE, TFT_BLACK);
+    
+    // PIN overwrites satellite count so hide whilst pin in progress
+    if (recordHighlightExpireTime == 0)
+      targetSprite.printf("%2lu", satellites);
 
     if (recordHighlightExpireTime != 0)
     {
-      M5.Lcd.setTextSize(3);
-      M5.Lcd.setTextColor(TFT_MAGENTA, TFT_BLACK);
-      M5.Lcd.setCursor(x, y);
-      M5.Lcd.print("\n");
-      M5.Lcd.setTextSize(4);
+      targetSprite.setFreeFont(&FreeSansBold24pt7b);
+      targetSprite.setTextDatum(TC_DATUM);
+      targetSprite.setTextSize(1);
+      targetSprite.setTextColor(TFT_MAGENTA, TFT_BLACK, false);
   
       if (millis() < recordHighlightExpireTime)
       {
-        M5.Lcd.printf("-PIN-\n");
+        char pinLabel[] = "--PIN--";
+        int secondsLeft = (recordHighlightExpireTime - millis()) / 1000;
+
+        if (secondsLeft < 3)
+          snprintf(label, sizeof(label), "-- %d --", secondsLeft);
+        else
+          snprintf(label, sizeof(label), "%s", pinLabel);
+
+        targetSprite.drawString(label,targetSprite.width()/2,40);
+
         if (recordSurveyHighlight)
         { // flag gets reset in telemetry code after being logged first time
           // Also publish is rate-limited internally to max 1 call per 5 seconds
@@ -639,7 +696,6 @@ void drawTargetSection_smooth()
       else
       {
         recordHighlightExpireTime = 0;
-        M5.Lcd.print("     \n");
       }
     }
     else
@@ -647,171 +703,165 @@ void drawTargetSection_smooth()
       // Display distance to target in metres, with by 'm' suffix
       // Set color based on GPS message timeout
       if (!isGPSStreamOk())
-        M5.Lcd.setTextColor(TFT_RED, TFT_BLACK);        // Red after 10 seconds
+        targetSprite.setTextColor(TFT_RED, TFT_BLACK);        // Red after 10 seconds
       else if (isGPSTargetShortTimedOut())
-        M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);     // Yellow after 2.5 seconds
+        targetSprite.setTextColor(TFT_YELLOW, TFT_BLACK);     // Yellow after 2.5 seconds
       else
-        M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK);      // Green when GPS is current
+        targetSprite.setTextColor(TFT_GREEN, TFT_BLACK);      // Green when GPS is current
       
       uint8_t distanceTextSize = 0;
 
-      M5.Lcd.setCursor(x, y);
+      targetSprite.setCursor(x, y);
 
-      if (distance_to_target >= 1000)
+      targetSprite.setTextSize(1);
+      targetSprite.setTextDatum(TR_DATUM);
+
+      char metres[] = "m";
+      char kilometres[] = "km";
+      char* units = nullptr;
+
+      if (distance_to_target >= 1000)  // draw km distance
       {
-        x = M5.Lcd.getCursorX();
-        y = M5.Lcd.getCursorY();
-
-        if (distance_to_target >= 10000)
+        x = targetSprite.getCursorX();
+        y = targetSprite.getCursorY();
+        if (distance_to_target >= 10000)  // use whole km for >= 10km
         {
-          distanceTextSize=4;
-          M5.Lcd.setTextSize(distanceTextSize);
-          M5.Lcd.setCursor(x, y + 15);
-          M5.Lcd.printf("\n%4.0f", distance_to_target / 1000.0);
-          metre_offset = 14;
+          targetSprite.setFreeFont(&FreeSansBold18pt7b);
+          snprintf(label, sizeof(label), "%4.0f", distance_to_target / 1000.0);
+          targetSprite.drawString(label, 85, 50);
         }
-        else
+        else    // use 1 decimal place for < 10km
         {
-          distanceTextSize=5;
-          M5.Lcd.setTextSize(distanceTextSize);
-          M5.Lcd.println("");
-    
-          x = M5.Lcd.getCursorX();
-          y = M5.Lcd.getCursorY();
-
-          M5.Lcd.setCursor(x+5, y);
-          M5.Lcd.printf("%2.1f", distance_to_target / 1000.0);
-          metre_offset = 22;
+          targetSprite.setFreeFont(&FreeSansBold24pt7b);
+          snprintf(label, sizeof(label), "%2.1f", distance_to_target  / 1000.0);
+          targetSprite.drawString(label, 85, 40);
         }
-
-        M5.Lcd.setTextSize(2);
-
-        x = M5.Lcd.getCursorX();
-        y = M5.Lcd.getCursorY();
-
-        M5.Lcd.setCursor(x, y + metre_offset);
-        M5.Lcd.print("km");
-        M5.Lcd.setCursor(x, y);
+        units = kilometres;
       }
-      else  // < 1000m
+      else  // < 1000m - draw metres distance
       {
-        distanceTextSize = 5;
-        M5.Lcd.setTextSize(distanceTextSize);
-        M5.Lcd.printf("\n%3.0f", distance_to_target);
-        M5.Lcd.setTextSize(3);
-
-        x = M5.Lcd.getCursorX();
-        y = M5.Lcd.getCursorY();
-
-        metre_offset = 14;
-        M5.Lcd.setCursor(x, y + metre_offset);
-        M5.Lcd.print("m");
-        M5.Lcd.setCursor(x, y);
+        targetSprite.setFreeFont(&FreeSansBold24pt7b);
+        snprintf(label, sizeof(label), "%3.0f", distance_to_target);
+        targetSprite.drawString(label, 85, 40);
+        units = metres;
       }
 
-      M5.Lcd.setTextSize(distanceTextSize);
-      M5.Lcd.println("");
+      // Draw distance units
+      targetSprite.setTextDatum(TL_DATUM);
+      targetSprite.setFreeFont(&FreeSansBold12pt7b);
+      targetSprite.drawString(units, 90, 58);
     }
   }
+  targetSprite.pushSprite(0,0);
 }
 
+// RAM Usage of compass section sprite is 24,300 bytes
 void drawCompassSection_smooth()
 {
-  uint16_t width =  M5.Lcd.width();
-  uint16_t height = M5.Lcd.height();
-  uint16_t centre_x =  width/2;
-  uint16_t centre_y = height/2;
+  // sprite size is TFT_WIDTH x 170 pixels
+    M5.Lcd.setRotation(0);
 
-  float directionOfTravel = magnetic_heading;
+    char label[16];
 
-  // Display Journey Course with degrees suffix
-  // this is the direction travelled in last x seconds
-  // Black out the Journey Course if no recent movement
+    int16_t compassSpriteWidth = TFT_WIDTH;
+    int16_t compassSpriteHeight = 90;
+    int16_t compassSpriteY = 79;
+    static TFT_eSprite compassSprite(&M5.Lcd);
+    static bool inited = false;
 
-  uint16_t headingSize=5;
-  uint16_t headingFont=1;
+    if (!inited)
+    {
+      if (!compassSprite.createSprite(compassSpriteWidth,compassSpriteHeight))
+      {
+        return;
+      }
+      inited = true;
+    }
 
-  M5.Lcd.setTextSize(headingSize);
-  M5.Lcd.setTextFont(headingFont);
-  M5.Lcd.setTextDatum(TL_DATUM);
+    // print to main display: depth
+    compassSprite.fillSprite(TFT_BLACK);
 
-  M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK);
+    float directionOfTravel = magnetic_heading;
 
-  uint16_t xpos = 0;
-  uint16_t ypos = 82, yposHeadingBottom = 0;
+    // Display Journey Course with degrees suffix
+    // this is the direction travelled in last x seconds
+    // Black out the Journey Course if no recent movement
+    compassSprite.setFreeFont(&FreeSansBold24pt7b);
+    compassSprite.setTextWrap(false);
+    compassSprite.setTextSize(1);
 
-  char direction[4];
-  snprintf(direction,sizeof(direction),"%3.0f",directionOfTravel);
-  xpos += M5.Lcd.drawString(direction,xpos,ypos);
-  yposHeadingBottom = ypos + M5.Lcd.fontHeight(); 
+    compassSprite.setTextDatum(TR_DATUM);
+    compassSprite.setTextColor(TFT_YELLOW, TFT_BLACK);
 
-  uint16_t cardinalSize=2;
-  uint16_t cardinalFont=1;
+    // compass:  x=0 y=79
+    snprintf(label, sizeof(label), "%3.0f", directionOfTravel);
+    compassSprite.drawString(label, 85, 0);
 
-  M5.Lcd.setTextSize(cardinalSize);
-  M5.Lcd.setTextFont(cardinalFont);
-  M5.Lcd.setTextDatum(TL_DATUM);
+    compassSprite.setTextDatum(TL_DATUM);
+    compassSprite.setTextFont(1);
 
-  // Display degrees
-//  M5.Lcd.print("o ",xpos,ypos);
-  M5.Lcd.drawString("o ",xpos,ypos);
+    uint16_t x = 0, y = 0, degree_offset = 0;
 
-  // Display Cardinal underneath degrees sign
-  const uint16_t cardinal_subscript_offset = 21;
+    compassSprite.setCursor(92,0);
 
-  char cardinal[4];
-  snprintf(cardinal,sizeof(cardinal),"%s ",getCardinal(directionOfTravel).c_str());
-  M5.Lcd.drawString(cardinal,xpos,ypos + cardinal_subscript_offset);
+    x = compassSprite.getCursorX();
+    y = compassSprite.getCursorY();
 
-  ypos = yposHeadingBottom;
+    compassSprite.setTextSize(2);
+    compassSprite.setCursor(x, y + degree_offset);
 
-  uint16_t x = xpos;
-  uint16_t y = ypos;
+    // Display degrees
+    compassSprite.printf("o ");
 
-  uint8_t tempSize=2;
-  uint8_t tempFont=1;
+    // Display Cardinal underneath degrees sign
+    const uint16_t cardinal_offset = 21;
+    compassSprite.setCursor(x, y + cardinal_offset);
+    // cardinal:  x=90 y=100
+    compassSprite.printf("%s ", getCardinal(directionOfTravel).c_str());
 
-  uint8_t degreesSize=2;
-  uint8_t degreesFont=1;
-  uint16_t degree_offset=2;
+    // Display temp and humidity
+    compassSprite.setCursor(x, y);
+    compassSprite.setTextSize(2);
+    // temp:  x=90 y=79
+    compassSprite.printf("\n\n\n%2.1f", temperature);
 
-  M5.Lcd.setTextSize(tempSize);  M5.Lcd.setTextFont(tempFont);  M5.Lcd.setTextDatum(TL_DATUM);
+    x = compassSprite.getCursorX();
+    y = compassSprite.getCursorY();
 
-  xpos = 0;
-  xpos += M5.Lcd.drawNumber(temperature,xpos,ypos);
+    const uint16_t temp_degrees_offset = -2;
+    compassSprite.setCursor(x + 3, y + temp_degrees_offset);
+    compassSprite.setTextSize(0);
+    // temp deg:  x=51 y=125
+    compassSprite.printf("o ", temperature);
+    compassSprite.setTextSize(2);
+    // C AND HUMIDITY:  x=63 y=125
+    if (temperature < 10.0)
+      compassSprite.printf("C   %2.0f%%", humidity);
+    else
+      compassSprite.printf("C %3.0f%%", humidity);
 
-  M5.Lcd.setTextSize(degreesSize);  M5.Lcd.setTextFont(degreesFont);
-  xpos += M5.Lcd.drawString("o",xpos,ypos-2);
+    // direction graphic:  y=170
+    if (GPS_status == GPS_FIX_FROM_FLOAT)
+      refreshDirectionGraphic(directionOfTravel, heading_to_target);
 
-  M5.Lcd.setTextSize(tempSize);  M5.Lcd.setTextFont(tempFont);
-  xpos += M5.Lcd.drawString("C",xpos,ypos);
+    compassSprite.setTextSize(3);
+    compassSprite.setTextFont(0);
+    compassSprite.setTextColor(TFT_CYAN, TFT_BLACK);
 
-  char humidity[5];
-  snprintf(humidity,sizeof(humidity),"%3.0f%%",humidity);
-  M5.Lcd.setTextDatum(TR_DATUM);
-  M5.Lcd.drawString(humidity,width,ypos);
+    compassSprite.setTextDatum(TC_DATUM);
+    snprintf(label, sizeof(label), "%3.1fm", depth);
+    compassSprite.drawString(label, compassSpriteWidth / 2, 67);
 
-  M5.Lcd.setTextDatum(TL_DATUM);
+    compassSprite.pushSprite(0,compassSpriteY);
 
-  if (GPS_status == GPS_FIX_FROM_FLOAT)
-    refreshDirectionGraphic(directionOfTravel, heading_to_target);
-
-  uint8_t depthSize=3, depthFont=0;
-  char depthLabel[6]; snprintf(depthLabel,sizeof(depthLabel),"%3.1fm",depth);
-  ypos = 146;
-  M5.Lcd.setTextDatum(TC_DATUM);
-
-  M5.Lcd.setTextSize(depthSize);
-  M5.Lcd.setTextFont(depthFont);
-  M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
-  M5.Lcd.drawString(depthLabel,centre_x,ypos);
-  M5.Lcd.setTextDatum(TL_DATUM);
-
-  blackout_journey_no_movement = false;
+    blackout_journey_no_movement = false;
 }
+
 
 void drawCourseSection()
 {
+    M5.Lcd.setCursor(0, 79);
+
     float directionOfTravel = journey_course;
 
     // Display Journey Course with degrees suffix
