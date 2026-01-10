@@ -1,6 +1,10 @@
 .pio/**
 .vscode/**
 .DS_Store
+src_debug/**
 src/mercator_secrets.c
 compile_commands.json
 mercator-origins-mako-io.*
+Sprite.localpp.cpp
+TFT_eSPI.localpp.cpp
+espi_pp.cpp

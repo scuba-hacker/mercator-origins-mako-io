@@ -112,34 +112,56 @@ void refreshDisplay()
 
 void drawSurveyDisplay()
 {
+    int16_t humiditySpriteWidth = TFT_WIDTH, temperatureSpriteWidth = TFT_WIDTH, pinSpriteWidth = TFT_WIDTH;
+    int16_t humiditySpriteHeight = 30, temperatureSpriteHeight = 20, pinSpriteHeight = 30;
+    int16_t humiditySpriteY = 216, temperatureSpriteY = 184, pinSpriteY = 72;
+    int16_t timerScreenY = 120;
+
+    // sprites must not be deleted after use - affects the parent TFT_eSPI object for screen
+    static TFT_eSprite humiditySprite(&M5.Lcd);
+    static TFT_eSprite temperatureSprite(&M5.Lcd);
+    static TFT_eSprite pinSprite(&M5.Lcd);
+    static bool inited = false;
+
+    if (!inited)
+    {
+      if (!humiditySprite.createSprite(humiditySpriteWidth,humiditySpriteHeight) ||
+          !temperatureSprite.createSprite(temperatureSpriteWidth,temperatureSpriteHeight) || 
+          !pinSprite.createSprite(pinSpriteWidth,pinSpriteHeight))
+      {
+        return;
+      }
+      inited = true;
+    }
+
     int charWidth=0, offset=0;
     M5.Lcd.setRotation(0);
-    M5.Lcd.setCursor(15, 0);
 
+    // print to main display: depth
     bool filledBackground = true;
     if (useGetDepthAsync)
       M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK,filledBackground);
     else
       M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK,filledBackground);
 
+    M5.Lcd.setCursor(15, 0);
     M5.Lcd.setTextSize(6);
     if (depth < 10.0)
       M5.Lcd.printf("%.1f\n", depth);    
     else
       M5.Lcd.printf("%.0fm\n", depth);
 
-    M5.Lcd.setTextSize(3);
-    M5.Lcd.setTextColor(TFT_MAGENTA, TFT_BLACK,filledBackground);
-    M5.Lcd.print("\n");
-    M5.Lcd.setTextSize(4);
+    // print to pin sprite: -PIN-, -REC-, journey course or blank
+    pinSprite.fillSprite(TFT_BLACK);
+    pinSprite.setTextColor(TFT_MAGENTA, TFT_BLACK,filledBackground);
+    pinSprite.setTextSize(4);
 
     if (recordHighlightExpireTime != 0)
     {
       if (millis() < recordHighlightExpireTime)
       {
-        M5.Lcd.fillRect(0, M5.Lcd.getCursorY(), TFT_WIDTH, 30, TFT_BLACK);
-        M5.Lcd.setCursor(10, M5.Lcd.getCursorY());        
-        M5.Lcd.printf("-PIN-\n");
+        pinSprite.setCursor(10, 0);        
+        pinSprite.print("-PIN-");
 
         if (recordSurveyHighlight)
         { // flag gets reset in telemetry code after being logged first time
@@ -150,41 +172,32 @@ void drawSurveyDisplay()
       else
       {
         recordHighlightExpireTime = 0;
-        M5.Lcd.fillRect(0, M5.Lcd.getCursorY(), TFT_WIDTH, 30, TFT_BLACK);
-        M5.Lcd.print("\n");
       }
     }
     else if (recordBreadCrumbTrail)
     {
-        M5.Lcd.fillRect(0, M5.Lcd.getCursorY(), TFT_WIDTH, 30, TFT_BLACK);
-        M5.Lcd.setCursor(10, M5.Lcd.getCursorY());        
-        M5.Lcd.print("-REC-\n");
+        pinSprite.setCursor(10, 0);        
+        pinSprite.print("-REC-");
     }
     else
     {
       if  (millis() - journey_clear_period > last_journey_commit_time || journey_distance == 0)
       {
-        M5.Lcd.fillRect(0, M5.Lcd.getCursorY(), TFT_WIDTH, 30, TFT_BLACK);
-        M5.Lcd.print("\n");
+        // print nothing
       }
       else
       {
-        M5.Lcd.fillRect(0, M5.Lcd.getCursorY(), TFT_WIDTH, 30, TFT_BLACK);
-
         const bool surveyScreen = true;
         std::string cardinal = getCardinal(journey_course,surveyScreen).c_str();
         charWidth = 23;
         offset = (TFT_WIDTH - cardinal.length() * charWidth) / 2;
-        M5.Lcd.setCursor(offset, M5.Lcd.getCursorY());
-        M5.Lcd.printf("%s\n", cardinal.c_str());
+        pinSprite.setCursor(offset, 0);
+        pinSprite.printf("%s", cardinal.c_str());
       }
     }
-        
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.println("\n");
+    pinSprite.pushSprite(0, pinSpriteY);
 
-    M5.Lcd.setTextSize(7);
-
+    // Print dive timer directly to display
     if (diveTimerRunning == false && minutesDurationDiving == 0)    
       M5.Lcd.setTextColor(TFT_BLUE, TFT_BLACK, filledBackground);     // dive not started yet
     else if (diveTimerRunning == false && minutesDurationDiving > 0)
@@ -196,67 +209,58 @@ void drawSurveyDisplay()
     else
       M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);  // shouldn't get here.
 
-    M5.Lcd.fillRect(0, M5.Lcd.getCursorY(), 45, 50, TFT_BLACK);
+    M5.Lcd.setTextSize(7);
+    M5.Lcd.setCursor(8, timerScreenY);
+    M5.Lcd.print(" ");
     offset = (minutesDurationDiving < 10) ? 50 : 8;
-    M5.Lcd.setCursor(offset, M5.Lcd.getCursorY());
+    M5.Lcd.setCursor(offset, timerScreenY);
     M5.Lcd.printf("%hu'", minutesDurationDiving);
 
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setTextColor(TFT_GREEN, TFT_BLACK, filledBackground);
-
-    M5.Lcd.print("\n\n\n\n");
-
-    M5.Lcd.fillRect(M5.Lcd.getCursorX(), M5.Lcd.getCursorY()-5, TFT_WIDTH, 20, TFT_BLACK);
-
+    // print to sprite water temperature and degrees sign
+    temperatureSprite.fillSprite(TFT_BLACK);
+    temperatureSprite.setTextSize(2);
+    temperatureSprite.setTextColor(TFT_GREEN, TFT_BLACK, filledBackground);
     charWidth = 12;
+    const int degreeSignXOffset = 2, degreeSignYOffset = 4;
     int len = (water_temperature < 9.99 ? 3 : 4);
-    M5.Lcd.setCursor((TFT_WIDTH-len*charWidth)/2, M5.Lcd.getCursorY());
-    M5.Lcd.printf("%.1f", water_temperature);
+    temperatureSprite.setCursor((TFT_WIDTH-len*charWidth)/2, degreeSignYOffset);
+    temperatureSprite.printf("%.1f", water_temperature);
+    temperatureSprite.setTextSize(1);
+    temperatureSprite.setCursor(temperatureSprite.getCursorX()+degreeSignXOffset, 0);
+    temperatureSprite.print("o");
+    temperatureSprite.pushSprite(0, temperatureSpriteY);
 
-    // print degrees sign
-    int16_t x = M5.Lcd.getCursorX(), y = M5.Lcd.getCursorY();
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(x+2, y-4);
-    M5.Lcd.print("o  ");
-    M5.Lcd.setCursor(x, y);
-
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.printf("\n\n");
-
-    M5.Lcd.setTextSize(3);
+    // print to humidity sprite: gps status, humidity, internet status
+    humiditySprite.fillSprite(TFT_BLACK);
+    humiditySprite.setTextSize(3);
+    humiditySprite.setCursor(0,0);
+    charWidth = 16;
 
     // Set GPS 'G' character background color based on fix message timeout
     if (!isGPSStreamOk())
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_RED, filledBackground);        // Red after 10 seconds no fix
+      humiditySprite.setTextColor(TFT_WHITE, TFT_RED, filledBackground);        // Red after 10 seconds no fix
     else if (isGPSTargetShortTimedOut())
-      M5.Lcd.setTextColor(TFT_BLACK, TFT_YELLOW, filledBackground);     // Yellow after 3 seconds no fix  
+      humiditySprite.setTextColor(TFT_BLACK, TFT_YELLOW, filledBackground);     // Yellow after 3 seconds no fix  
     else
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);      // Black when GPS fixes current
+      humiditySprite.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);      // Black when GPS fixes current
 
-    M5.Lcd.print("G");
-
-    M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);
-    
-    if (isInternetUploadOk())
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);
-    else
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_RED, filledBackground);
-    
-    M5.Lcd.setTextColor(TFT_YELLOW, TFT_BLACK, filledBackground);
-    M5.Lcd.fillRect(20, M5.Lcd.getCursorY(), TFT_WIDTH-40, 30, TFT_BLACK);
-
-    charWidth = 16;
+    humiditySprite.print("G");
+    // print humidity value
+    humiditySprite.setTextColor(TFT_YELLOW, TFT_BLACK, filledBackground);
     len = (humidity < 9.99) ? 2 : ((humidity < 99.99) ? 3 : 4);
-    M5.Lcd.setCursor((TFT_WIDTH-len*charWidth)/2, M5.Lcd.getCursorY());
-    M5.Lcd.printf("%.0f%%", humidity);
+    humiditySprite.setCursor((TFT_WIDTH-len*charWidth)/2, 0);
+    humiditySprite.printf("%.0f%%", humidity);
 
-    M5.Lcd.setCursor(115, M5.Lcd.getCursorY());
+    // Set Internet upload 'Q' character background color based on internet upload status
+    humiditySprite.setCursor(115, humiditySprite.getCursorY()); 
     if (isInternetUploadOk())
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);
+      humiditySprite.setTextColor(TFT_WHITE, TFT_BLACK, filledBackground);
     else
-      M5.Lcd.setTextColor(TFT_WHITE, TFT_RED, filledBackground);
+      humiditySprite.setTextColor(TFT_WHITE, TFT_RED, filledBackground);
     
-    M5.Lcd.printf("Q");
+    humiditySprite.print("Q");
+
+    humiditySprite.pushSprite(0, humiditySpriteY);
 }
 
 void drawTargetSection()
