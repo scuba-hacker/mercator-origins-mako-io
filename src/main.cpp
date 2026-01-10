@@ -657,7 +657,7 @@ const float pressure_correction = 0;  // mbar, calibrated against Braggs Wunderg
 uint32_t next_global_status_display_update = 0;
 const uint32_t global_status_display_update_period = 250;   // ms
 
-const uint32_t journey_calc_period = 10000;    // in milliseconds
+const uint32_t journey_calc_period = 15000;    // in milliseconds
 const uint32_t journey_min_dist = 5;          // in metres
 
 uint32_t last_journey_commit_time = 0;

@@ -383,8 +383,6 @@ void refreshAndCalculatePositionalAttributes()
   if (directionMetric == COMPASS_HEADING)
     blackout_journey_no_movement = false;
 
-  blackout_journey_no_movement = false;
-
   if (enableNavigationTargeting)
   {
     // UPDATED NEEDED HERE TO USE MASTER LAT AND LONG IN NAV WAYPOINTS ARRAY/////
