@@ -10,7 +10,7 @@ uint8_t SILKY_MAC[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};      // BSSID: the 
 const char* silkyName = "Silky";
 
 uint8_t TIGER_MAC[6]      = {0,0,0,0,0,0};
-uint8_t TIGER_MAC_TEST[6] = {0xE8, 0x9F, 0x6D, 0x00, 0x98, 0xA1};  // BSSID: the AP Mac, not STA Mac shown in router
+uint8_t TIGER_MAC_TEST[6] = {0x0C, 0x8B, 0x95, 0xA5, 0x91, 0x90};  // BSSID: the AP Mac, not STA Mac shown in router
 uint8_t TIGER_MAC_POD[6]  = {0xE8, 0x9F, 0x6D, 0x09, 0x3A, 0xE9};  // BSSID: the AP Mac, not STA Mac shown in router
 const char* tigerName = "Tiger";
 
@@ -273,17 +273,15 @@ void toggleESPNowActive(bool adjustDisplay)
 
 bool connectESPNow()
 {
-
   // See Tiger configAndStartUpESPNow() for full explanation of why WIFI_AP_STA is needed for ESP NOW
   // It's a subtle ESP32/ESP-NOW implementation detail - the receive path uses the AP radio, but the transmit path
   // requires both interfaces to be properly configured in WIFI_AP_STA mode.
   
   WiFi.mode(WIFI_AP_STA);
-  
-  USB_SERIAL_PRINTLN("ESPNow/Basic/Master Example");
-    
+      
   esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
   
+  // configure device AP mode
   configESPNowDeviceAP();
   
   // This is the mac address of the Master in AP Mode
@@ -291,7 +289,7 @@ bool connectESPNow()
   USB_SERIAL_PRINT("AP CHANNEL "); USB_SERIAL_PRINTLN(WiFi.channel());
     
   // Init ESPNow with a fallback logic
-  bool result =  InitESPNow();
+  bool result = InitESPNow();
 
   if (result)
   {

@@ -4,11 +4,14 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool goProButtonsPrimaryControl = true;     // false means use the M5 Stick physical buttons (eg out of gopro case bench test)
+bool goProButtonsPrimaryControl = true;    // false means use the M5 Stick physical buttons (eg out of gopro case bench test)
                                             // true means use the go pro buttons meaning it must be installed into the pod.
                                             // If set to false when Mako is in the pod, activate an reed switch to make
                                             // go pro buttons primary so that OTA can be done with fixed code. 
                                             // Relies on receiving ESP Now message from Tiger
+
+bool testTigerOutsidePod = false;
+bool writeLogToSerial = false;
 
 bool divingInTheSea = false;                 // Salt / Fresh water depth sensor calibration
 
@@ -18,9 +21,6 @@ bool divingInTheSea = false;                 // Salt / Fresh water depth sensor 
 bool setHardIronOffsetsInHardwareRegisters = true;
 const int maxCalibrationSamples = 1;        // Calibration data collection for soft iron compensation (max 2500, set to 1 to disable)
 const uint32_t calibrationSampleInterval = 20; // Sample every x ms during calibration
-
-bool testTigerOutsidePod = false;
-bool writeLogToSerial = false;
 
 const int UPLINK_BAUD_RATE = 115200;
 //const int UPLINK_BAUD_RATE = 1000000;     // 1 Mbit max reliable with MAX485 ICs with no linger time back to lemon
@@ -560,32 +560,32 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
 };
 */
 
-// Dive 1
+// Dive 1 - 2026-01-11
 NavigationWaypoint diveOneWaypoints[] =
 {
   { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
   { ._label = "10N Bus 2m", ._m5label = "10N\n\nBus\n\n2m", ._cat=NO_BUOY,._lat = 51.460073, ._long = -0.548515},
   { ._label = "X07 Boat with Chain Links", ._m5label = "X07\nChain\nLink\nBoat", ._cat=UNMARKED, ._lat = 51.4600385714286, ._long = -0.548724142857143},
-  { ._label = "04N Spitfire Car 6m", ._m5label = "04N\nSpit\n  fire\nCar\n6m", ._cat=NO_BUOY, ._lat = 51.4601028571429, ._long = -0.54883835},
+  { ._label = "X30 Polar Bear 2m", ._m5label = "X30\nPolar\nBear 2m", ._cat=UNMARKED, ._lat = 51.460068, ._long = -0.549013}, 
   { ._label = "03N Scimitar Car 5.5m",  ._m5label = "03N\nScimitar\nCar\n5.5m", ._cat=NO_BUOY, ._lat = 51.460347, ._long = -0.5489195},
+  { ._label = "X31 Piano 3m", ._m5label = "X31\nPiano 3m", ._cat=UNMARKED, ._lat = 51.460336, ._long = -0.549035},
+  { ._label = "X34 Better Quarry? 4m", ._m5label = "X34\nBetter\nQuarry?\n4m", ._cat=UNMARKED, ._lat = 51.460410, ._long = -0.548945},
   { ._label = "X02 Quarry Machine in Reeds", ._m5label = "X02\nQuarry\nMachine\nReeds", ._cat=UNMARKED, ._lat = 51.460434, ._long = -0.548921},
   { ._label = "05N Lightning Boat 5.5m", ._m5label = "05N\nLight\n  ning\nBoat\n5.5m", ._cat=NO_BUOY, ._lat = 51.4605855, ._long = -0.548901666666667},
+  { ._label = "02N The Sub", ._m5label = "02N\nThe\nSub", ._cat=NO_BUOY, ._lat = 51.4609042894737, ._long = -0.549211315789474},
   { ._label = "06aN Caves Centre", ._m5label = "06aN\nCaves\nCentre", ._cat=NO_BUOY, ._lat = 51.460947625, ._long = -0.54878325},
-  { ._label = "12N Commer Van 6m", ._m5label = "12N\n\nCommer\nVan\n\n6m", BLUE_BUOY, ._lat = 51.4613355909091, ._long = -0.548469727272727},
+  { ._label = "X36 7m?", ._m5label = "X36 7m?", ._cat=UNMARKED, ._lat = 51.460959, ._long = -0.548016},
   { ._label = "X21 Memorial Stone - Kit 7.5m", ._m5label = "X21\nMem\nStone\nKit\n7.5m", ._cat=UNMARKED, ._lat = 51.460993, ._long = -0.548006}, // Near die hard taxi
-  { ._label = "24N Half Die Hard Taxi 8m", ._m5label = "24N\n\nHalf\nDie\nHard\nTaxi 8m", ._cat=NO_BUOY, ._lat = 51.460773, ._long = -0.547620875},
   { ._label = "X20 La Mouette Boat", ._m5label = "X20\nLa\nMouette\nBoat", ._cat=UNMARKED, ._lat = 51.460740, ._long = -0.547713}, // By die hard taxi
-  { ._label = "27B Wreck Site 6m", ._m5label = "27B\n\nWreck\nSite\n\n6m", BLUE_BUOY, ._lat = 51.4604300973436, ._long = -0.547383365365033},
-  { ._label = "43N Thorpe Orange Boat 5.5m", ._m5label = "43N\n\nThorpe\nOrange\nBoat\n\n5.5m", ._cat=NO_BUOY, ._lat = 51.4602073333333, ._long = -0.546787666666667},
-  { ._label = "35N Dragon Boat 7.5m", ._m5label = "35N\n\nDragon\nBoat\n\n7.5m", ._cat=NO_BUOY, ._lat = 51.4599636666667, ._long = -0.547154333333333},
-  { ._label = "46N Plane 6m", ._m5label = "46N\n\nPlane\n\n6m", ._cat=NO_BUOY, ._lat = 51.459745, ._long = -0.546649},
-  { ._label = "50aN Swim Through - no crates 6m", ._m5label = "50aN\nSwim\nThrough\nno\ncrates\n\n6m", ._cat=UNMARKED, ._lat = 51.45914367, ._long = -0.546032333},
-  { ._label = "X22 Fruit Machine 5.5m", ._m5label = "X22\nFruit\nMach\n5.5m", ._cat=UNMARKED, ._lat = 51.459353, ._long = -0.546939}, // By disused exit + 2 buried boats
-  { ._label = "37N Dive Bell 4m", ._m5label = "37N\n\nDive\nBell\n\n4m", ._cat=NO_BUOY, ._lat = 51.4594757058824, ._long = -0.547087117647059},
+  { ._label = "X35 New Boat 8m", ._m5label = "X35\nNew\nBoat\n8m", ._cat=UNMARKED, ._lat = 51.460414, ._long = -0.547535},
+  { ._label = "29B Dive/Spike Boat 7m", ._m5label = "29B\n\nDive/\nSpike\nBoat\n\n7m", BLUE_BUOY, ._lat = 51.4601315714286, ._long = -0.547417857142857},
   { ._label = "23N Traffic Lights 7m", ._m5label = "23N\n\nTraffic\nLights\n\n7m", ._cat=NO_BUOY, ._lat = 51.4600558888889, ._long = -0.547677333333333},
-  { ._label = "X25 Dumpy Cylinder 6m", ._m5label = "X25\nDumpy\nCylinder\n6m",._cat=UNMARKED, ._lat = 51.4600631, ._long = -0.5480722},
-  { ._label = "X15 Fireworks Launcher", ._m5label = "X15\nFirework\nLauncher", ._cat=UNMARKED, ._lat = 51.4599975, ._long = -0.5481015},
-  { ._label = "Z02 Mid Jetty", ._m5label = "Z02\n\nMid\nJetty", ._cat=JETTY, ._lat = 51.459547, ._long = -0.547461},
+  { ._label = "X12 Cement Mixer", ._m5label = "X12\nCement\nMixer\n", ._cat=UNMARKED, ._lat = 51.46020025, ._long =	-0.5478815},
+  { ._label = "21B Sticky Up Boat 5m", ._m5label = "21B\n\nSticky\nUp Boat\n\n5m", BLUE_BUOY, ._lat = 51.4602514070597, ._long = -0.54789158281982},
+  { ._label = "18N Milk Float 6.5m", ._m5label = "18N\n\nMilk\nFloat\n\n6.5m", ._cat=NO_BUOY, ._lat = 51.4601745714286, ._long = -0.548058571428571},
+  { ._label = "19N Chicken Hutch Boat 6.5m", ._m5label = "19N\n\nChicken\nHutch\nBoat\n\n6.5m", ._cat=NO_BUOY, ._lat = 51.4604027142857, ._long = -0.54804},
+  { ._label = "15P Cargo Rusty 8m", ._m5label = "15P\nCargo\nRusty\n8m", ._cat=CONTAINER, ._lat = 51.460192, ._long = -0.548283},
+  { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
 };
 
 const uint8_t waypointCountDiveOne = sizeof(diveOneWaypoints)/sizeof(NavigationWaypoint); const uint8_t waypointExitDiveOne = waypointCountDiveOne - 1;

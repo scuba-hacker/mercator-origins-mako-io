@@ -1087,7 +1087,7 @@ void drawLocationStats()
   M5.Lcd.printf("Lo:%.6f   ", Lng);
 
   M5.Lcd.setCursor(5, 34);
-  M5.Lcd.printf("Depth:%.0f m", depth);
+  M5.Lcd.printf("Depth:%.0fm Course:%.0f", depth, journey_course);
 
   M5.Lcd.setCursor(5, 51);
   if (WiFi.status() == WL_CONNECTED)

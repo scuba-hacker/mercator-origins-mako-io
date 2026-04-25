@@ -148,17 +148,16 @@ void publishToTigerAndOceanicCurrentTarget(const char* currentTarget)
 {     
   memset(tiger_espnow_buffer,0,sizeof(tiger_espnow_buffer));
   tiger_espnow_buffer[0] = 'c';  // command c= current target
-  tiger_espnow_buffer[1] = '\0';
   strncpy(tiger_espnow_buffer+1,currentTarget,sizeof(tiger_espnow_buffer)-2);
 
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
   {
-    ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+1);
+    ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+2);
   }
 
   if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
   {
-    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+1);
+    ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+2);
   }
 }
 
@@ -185,7 +184,7 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
   if (endOfCode != currentTarget)
     memcpy(tiger_espnow_buffer+targetCodeOffset,currentTarget,endOfCode - currentTarget - 1);
 
-  tiger_espnow_buffer[endOfCode - currentTarget + 1] = '\0';
+  tiger_espnow_buffer[targetCodeOffset + (endOfCode - currentTarget - 1)] = '\0';
 
   double dblHeading = magnetic_heading;   // send as double (now stored as a float, but Tiger and Oceanic expect a double)
   uint32_t x_message_flags = isLatestGPSMsgFix();   // location has fix (bit 1)
@@ -194,13 +193,14 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
   memcpy(tiger_espnow_buffer+longitudeOffset,&Lng,sizeof(Lng));
   memcpy(tiger_espnow_buffer+headingOffset,&dblHeading,sizeof(dblHeading));
   memcpy(tiger_espnow_buffer+depthOffset,&depth,sizeof(depth));
-  memcpy(tiger_espnow_buffer+courseOffset,&journey_course,sizeof(courseOffset));
+  memcpy(tiger_espnow_buffer+courseOffset,&journey_course,sizeof(journey_course));
   memcpy(tiger_espnow_buffer+x_message_flags_offset,&x_message_flags,sizeof(x_message_flags));
 
   strncpy(tiger_espnow_buffer+currentTargetOffset,currentTarget,sizeof(tiger_espnow_buffer)-2-currentTargetOffset);
 
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
-  {
+  {//
+    // temporarily disabed sending X msgs to Tiger
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
   }
 
