@@ -1,6 +1,8 @@
 
 #ifdef BUILD_INCLUDE_MAIN_ESP_NOW_MESSAGES_CODE
 
+void toSerialESPNowSendDataResult(const esp_err_t result);
+
 // *************************** Tiger ESPNow Send Functions ******************
 
 char tiger_espnow_buffer[256];
@@ -85,6 +87,7 @@ void publishToTigerBrightLightEvent()
     tiger_espnow_buffer[0] = 'l';  // command l = light event
     tiger_espnow_buffer[1] = '\0';
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(tiger_espnow_buffer)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 
   sendBrightLightEventToTiger = false;
@@ -106,6 +109,7 @@ void publishToTigerPingEvent()
     buffer[0] = 'P';  // command l = light event
     buffer[1] = '\0';
     ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
     pingSentTigerCount++;
   }
 }
@@ -124,6 +128,7 @@ void publishToOceanicPingEvent()
     buffer[0] = 'P';  // command l = light event
     buffer[1] = '\0';
     ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 }
 
@@ -141,6 +146,7 @@ void publishToSilkyPingEvent()
     buffer[0] = 'P';  // command l = light event
     buffer[1] = '\0';
     ESPNowSendResult = esp_now_send(peer.peer_addr, (uint8_t*)buffer, strlen(buffer)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 }
 
@@ -153,11 +159,13 @@ void publishToTigerAndOceanicCurrentTarget(const char* currentTarget)
   if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
   {
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+2);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 
   if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
   {
     ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, strlen(currentTarget)+2);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 }
 
@@ -202,11 +210,13 @@ void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
   {//
     // temporarily disabed sending X msgs to Tiger
     ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 
   if (isPairedWithOceanic && ESPNow_oceanic_peer.channel == ESPNOW_CHANNEL)
   {
     ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, currentTargetOffset+strlen(currentTarget)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 }
 
@@ -222,6 +232,7 @@ void publishToOceanicLightLevel(uint16_t lightLevel)
     oceanic_espnow_buffer[2] = (lightLevel >> 8);
     oceanic_espnow_buffer[3] = '\0';
     ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, (uint8_t*)oceanic_espnow_buffer, strlen(oceanic_espnow_buffer)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 
   sendLightLevelToOceanic = false;
@@ -238,6 +249,7 @@ void publishToOceanicBreadCrumbRecord(const bool record)
       USB_SERIAL_PRINTLN(oceanic_espnow_buffer);
 
     ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, reinterpret_cast<uint8_t*>(oceanic_espnow_buffer), strlen(oceanic_espnow_buffer)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 }
 
@@ -265,6 +277,7 @@ void publishToOceanicPinPlaced(double latitude, double longitude, float heading,
     USB_SERIAL_PRINTLN(oceanic_espnow_buffer);
 
     ESPNowSendResult = esp_now_send(ESPNow_oceanic_peer.peer_addr, reinterpret_cast<uint8_t*>(oceanic_espnow_buffer), strlen(oceanic_espnow_buffer)+1);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
   }
 }
 

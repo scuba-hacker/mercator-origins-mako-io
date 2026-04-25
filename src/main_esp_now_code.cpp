@@ -712,6 +712,26 @@ void ESPNowDeletePeer(esp_now_peer_info_t& peer)
   }
 }
 
+void toSerialESPNowSendDataResult(const esp_err_t result)
+{
+  if (result == ESP_OK)
+    USB_SERIAL_PRINTLN("ESP_OK");
+  else if (result == ESP_ERR_ESPNOW_NOT_INIT)
+    USB_SERIAL_PRINTLN("ESP_NOT_INIT");
+  else if (result == ESP_ERR_ESPNOW_ARG)
+    USB_SERIAL_PRINTLN("ESPNOW Invalid Argument");
+  else if (result == ESP_ERR_ESPNOW_INTERNAL)
+    USB_SERIAL_PRINTLN("ESPNOW Internal Error");
+  else if (result == ESP_ERR_ESPNOW_NO_MEM)
+    USB_SERIAL_PRINTLN("ESPNOW No Memory");
+  else if (result == ESP_ERR_ESPNOW_NOT_FOUND)
+    USB_SERIAL_PRINTLN("ESPNOW Peer not found.");
+  else if (result == ESP_ERR_ESPNOW_IF)
+    USB_SERIAL_PRINTLN("ESPNOW Interface error (wrong ifidx or interface not ready).");
+  else
+    USB_SERIAL_PRINTF("ESPNOW Unknown Error: 0x%x\n", result);
+}
+
 ///////////// TEST
 
 void readAndTestGoProButtons()
