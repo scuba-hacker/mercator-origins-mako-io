@@ -239,6 +239,7 @@ void reinitializeMagnetometer();
 void toggleUplinkMessageProcessAndSend();
 void processIncomingESPNowMessages();
 void publishToTigerBrightLightEvent();
+void publishToTigerCompassReadings();
 void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget);
 void publishToTigerAndOceanicCurrentTarget(const char* currentTarget);
 void publishToOceanicLightLevel(uint16_t lightLevel);
@@ -434,6 +435,10 @@ uint8_t telemetry_message_count = 0;
 const uint32_t displayScreenRefreshMinimumInterval = 200; // milliseconds
 uint32_t nextDisplayRefreshAt = 0;
 bool requestDisplayRefresh = true;  // request display to refresh at startup of loop()
+
+const uint32_t oledRefreshMinimumInterval = 200; // milliseconds
+uint32_t nextOledRefreshAt = 0;
+bool requestOledRefresh = true;  // request display to refresh at startup of loop()
 
 uint32_t map_screen_refresh_minimum_interval = 1000; // milliseconds
 uint32_t nextMapScreenRefresh = 0;
@@ -1156,7 +1161,7 @@ void loop()
     requestDisplayRefresh = false;
     nextDisplayRefreshAt = now + displayScreenRefreshMinimumInterval;
   }
-
+  
   if (requestMapScreenRefresh || now > nextMapScreenRefresh)
   {
     // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
@@ -1164,7 +1169,13 @@ void loop()
 
     requestMapScreenRefresh = false;
     nextMapScreenRefresh = now + map_screen_refresh_minimum_interval;
-  }  
+  } 
+  
+  if (requestOledRefresh && now > nextOledRefreshAt)
+  {
+    publishToTigerCompassReadings();
+    nextOledRefreshAt = now + oledRefreshMinimumInterval;
+  }
 
   refreshDiveTimer();
   checkForButtonPresses();  // needs to be at the end of the loop - prior to the cut short on demand call

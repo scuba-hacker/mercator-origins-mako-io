@@ -169,6 +169,24 @@ void publishToTigerAndOceanicCurrentTarget(const char* currentTarget)
   }
 }
 
+void publishToTigerCompassReadings()
+{
+  if (isPairedWithTiger && ESPNow_tiger_peer.channel == ESPNOW_CHANNEL)
+  {
+    const int headingOffset = 4;
+    const int targetHeadingOffset = headingOffset+sizeof(magnetic_heading);
+    const int endOffset = targetHeadingOffset+sizeof(heading_to_target);
+
+    memset(tiger_espnow_buffer,0,sizeof(tiger_espnow_buffer));
+    tiger_espnow_buffer[0] = 'H';  // command H=Heading
+    memcpy(tiger_espnow_buffer+headingOffset,&magnetic_heading,sizeof(magnetic_heading));
+    memcpy(tiger_espnow_buffer+targetHeadingOffset,&heading_to_target,sizeof(heading_to_target));
+
+    ESPNowSendResult = esp_now_send(ESPNow_tiger_peer.peer_addr, (uint8_t*)tiger_espnow_buffer, endOffset);
+    toSerialESPNowSendDataResult(ESPNowSendResult);
+  }
+}
+
 void publishToTigerAndOceanicLocationAndTarget(const char* currentTarget)
 { 
   memset(tiger_espnow_buffer,0,sizeof(tiger_espnow_buffer));
