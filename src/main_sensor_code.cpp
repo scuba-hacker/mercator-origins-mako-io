@@ -523,6 +523,15 @@ void acquireAllSensorReadings()
 */
 }
 
+// Responsiveness vs. jitter trade-off:
+//   s_smoothedCompassBufferSize (main.cpp) — the dominant knob. Lag is roughly half the window
+//   in samples (currently 10, so ~5 samples of lag). Reduce to 5–6 to cut lag noticeably;
+//   go below 4 and jitter becomes obvious. Odd sizes give a cleaner statistical median
+//   (single middle element); even sizes average the two middle elements — both work fine.
+//   enableMedianHeadingSmoothing — median rejects spike outliers better than mean, but both
+//   have the same step-change lag. Prefer mean (false) if you want the fastest direction
+//   tracking and the raw sensor is already clean; use median (true) if magnetic interference
+//   causes occasional wild readings.
 bool getSmoothedMagHeading(float& magHeading, bool useMedian)
 {
   magHeading = 0;

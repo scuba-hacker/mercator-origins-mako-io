@@ -1337,7 +1337,7 @@ void refreshDirectionGraphic( float directionOfTravel,  float headingToTarget)
   // Calculate whether the diver needs to continue straight ahead,
   // rotate clockwise or rotate anticlockwise and u pdate graphic.
   // Blacks out if no journey recorded.
-  const int16_t edgeBound = 25;    // If journey course within +- 25 degrees of target heading then go ahead
+  const int16_t edgeBound = 7;    // If journey course within +- 7 degrees of target heading then go ahead
 
   int16_t normaliser = (int16_t)(directionOfTravel);
 

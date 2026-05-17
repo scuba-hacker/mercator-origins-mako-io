@@ -801,7 +801,7 @@ void getM5ImuSensorData(float* roll, float* pitch, float* IMU_temperature)
 }
 
 // Magnetic Compass averaging and refresh rate control
-const uint8_t s_smoothedCompassBufferSize = 10;
+const uint8_t s_smoothedCompassBufferSize = 5;    // should be odd for median smoothing, reduced from 10.
 float s_smoothedCompassHeading[s_smoothedCompassBufferSize];
 uint8_t s_nextCompassSampleIndex = 0;
 bool s_smoothedCompassBufferInitialised = false;
