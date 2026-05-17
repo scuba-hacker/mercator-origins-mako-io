@@ -810,7 +810,9 @@ bool getDepthAsync(float& d, float& d_t, float& d_p, float& d_a)
   bool dataAcquired = false;
   if (!enableDepthSensor || !depthAvailable)
   {
-    d = d_t = d_p = d_a = 0.0;
+    // set to out-of-band values.
+    d = d_a = d_t = 99.9;
+    d_p = 699.9;  
     return dataAcquired;
   }
 
@@ -851,7 +853,9 @@ void getDepth(float& d, float& d_t, float& d_p, float& d_a, bool original_read)
 {
   if (!enableDepthSensor || !depthAvailable)
   {
-    d = d_t = d_p = d_a = 0.3;
+    // set to out-of-band values.
+    d = d_a = d_t = 99.9;
+    d_p = 699.9;
     return;
   }
 

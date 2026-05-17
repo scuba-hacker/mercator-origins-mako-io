@@ -685,6 +685,14 @@ uint32_t passedChecksumCount = 0;
 
 char activity_indicator[] = "\\|/-";
 
+// Dive timer state. Timer starts (RTC reset to 00:00:00) when depth first reaches minimumDivingDepthToRunTimer
+// and minutesDurationDiving == 0. refreshDiveTimer() tracks elapsed minutes via Hours*60+Minutes from the RTC.
+// If depth drops below minimumDivingDepthToRunTimer, notifyNotAtDivingDepth() sets whenToStopTimerDueToLackOfDepth
+// = current_RTC_minutes + minsToTriggerStopDiveTimer. Returning to depth resets it to 0 (ORANGE -> GREEN).
+// If depth stays shallow until minutesDurationDiving >= whenToStopTimerDueToLackOfDepth, the timer stops:
+// minutesDurationDiving -= minsToTriggerStopDiveTimer (correcting out the surface time) and diveTimerRunning=false.
+// Display: BLUE=pre-dive, GREEN=diving, ORANGE=shallow warning (grace period), RED=dive finished.
+// Note: the displayed RED value is the corrected dive time (total elapsed minus surface grace period).
 bool           diveTimerRunning = false;
 const float    minimumDivingDepthToRunTimer = 1.0;  // in metres
 const float    minimumDivingDepthToActivateLightSensor = 1.0; // in metres
