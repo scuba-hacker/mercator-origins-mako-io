@@ -12,13 +12,18 @@ bool goProButtonsPrimaryControl = true;    // false means use the M5 Stick physi
 
 bool testTigerOutsidePod = false;
 bool writeLogToSerial = false;
+bool enableAsyncUplinkMsgsToLemon = false;   // DISABLE WHEN NOT IN DEVELOPMENT - used for compass diagnostic info
 
 bool divingInTheSea = false;                 // Salt / Fresh water depth sensor calibration
 
 // WARNING - to callibrate max Samples must be set reasonably high - 1000 minimum, 2500 max and 
 // hardware registers to be disabled.
-// to download calibration data after collection use the /calibration-data web page
+// Enable diagnostics screens with 3 second dual-button press
+// On compass calibration screen: short press bottom button to start calibration, 
+//    once all data points collected or before, hold bottom button 3 seconds.
+// To download calibration data after collection enable OTA and goto http://192.168.0.51/calibration-data web page
 bool setHardIronOffsetsInHardwareRegisters = true;
+bool enableCompassDeviationCorrection = true;   // set to false when calibrating
 const int maxCalibrationSamples = 1;        // Calibration data collection for soft iron compensation (max 2500, set to 1 to disable)
 const uint32_t calibrationSampleInterval = 20; // Sample every x ms during calibration
 
@@ -27,7 +32,6 @@ const int UPLINK_BAUD_RATE = 115200;
 
 // SPOOL_45M is good for with or without oceanic and with or without gopro camera
 enum e_spool_setup { SPOOL_10M, SPOOL_45M, NO_CALIBRATION };
-
 e_spool_setup spool_setup = SPOOL_45M;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +88,7 @@ bool enableMedianHeadingSmoothing = true;
 bool enableHumiditySensor = true;
 bool enableDepthSensor = true;
 bool enableIMUSensor = true;      // used for Gyro to show pitch and roll
-bool enableColourSensor = true;
+bool enableColourSensor = false;
 
 bool enableDownlinkComms = true; // enable reading the feed from Lemon at surface
 bool enableUplinkComms = true;  // enable writing of feed to Lemon. Can be toggled through UI
@@ -104,6 +108,7 @@ int pingSentTigerCount = 0;
 int attemptTigerPingSend = 0;
 
 bool otaActive = false; // OTA updates toggle
+bool otaProtectionsOverriden = false; // Bring up ASyncWebServer but don't stop all other functions - used for diagnostics not ota.
 
 bool compassAvailable = true;
 bool humidityAvailable = true;
@@ -212,7 +217,8 @@ void sendNoUplinkTelemetryMessages();
 void sendFullUplinkTelemetryMessage();
 uint16_t getOneShotUserActionForUplink();
 void sendUplinkTelemetryMessageV5();
-void sendUplinkTestMessage();
+void sendUplinkTestAsyncMsg();
+void sendUplinkCompassStatsAsyncMsg();
 void refreshDirectionGraphic( float directionOfTravel,  float headingToTarget);
 void vector_normalize(vec<float> *a);
 bool getMagHeadingNotTiltCompensated(float& newHeading);
@@ -461,6 +467,7 @@ bool firstLoopThroughTempScreen = false;
 
 char uplink_preamble_pattern[] = "MBJAEJ";
 char uplink_preamble_pattern2[] = "MBJMBJAEJ";
+char uplink_async_preamble_pattern[] = "AXYAXYJKL";
 
 char uplinkTestMessages[][6] = {"MSG0 ", "MSG1 ", "MSG2 ", "MSG3 "};
 char newWayMarkerLabel[2];
@@ -520,6 +527,10 @@ char undefinedDisplayLabel[] = "??";
 uint32_t recordHighlightExpireTime = 0;
 uint32_t recordHighlightDisplayDuration = 10000;
 bool     recordSurveyHighlight = false;
+
+const uint32_t asyncMessageWait = 300;
+const uint32_t asyncMessageOnHold = 0xFFFFFFFF;
+uint32_t nextTimeToSendAsyncMessage = asyncMessageOnHold;
 
 /*
 // Dover test
@@ -763,6 +774,11 @@ vec<float> calib_magnetometer_min;
 vec<float> magnetometer_max;
 vec<float> magnetometer_min;
 vec<float> magnetometer_vector, accelerometer_vector;
+vec<float> magnetometer_raw_vector;           // intermediate results for diagnostics
+vec<float> magnetometer_hard_iron_compensated_vector; // intermediate results for diagnostics
+vec<float> magnetometer_soft_iron_compensated_vector;  // intermediate results for diagnostics
+vec<float> read_back_hard_iron_offset = { 0,0,0 };
+
 vec<float> angular_velocity, linear_acceleration;
 float diver_roll_orientation = 0.0;
 float diver_pitch_orientation = 0.0;
@@ -810,6 +826,10 @@ void getM5ImuSensorData(float* roll, float* pitch, float* IMU_temperature)
 
 // Magnetic Compass averaging and refresh rate control
 const uint8_t s_smoothedCompassBufferSize = 5;    // should be odd for median smoothing, reduced from 10.
+
+// TEMPORARILY LARGE
+//const uint8_t s_smoothedCompassBufferSize = 15;    // should be odd for median smoothing, reduced from 10.
+
 float s_smoothedCompassHeading[s_smoothedCompassBufferSize];
 uint8_t s_nextCompassSampleIndex = 0;
 bool s_smoothedCompassBufferInitialised = false;
@@ -1185,6 +1205,12 @@ void loop()
     nextOledRefreshAt = now + oledRefreshMinimumInterval;
   }
 
+  if (enableAsyncUplinkMsgsToLemon && now > nextTimeToSendAsyncMessage)
+  {
+    nextTimeToSendAsyncMessage = asyncMessageOnHold;
+    sendUplinkCompassStatsAsyncMsg();
+  }
+
   refreshDiveTimer();
   checkForButtonPresses();  // needs to be at the end of the loop - prior to the cut short on demand call
 }
@@ -1307,6 +1333,9 @@ bool processGPSMessageIfAvailable()
               }
               // Always respond with sensor data regardless of GPS fix status
               performUplinkTasks();
+
+              if (enableAsyncUplinkMsgsToLemon)
+                nextTimeToSendAsyncMessage = millis() + asyncMessageWait;
 
               acquireAllSensorReadings(); // compass, IMU, Depth, Temp, Humidity, Pressure
       

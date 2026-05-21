@@ -25,18 +25,78 @@ const float soft_iron_offset_10m_spool[3][3] = {
 // Taken from the 'center' vector output from running get_callibration_ellipsoid.py
 // calibration check passed for software and hardware based hard iron compensation
 // works for 45m spool with any configuration of oceanic / gopro mount / gopro removed
-vec<float> hard_iron_offset_45m_spool_metal_brackets = { -8.01767401,  2.04425128, 56.45763078 };
 
 // soft iron compensation matrix - transforms distorted ellipsoid to sphere with radius ~47 (in sensor units)
 // identity
 // Taken from the 'transformation' matrix output from running get_callibration_ellipsoid.py
 // calibration check passed for software and hardware based hard iron compensation
 // works for 45m spool with any configuration of oceanic / gopro mount / gopro removed
-const float soft_iron_offset_45m_spool_metal_brackets[3][3] = {
- { 0.974303186, 0.00545529739, -0.00504822394 },
- { 0.00545529739, 1.04250369,  0.000886941301 },
- {-0.00504822394,  0.000886941301,  0.984584274 }
+
+// CALIBRATION 1 - Oceanic - OLED - 21st May 2026 21:15
+const vec<float>  hard_iron_offset_45m_spool_metal_brackets_oled = { -3.52072740f, -6.82973671f, 38.68098068f };
+const float soft_iron_offset_45m_spool_metal_brackets_oled[3][3] = {
+  { 0.97341502f, 0.00916920f, -0.00786283f },
+  { 0.00916920f, 1.02423525f, 0.00079316f },
+  { -0.00786283f, 0.00079316f, 1.00315189f }
 };
+
+
+
+
+// with oceanic installed.
+/*
+vec<float> hard_iron_offset_45m_spool_metal_brackets_oled_old = { -5.06072760f, -7.88697243f, 36.53593063f };
+const float soft_iron_offset_45m_spool_metal_brackets_oled_old[3][3] = {
+  { 0.97467148f, 0.00878638f, -0.00886935f },
+  { 0.00878638f, 1.02317274f, 0.00049778f },
+  { -0.00886935f, 0.00049778f, 1.00290895f }
+};
+*/
+
+/*
+// New attempt 21st May 20:30
+const vec<float>  hard_iron_offset_45m_spool_metal_brackets_oled = { -5.06072760f, -7.88697243f, 36.53593063f };
+const float soft_iron_offset_45m_spool_metal_brackets_oled[3][3] = {
+  { 0.97467148f, 0.00878638f, -0.00886935f },
+  { 0.00878638f, 1.02317274f, 0.00049778f },
+  { -0.00886935f, 0.00049778f, 1.00290895f }
+};
+*/
+
+namespace compass_deviation
+{
+  float wrap360(float h)
+  {
+    while (h < 0.0f) h += 360.0f;
+    while (h >= 360.0f) h -= 360.0f;
+    return h;
+  }
+
+  float compassDeviationCorrection(float headingDeg)
+  {
+    const float h = headingDeg * PI / 180.0f;
+
+    /* coefficients using 8 compass reference points */
+    // use 16 points for better fit - based on 
+    // use with CALIBRATION 1 - Oceanic - OLED - 21st May 2026 21:15
+    const float a0 = -1.32117666f;
+    const float a1 = 4.31014194f;
+    const float b1 = -0.04802521f;
+    const float a2 = 0.58215300f;
+    const float b2 = 1.83473020f;
+
+    return a0
+        + a1 * sinf(h)
+        + b1 * cosf(h)
+        + a2 * sinf(2.0f * h)
+        + b2 * cosf(2.0f * h);
+  }
+
+  float apply_residual_heading_correction(float heading)
+  {
+    return wrap360(heading + compassDeviationCorrection(heading));
+  }
+}
 
 // uncalibrated
 const vec<float> hard_iron_offset_no_calibration = { 0,0,0 };
@@ -78,9 +138,12 @@ const char* getSpoolSetupDescription(e_spool_setup setup, bool forM5Display)
 #define LIS2MDL_OFFSET_Z_REG_L 0x49
 #define LIS2MDL_OFFSET_Z_REG_H 0x4A
 #define LIS2MDL_MAG_LSB_UT 0.15  // LSB value in microTesla
+#define LIS2MDL_CFG_REG_B 0x61 // Low Pass Filter - halves sample rate but smoother
 
 void setMagHardIronOffsets(vec<float> hard_iron_offset, TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
+void setMagLowPassFilter(bool enabled, TwoWire* wire = &Wire, uint8_t addr = LIS2MDL_I2C_ADDR);
 void resetMagHardIronOffsets(TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
+void getMagHardIronOffsets(vec<float>& off, TwoWire* wire = &Wire, uint8_t addr = LIS2MDL_I2C_ADDR);
 
 void setCompassCalibrationSpoolSetup(e_spool_setup setup)
 {
@@ -94,8 +157,8 @@ void setCompassCalibrationSpoolSetup(e_spool_setup setup)
     }
     case SPOOL_45M:
     {
-      hard_iron_offset = hard_iron_offset_45m_spool_metal_brackets;
-      memcpy(soft_iron_matrix, soft_iron_offset_45m_spool_metal_brackets,sizeof(soft_iron_matrix));
+      hard_iron_offset = hard_iron_offset_45m_spool_metal_brackets_oled;
+      memcpy(soft_iron_matrix, soft_iron_offset_45m_spool_metal_brackets_oled,sizeof(soft_iron_matrix));
       break;
     }
     case NO_CALIBRATION:
@@ -189,7 +252,13 @@ void initSensors()
           USB_SERIAL_PRINTLN("Hard iron offsets loaded to hardware registers:");
           USB_SERIAL_PRINTF("  X: %.2f µT, Y: %.2f µT, Z: %.2f µT\n",
                            hard_iron_offset.x, hard_iron_offset.y, hard_iron_offset.z);
+
+          getMagHardIronOffsets(read_back_hard_iron_offset);
       }
+
+      USB_SERIAL_PRINTLN("Set ODR rate from 100 Hz to 50 Hz for smoother readings");
+      // must calibrate and apply calibration at this same rate.
+      mag.setDataRate(LIS2MDL_RATE_50_HZ);
 
       USB_SERIAL_PRINTLN("Magnetometer initialized successfully");
       USB_SERIAL_PRINTLN("If compass readings are inaccurate, hold both buttons for 5 seconds to reinitialize");
@@ -411,6 +480,11 @@ void acquireAllSensorReadings()
       if (enableSmoothedCompass)
       {
         getSmoothedMagHeading(magnetic_heading,enableMedianHeadingSmoothing);
+
+        if (enableCompassDeviationCorrection)
+        {
+          magnetic_heading = compass_deviation::apply_residual_heading_correction(magnetic_heading);
+        }
       }
       else
       {
@@ -422,6 +496,7 @@ void acquireAllSensorReadings()
         {
           getMagHeadingNotTiltCompensated(magnetic_heading);
         }
+
       }
       compass_acquire_time_micros = micros() - start_micros;
     }
@@ -633,6 +708,7 @@ void apply_full_corrections_to_raw_magnetometer_readings(vec<float>& magnetomete
     magnetometer_vector.y -= hard_iron_offset.y;
     magnetometer_vector.z -= hard_iron_offset.z;
   }
+  magnetometer_hard_iron_compensated_vector = magnetometer_vector;
 
   float corrected_x = soft_iron_matrix[0][0] * magnetometer_vector.x +
                         soft_iron_matrix[0][1] * magnetometer_vector.y +
@@ -647,6 +723,8 @@ void apply_full_corrections_to_raw_magnetometer_readings(vec<float>& magnetomete
   magnetometer_vector.x = corrected_x;
   magnetometer_vector.y = corrected_y;
   magnetometer_vector.z = corrected_z;
+
+  magnetometer_soft_iron_compensated_vector = magnetometer_vector;
 }
 
 template <typename T> float calculateTiltCompensatedHeading(vec<T> from_vector)
@@ -654,13 +732,13 @@ template <typename T> float calculateTiltCompensatedHeading(vec<T> from_vector)
   sensors_event_t event;
   
   mag.getEvent(&event);
-  magnetometer_vector = {event.magnetic.x, event.magnetic.y, event.magnetic.z};
+  magnetometer_vector = magnetometer_raw_vector = {event.magnetic.x, event.magnetic.y, event.magnetic.z};
 
   apply_full_corrections_to_raw_magnetometer_readings(magnetometer_vector);
 
   accel.getEvent(&event);
   accelerometer_vector = {event.acceleration.x, event.acceleration.y, event.acceleration.z};
-
+  
   return compensate_calibrated_heading_for_tilt(from_vector, magnetometer_vector, accelerometer_vector);
 }
   
@@ -730,10 +808,14 @@ void vector_normalize(vec<float> *a)
    Returns the angular difference in the horizontal plane between a default vector and north, in degrees.
    The default vector here is the +X axis as indicated by the silkscreen.
 */
+/*
+   Returns the angular difference in the horizontal plane between a default vector and north, in degrees.
+   The default vector here is the +X axis as indicated by the silkscreen.
+*/
 bool getMagHeadingTiltCompensated(float& tiltCompensatedHeading)
 {
   // Apply callibration corrections to magnetometer readings and then apply tilt compensation
-  float tch = calculateTiltCompensatedHeading((vec<int>) {1, 0, 0});  // was 1
+  float tch = calculateTiltCompensatedHeading((vec<int>) {0, -1, 0});
 
   if (isnan(tch))
   {
@@ -750,9 +832,11 @@ bool getMagHeadingTiltCompensated(float& tiltCompensatedHeading)
 
   if (tiltCompensatedHeading >= 359.5)
     tiltCompensatedHeading = 0.0;
-
+/*
   // correct for reversed dev module in gopro case - points south instead of north when north is reported. 
-  const bool magnetometerReversedInCase = true; // set to false if module points towards north when reporting north
+  const bool magnetometerReversedInCase = false; // set to false if module points towards north when reporting north
+  
+  const bool magnetometer90DegreesToRightInCase = true; // For OLED in place
 
   if (magnetometerReversedInCase)
   {
@@ -761,9 +845,18 @@ bool getMagHeadingTiltCompensated(float& tiltCompensatedHeading)
     if (tiltCompensatedHeading >= 359.5)
       tiltCompensatedHeading -= 360.0;
   }
-  
+  else if (magnetometer90DegreesToRightInCase)
+  {
+    tiltCompensatedHeading += 90.0;
+    
+    if (tiltCompensatedHeading >= 359.5)
+      tiltCompensatedHeading -= 360.0;
+  }
+  */
+ 
   return true;
 }
+
 
 bool getMagHeadingNotTiltCompensated(float& newHeading)
 {
@@ -1038,6 +1131,29 @@ void toggleAsyncDepthDisplay()
   M5.Lcd.fillScreen(TFT_BLACK);
 }
 
+void getMagHardIronOffsets(vec<float>& off, TwoWire* wire, uint8_t addr)
+{
+  uint8_t buffer[6] = {0, 0, 0, 0, 0, 0};
+
+  wire->beginTransmission(addr);
+  wire->write(LIS2MDL_OFFSET_X_REG_L);
+  wire->endTransmission(false);
+  uint8_t bytesRead = wire->requestFrom(addr, (uint8_t)6);
+
+  for (uint8_t i = 0; i < bytesRead && i < sizeof(buffer); i++)
+  {
+    buffer[i] = wire->read();
+  }
+
+  const int16_t ox = (int16_t)((uint16_t)buffer[0] | ((uint16_t)buffer[1] << 8));
+  const int16_t oy = (int16_t)((uint16_t)buffer[2] | ((uint16_t)buffer[3] << 8));
+  const int16_t oz = (int16_t)((uint16_t)buffer[4] | ((uint16_t)buffer[5] << 8));
+
+  off.x = (float)ox * LIS2MDL_MAG_LSB_UT;
+  off.y = (float)oy * LIS2MDL_MAG_LSB_UT;
+  off.z = (float)oz * LIS2MDL_MAG_LSB_UT;
+}
+
 void setMagHardIronOffsets(const vec<float> off, TwoWire* wire, uint8_t addr)
 {
   // Convert from µT to LSB (values from getEvent are scaled by 0.15)
@@ -1086,6 +1202,37 @@ void setMagHardIronOffsets(const vec<float> off, TwoWire* wire, uint8_t addr)
 void resetMagHardIronOffsets(TwoWire *wire, uint8_t i2c_addr)
 {
   setMagHardIronOffsets(vec<float>(0,0,0),wire,i2c_addr);
+}
+
+// down to 25 Hz bandwidth - don't use unless calibrated with same setting
+// Simple/calibration:
+// ODR 50 Hz, LPF off, sample every 20 ms
+// Cleaner:
+// ODR 50 Hz, LPF on, sample every 20 ms
+// Very calm display:
+// ODR 20 Hz, LPF off or on, sample/display every 50 ms or slower
+
+void setMagLowPassFilter(bool enabled, TwoWire* wire, uint8_t addr)
+{
+  wire->beginTransmission(addr);
+  wire->write(LIS2MDL_CFG_REG_B);
+  wire->endTransmission(false);
+
+  wire->requestFrom(addr, (uint8_t)1);
+  if (!wire->available())
+    return;
+
+  uint8_t reg = wire->read();
+
+  if (enabled)
+    reg |= LIS2MDL_CFG_REG_B;
+  else
+    reg &= ~LIS2MDL_CFG_REG_B;
+
+  wire->beginTransmission(addr);
+  wire->write(LIS2MDL_CFG_REG_B);
+  wire->write(reg);
+  wire->endTransmission();
 }
 
 // Call this function once you're away from ferrous materials (car roof, etc.)

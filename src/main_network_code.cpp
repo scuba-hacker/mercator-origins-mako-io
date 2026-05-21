@@ -227,8 +227,6 @@ bool connectToWiFiAndInitOTA(const bool wifiOnly, int repeatScanAttempts)
 
 bool setupOTAWebServer(const char* _ssid, const char* _password, const char* label, uint32_t timeout, bool wifiOnly)
 {
-  const bool showQRCode = false;    // disabled - kept for reference
-
   if (wifiOnly && WiFi.status() == WL_CONNECTED)
   {
      M5.Lcd.print("Already Connected!");
@@ -559,14 +557,17 @@ void toggleOTAActive()
     delay (500);
   }
   
-  if (otaActive)
+  if (!otaProtectionsOverriden)
   {
-    writeLogToSerial = false;
-    disableFeaturesForOTA(); 
-    haltAllProcessingDuringOTAUpload = true;
-  }
+    if (otaActive)
+    {
+      writeLogToSerial = false;
+      disableFeaturesForOTA(); 
+      haltAllProcessingDuringOTAUpload = true;
+    }
 
-  showOTARecoveryScreen();
+    showOTARecoveryScreen();
+  }
 }
 
 #endif

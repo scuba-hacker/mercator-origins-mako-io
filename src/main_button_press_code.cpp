@@ -63,7 +63,8 @@ void checkForButtonPresses()
   
       if (p_secondButton->wasReleasefor(1000)) // Location Display: toggle wifi only
       {
-        toggleWiFiActive();
+        otaProtectionsOverriden = true;
+        toggleOTAActive();
       }
       break;
     }

@@ -225,6 +225,39 @@ void sendUplinkTelemetryMessageV5()
 //  }
 }
 
+void sendUplinkTestAsyncMsg()
+{
+  char testAsync[] = "Hello this is async!";
+  lemon_float_serial.write(uplink_async_preamble_pattern);
+  lemon_float_serial.write("-");
+  lemon_float_serial.write(testAsync);
+}
+
+void sendUplinkCompassStatsAsyncMsg()
+{
+  char compassStats[256];
+
+  snprintf(compassStats, sizeof(compassStats), 
+            "mrx=%.3f,mry=%.3f,mrz=%.3f,mhcx=%.3f,mhcy=%.3f,mhcz=%.3f,mscx=%.3f,mscy=%.3f,mscz=%.3f,ax=%.3f,ay=%.3f,az=%.3f,hix=%.6f,hiy=%.6f,hiz=%.6f,h=%.1f",
+            magnetometer_raw_vector.x, magnetometer_raw_vector.y, magnetometer_raw_vector.z,
+            magnetometer_hard_iron_compensated_vector.x,
+            magnetometer_hard_iron_compensated_vector.y,
+            magnetometer_hard_iron_compensated_vector.z,
+            magnetometer_soft_iron_compensated_vector.x,
+            magnetometer_soft_iron_compensated_vector.y,
+            magnetometer_soft_iron_compensated_vector.z,
+            accelerometer_vector.x, accelerometer_vector.y, accelerometer_vector.z,
+            read_back_hard_iron_offset.x,
+            read_back_hard_iron_offset.y,
+            read_back_hard_iron_offset.z,
+            magnetic_heading
+          );
+
+  lemon_float_serial.write(uplink_async_preamble_pattern);
+  lemon_float_serial.write("-");
+  lemon_float_serial.write(compassStats);
+}
+
 void sendUplinkTestMessage()
 {
   // if 5ms after fix received then send the uplink msg, only get here if no bytes received from Float Serial.
