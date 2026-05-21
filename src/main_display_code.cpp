@@ -1235,8 +1235,10 @@ void drawCompassCalibration()
     {
       M5.Lcd.setTextColor(TFT_CYAN, TFT_BLACK);
       M5.Lcd.println("To\ncalibrate\ndisable\nhardware\nregisters\n");
-      M5.Lcd.println("Current:\nSetup\n\n");
+      M5.Lcd.println("Current\nSetup:\n");
       M5.Lcd.println(getSpoolSetupDescription(spool_setup,true));
+      M5.Lcd.printf("Smooth: %i\n",s_smoothedCompassBufferSize);
+      M5.Lcd.println(enableCompassDeviationCorrection ? "Deviation\nCorrected" : "Not\nDeviation\nCorrected");
     }
     else
     {
