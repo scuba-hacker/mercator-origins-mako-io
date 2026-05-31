@@ -255,6 +255,11 @@ void initSensors()
 
           getMagHardIronOffsets(read_back_hard_iron_offset);
       }
+      else
+      {
+        resetMagHardIronOffsets();
+        USB_SERIAL_PRINTLN("Hard iron offsets cleared from hardware registers.");
+      }
 
       USB_SERIAL_PRINTLN("Set ODR rate from 100 Hz to 50 Hz for smoother readings");
       // must calibrate and apply calibration at this same rate.
@@ -600,7 +605,7 @@ void acquireAllSensorReadings()
 
 // Responsiveness vs. jitter trade-off:
 //   s_smoothedCompassBufferSize (main.cpp) — the dominant knob. Lag is roughly half the window
-//   in samples (currently 10, so ~5 samples of lag). Reduce to 5–6 to cut lag noticeably;
+//   in samples (currently 7, so ~3-4 samples of lag). Reduce to 5 to cut lag noticeably;
 //   go below 4 and jitter becomes obvious. Odd sizes give a cleaner statistical median
 //   (single middle element); even sizes average the two middle elements — both work fine.
 //   enableMedianHeadingSmoothing — median rejects spike outliers better than mean, but both
@@ -671,8 +676,17 @@ bool getSmoothedMagHeading(float& magHeading, bool useMedian)
       }
     }
 
-    // Median is average of middle two values for even-sized array
-    magHeading = (sorted[s_smoothedCompassBufferSize / 2 - 1] + sorted[s_smoothedCompassBufferSize / 2]) / 2.0 - offset;
+    const uint8_t middleIndex = s_smoothedCompassBufferSize / 2;
+    if (s_smoothedCompassBufferSize % 2 == 0)
+    {
+      // Even-sized arrays use the average of the two middle values.
+      magHeading = (sorted[middleIndex - 1] + sorted[middleIndex]) / 2.0 - offset;
+    }
+    else
+    {
+      // Odd-sized arrays use the single middle value.
+      magHeading = sorted[middleIndex] - offset;
+    }
   }
   else
   {
@@ -1262,6 +1276,11 @@ void reinitializeMagnetometer()
     USB_SERIAL_PRINTF("  X offset: %.2f µT\n", hard_iron_offset.x);
     USB_SERIAL_PRINTF("  Y offset: %.2f µT\n", hard_iron_offset.y);
     USB_SERIAL_PRINTF("  Z offset: %.2f µT\n", hard_iron_offset.z);
+  }
+  else
+  {
+    resetMagHardIronOffsets();
+    USB_SERIAL_PRINTLN("Hard iron offsets cleared from hardware registers.");
   }
 
   // Clear the smoothing buffer
