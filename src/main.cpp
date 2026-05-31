@@ -22,9 +22,9 @@ bool divingInTheSea = false;                 // Salt / Fresh water depth sensor 
 // On compass calibration screen: short press bottom button to start calibration, 
 //    once all data points collected or before, hold bottom button 3 seconds.
 // To download calibration data after collection enable OTA and goto http://192.168.0.51/calibration-data web page
-bool setHardIronOffsetsInHardwareRegisters = true;
-bool enableCompassDeviationCorrection = true;   // set to false when calibrating
-const int maxCalibrationSamples = 1;        // Calibration data collection for soft iron compensation (max 2500, set to 1 to disable)
+const bool setHardIronOffsetsInHardwareRegisters = true;
+const bool enableCompassDeviationCorrection = false;   // set to false when calibrating
+const int maxCalibrationSamples = (setHardIronOffsetsInHardwareRegisters ? 1 : 2500);        // Calibration data collection for soft iron compensation (max 2500, set to 1 to disable)
 const uint32_t calibrationSampleInterval = 20; // Sample every x ms during calibration
 
 const int UPLINK_BAUD_RATE = 115200;

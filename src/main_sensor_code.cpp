@@ -33,14 +33,22 @@ const float soft_iron_offset_10m_spool[3][3] = {
 // works for 45m spool with any configuration of oceanic / gopro mount / gopro removed
 
 // CALIBRATION 1 - Oceanic - OLED - 21st May 2026 21:15
+/*
 const vec<float>  hard_iron_offset_45m_spool_metal_brackets_oled = { -3.52072740f, -6.82973671f, 38.68098068f };
 const float soft_iron_offset_45m_spool_metal_brackets_oled[3][3] = {
   { 0.97341502f, 0.00916920f, -0.00786283f },
   { 0.00916920f, 1.02423525f, 0.00079316f },
   { -0.00786283f, 0.00079316f, 1.00315189f }
 };
+*/
 
-
+// CALIBRATION 2 - Oceanic - OLED - 31st May 2026 19:38
+const vec<float>  hard_iron_offset_45m_spool_metal_brackets_oled = { -5.24539185f, -7.36039305f, 34.35961151f };
+const float soft_iron_offset_45m_spool_metal_brackets_oled[3][3] = {
+  { 0.97404140f, 0.01290124f, -0.00842171f },
+  { 0.01290124f, 1.02417195f, -0.00092862f },
+  { -0.00842171f, -0.00092862f, 1.00266075f }
+};
 
 
 // with oceanic installed.
@@ -62,7 +70,6 @@ const float soft_iron_offset_45m_spool_metal_brackets_oled[3][3] = {
   { -0.00886935f, 0.00049778f, 1.00290895f }
 };
 */
-
 namespace compass_deviation
 {
   float wrap360(float h)
@@ -79,11 +86,18 @@ namespace compass_deviation
     /* coefficients using 8 compass reference points */
     // use 16 points for better fit - based on 
     // use with CALIBRATION 1 - Oceanic - OLED - 21st May 2026 21:15
-    const float a0 = -1.32117666f;
-    const float a1 = 4.31014194f;
-    const float b1 = -0.04802521f;
-    const float a2 = 0.58215300f;
-    const float b2 = 1.83473020f;
+//    const float a0 = -1.32117666f;
+//    const float a1 = 4.31014194f;
+//    const float b1 = -0.04802521f;
+//    const float a2 = 0.58215300f;
+//    const float b2 = 1.83473020f;
+
+    // use with CALIBRATION 2
+    const float a0 = 0.75333259f;
+    const float a1 = 2.40301204f;
+    const float b1 = 0.70865969f;
+    const float a2 = -0.49270532f;
+    const float b2 = -1.01802651f;
 
     return a0
         + a1 * sinf(h)
@@ -138,7 +152,8 @@ const char* getSpoolSetupDescription(e_spool_setup setup, bool forM5Display)
 #define LIS2MDL_OFFSET_Z_REG_L 0x49
 #define LIS2MDL_OFFSET_Z_REG_H 0x4A
 #define LIS2MDL_MAG_LSB_UT 0.15  // LSB value in microTesla
-#define LIS2MDL_CFG_REG_B 0x61 // Low Pass Filter - halves sample rate but smoother
+#define LIS2MDL_CFG_REG_B_ADDR 0x61
+#define LIS2MDL_CFG_REG_B_LPF_MASK 0x01 // LPF bit: 0 = ODR/2 bandwidth, 1 = ODR/4 bandwidth
 
 void setMagHardIronOffsets(vec<float> hard_iron_offset, TwoWire *wire = &Wire, uint8_t i2c_addr = LIS2MDL_I2C_ADDR);
 void setMagLowPassFilter(bool enabled, TwoWire* wire = &Wire, uint8_t addr = LIS2MDL_I2C_ADDR);
@@ -1229,7 +1244,7 @@ void resetMagHardIronOffsets(TwoWire *wire, uint8_t i2c_addr)
 void setMagLowPassFilter(bool enabled, TwoWire* wire, uint8_t addr)
 {
   wire->beginTransmission(addr);
-  wire->write(LIS2MDL_CFG_REG_B);
+  wire->write(LIS2MDL_CFG_REG_B_ADDR);
   wire->endTransmission(false);
 
   wire->requestFrom(addr, (uint8_t)1);
@@ -1239,12 +1254,12 @@ void setMagLowPassFilter(bool enabled, TwoWire* wire, uint8_t addr)
   uint8_t reg = wire->read();
 
   if (enabled)
-    reg |= LIS2MDL_CFG_REG_B;
+    reg |= LIS2MDL_CFG_REG_B_LPF_MASK;
   else
-    reg &= ~LIS2MDL_CFG_REG_B;
+    reg &= ~LIS2MDL_CFG_REG_B_LPF_MASK;
 
   wire->beginTransmission(addr);
-  wire->write(LIS2MDL_CFG_REG_B);
+  wire->write(LIS2MDL_CFG_REG_B_ADDR);
   wire->write(reg);
   wire->endTransmission();
 }
@@ -1265,6 +1280,7 @@ void reinitializeMagnetometer()
   // Perform the same initialization sequence that happens in mag.begin()
   // but now in a clean magnetic environment
   mag.reset();
+  mag.setDataRate(LIS2MDL_RATE_50_HZ);
 
   USB_SERIAL_PRINTLN("Magnetometer reset complete");
 
