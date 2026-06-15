@@ -958,11 +958,16 @@ uint16_t drawMultiString(const char* source, const uint16_t xpos, uint16_t ypos,
   return ypos - originalYpos;
 }
 
-int buildTargetCodeAndTowards(const char* source, char* target_code, size_t& target_code_length, const size_t target_code_size, 
-                              char* towards, const size_t towards_size, const bool nextTarget)
+int buildTargetCodeAndTowards(const char* source, char* target_code, size_t& target_code_length, const size_t target_code_size,
+                              char* towards, const size_t towards_size)
 {
   int target_name_index = 0;
   size_t source_index = 0;
+  int diveNumber = 0;
+  int targetNumber = 0;
+  int totalTargets = 0;
+  bool isFirstTargetInDive = false;
+  bool isLastTargetInDive = false;
 
   if (source != nullptr)
   {
@@ -983,15 +988,63 @@ int buildTargetCodeAndTowards(const char* source, char* target_code, size_t& tar
   }
 
   target_code[target_code_length] = '\0';
-  if (nextTarget)
-    snprintf(towards, towards_size, "Next:");
-  else
-    snprintf(towards, towards_size, "To: %s", target_code);
+
+  if (currentDiveWaypoints == diveOneWaypoints)
+    diveNumber = 1;
+  else if (currentDiveWaypoints == diveTwoWaypoints)
+    diveNumber = 2;
+
+  if (currentDiveWaypoints != nullptr &&
+      p_currentDiveWaypointCount != nullptr &&
+      *p_currentDiveWaypointCount > 0 &&
+      nextWaypoint != nullptr)
+  {
+    totalTargets = *p_currentDiveWaypointCount;
+    targetNumber = (int)(nextWaypoint - currentDiveWaypoints) + 1;
+    isFirstTargetInDive = (nextWaypoint == currentDiveWaypoints);
+    isLastTargetInDive = (nextWaypoint == currentDiveWaypoints + *p_currentDiveWaypointCount - 1);
+  }
+
+  if (isFirstTargetInDive)
+  {
+    if (diveNumber > 0)
+      snprintf(towards, towards_size, "Start: D%d", diveNumber);
+    else
+      snprintf(towards, towards_size, "Start:");
+  }
+  else if (isLastTargetInDive)
+  {
+    if (diveNumber > 0)
+      snprintf(towards, towards_size, "End: D%d", diveNumber);
+    else
+      snprintf(towards, towards_size, "End:");
+  }
+  else switch (targetDisplayHeader)
+  {
+    case NEXT_TARGET_HEADER:
+      if (targetNumber > 0 && totalTargets > 0)
+        snprintf(towards, towards_size, "Next: %d/%d", targetNumber, totalTargets);
+      else
+        snprintf(towards, towards_size, "Next:");
+      break;
+
+    case BACK_TARGET_HEADER:
+      if (targetNumber > 0 && totalTargets > 0)
+        snprintf(towards, towards_size, "Back: %d/%d", targetNumber, totalTargets);
+      else
+        snprintf(towards, towards_size, "Back:");
+      break;
+
+    case CURRENT_TARGET_HEADER:
+    default:
+      snprintf(towards, towards_size, "To: %s", target_code);
+      break;
+  }
 
   return target_name_index;
 }
 
-void drawTargetDisplay(const uint16_t titleColour, const uint16_t targetColour, const uint16_t backColour, const bool nextTarget)
+void drawTargetDisplay(const uint16_t titleColour, const uint16_t targetColour, const uint16_t backColour)
 {  
   if (!firstLoopThroughTempScreen)
   {
@@ -1031,10 +1084,10 @@ void drawTargetDisplay(const uint16_t titleColour, const uint16_t targetColour, 
 
   M5.Lcd.setTextColor(titleColour, backColour);
 
-  char target_code[10], towards[20];
+  char target_code[10], towards[32];
   size_t target_code_length = 0, target_name_index = 0;
   const char* source = (nextWaypoint != nullptr) ? nextWaypoint->_m5label : nullptr;
-  target_name_index = buildTargetCodeAndTowards(source, target_code, target_code_length, sizeof(target_code), towards, sizeof(towards), nextTarget);
+  target_name_index = buildTargetCodeAndTowards(source, target_code, target_code_length, sizeof(target_code), towards, sizeof(towards));
 
   M5.Lcd.drawString(towards,centre,ypos);
   ypos+=lineHeight;
@@ -1055,12 +1108,19 @@ void drawTargetDisplay(const uint16_t titleColour, const uint16_t targetColour, 
 
 void drawCurrentTargetDisplay()
 {  
-  drawTargetDisplay(TFT_CYAN,TFT_YELLOW,TFT_BLACK,false);
+  uint16_t targetColour = TFT_YELLOW;
+
+  if (targetDisplayHeader == NEXT_TARGET_HEADER)
+    targetColour = TFT_MAGENTA;
+  else if (targetDisplayHeader == BACK_TARGET_HEADER)
+    targetColour = TFT_GREEN;
+
+  drawTargetDisplay(TFT_CYAN, targetColour, TFT_BLACK);
 }
 
 void drawNextTargetDisplay()
 {  
-  drawTargetDisplay(TFT_CYAN,TFT_MAGENTA,TFT_BLACK, true);
+  drawTargetDisplay(TFT_CYAN,TFT_MAGENTA,TFT_BLACK);
 }
 
 void drawAudioActionDisplay()

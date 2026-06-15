@@ -384,12 +384,20 @@ enum  e_mako_displays
   NEXT_TARGET_DISPLAY_TEMP, 
   THIS_TARGET_DISPLAY_TEMP,
   AUDIO_ACTION_DISPLAY_TEMP};
+
+enum e_target_display_header
+  {
+  CURRENT_TARGET_HEADER,
+  NEXT_TARGET_HEADER,
+  BACK_TARGET_HEADER
+  };
   
 const e_mako_displays first_display_rotation = NAV_COMPASS_DISPLAY;
 const e_mako_displays last_display_rotation = COMPASS_CALIBRATION_DISPLAY;
 
 e_mako_displays display_to_show = first_display_rotation;
 e_mako_displays display_to_revert_to = first_display_rotation;
+e_target_display_header targetDisplayHeader = CURRENT_TARGET_HEADER;
 
 const e_display_brightness ScreenBrightness = BRIGHTEST_DISPLAY;
 

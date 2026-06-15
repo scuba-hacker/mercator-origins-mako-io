@@ -11,13 +11,60 @@ bool waitForBothButtonsReleased()
 
 const uint32_t buttonPressDurationToChangeScreen = 50;
 
+uint16_t drawMultiString(const char* source, const uint16_t xpos, uint16_t ypos, int lineAdvanceOffset);
+
+bool checkForCurrentTargetTempButtonPresses()
+{
+  if (display_to_show != THIS_TARGET_DISPLAY_TEMP ||
+      showTempDisplayEndTime == disabledTempDisplayEndTime ||
+      currentDiveWaypoints == nullptr ||
+      p_currentDiveWaypointCount == nullptr ||
+      *p_currentDiveWaypointCount == 0 ||
+      nextWaypoint == nullptr)
+    return false;
+
+  const NavigationWaypoint* endWaypoint = currentDiveWaypoints + *p_currentDiveWaypointCount;
+
+  if (p_secondButton->wasReleasefor(buttonPressDurationToChangeScreen))
+  {
+    if (++nextWaypoint == endWaypoint)
+      nextWaypoint = currentDiveWaypoints;
+
+    targetDisplayHeader = NEXT_TARGET_HEADER;
+  }
+  else if (p_primaryButton->wasReleasefor(buttonPressDurationToChangeScreen))
+  {
+    if (nextWaypoint == currentDiveWaypoints)
+      nextWaypoint = const_cast<NavigationWaypoint*>(endWaypoint);
+
+    --nextWaypoint;
+    targetDisplayHeader = BACK_TARGET_HEADER;
+  }
+  else
+  {
+    return false;
+  }
+
+  showTempDisplayEndTime = millis() + showTempDisplayHoldDuration / 2;
+  firstLoopThroughTempScreen = true;
+  requestDisplayRefresh = true;
+  requestMapScreenRefresh = true;
+  M5.Lcd.fillScreen(TFT_BLACK);
+
+  return true;
+}
+
 void checkForButtonPresses()
 {
-  // ignore button presses whilst a temporary display is shown
-  if (showTempDisplayEndTime != disabledTempDisplayEndTime)
-    return;
-    
   updateButtons();
+
+  // ignore button presses whilst a temporary display is shown,
+  // except allow target stepping while the current target temp screen is active
+  if (showTempDisplayEndTime != disabledTempDisplayEndTime)
+  {
+    checkForCurrentTargetTempButtonPresses();
+    return;
+  }
 
 /*
   // very strange behaviour with GPIO 38 triggering with finger proximity and not magnet
@@ -216,6 +263,29 @@ void checkForButtonPresses()
         M5.Lcd.fillScreen(TFT_BLACK);
         delay(300);
         M5.Lcd.fillScreen(TFT_ORANGE);
+
+        int nextDiveNumber = 0;
+        if (currentDiveWaypoints == diveOneWaypoints)
+          nextDiveNumber = 1;
+        else if (currentDiveWaypoints == diveTwoWaypoints)
+          nextDiveNumber = 2;
+
+        M5.Lcd.setTextDatum(MC_DATUM);
+        M5.Lcd.setTextColor(TFT_BLUE, TFT_ORANGE);
+        M5.Lcd.setTextFont(1);
+        M5.Lcd.setTextSize(3);
+        char switchToDive[] = "Switch\nto\nDive X";
+        const int dive_index = strlen(switchToDive)-1;
+        char switchDive[] = "Switch\nDive?";
+
+        if (nextDiveNumber > 0)
+        {
+          switchToDive[dive_index]=(char)('0' + nextDiveNumber);
+        }
+
+        drawMultiString(nextDiveNumber > 0 ? switchToDive : switchDive, M5.Lcd.width() / 2, M5.Lcd.height() / 2, 0);
+        M5.Lcd.setTextDatum(BL_DATUM);
+
         delay(300);
         M5.Lcd.fillScreen(TFT_BLACK);
         goto show_current_target;
@@ -254,6 +324,7 @@ void checkForButtonPresses()
 
         // goto dive exit (the last target on the list)
         nextWaypoint = currentDiveWaypoints + *p_currentDiveWaypointExit;
+        targetDisplayHeader = NEXT_TARGET_HEADER;
 
         display_to_revert_to = display_to_show;
         display_to_show = NEXT_TARGET_DISPLAY_TEMP;
@@ -267,6 +338,7 @@ void checkForButtonPresses()
 
         if (++nextWaypoint == currentDiveWaypoints + *p_currentDiveWaypointCount)
           nextWaypoint = currentDiveWaypoints;
+        targetDisplayHeader = NEXT_TARGET_HEADER;
           
         display_to_revert_to = display_to_show;
         display_to_show = NEXT_TARGET_DISPLAY_TEMP;
@@ -279,6 +351,7 @@ void checkForButtonPresses()
         showTempDisplayEndTime = millis() + showTempDisplayHoldDuration  / 2;
 
         // don't change target - remind diver of current target
+        targetDisplayHeader = CURRENT_TARGET_HEADER;
         display_to_revert_to = display_to_show;
         display_to_show = THIS_TARGET_DISPLAY_TEMP;
         firstLoopThroughTempScreen = true;
