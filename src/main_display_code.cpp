@@ -1,5 +1,9 @@
 #ifdef BUILD_INCLUDE_MAIN_DISPLAY_CODE
 
+#include "fonts/AidaSerifa_Condensed20pt7b.h"
+
+void drawCurrentTargetDisplay();
+void drawNextTargetDisplay();
 
 void switchToNextDisplayToShow()
 {
@@ -83,12 +87,12 @@ void refreshDisplay()
     }
     case NEXT_TARGET_DISPLAY_TEMP:
     {
-      drawNextTarget();
+      drawNextTargetDisplay();
       break;
     }
     case THIS_TARGET_DISPLAY_TEMP:
     {
-      drawThisTarget();
+      drawCurrentTargetDisplay();
       break;
     }
     case AUDIO_ACTION_DISPLAY_TEMP:
@@ -912,57 +916,151 @@ void drawCourseSection()
     } 
 }
 
-void drawNextTarget()
+uint16_t drawMultiString(const char* source, const uint16_t xpos, uint16_t ypos, int lineAdvanceOffset = 0)
 {
-  if (firstLoopThroughTempScreen)
+  char line[32];
+  const int maxLines = 10;
+  int lines = 0;
+  int lineAdvance = (int)M5.Lcd.fontHeight() + lineAdvanceOffset;
+
+  if (lineAdvance < 0)
+    lineAdvance = 0;
+
+  uint16_t originalYpos = ypos;
+
+  char* draw = line;
+  line[0]='\0';
+
+  const char* next=source; 
+  while (*next && lines < maxLines)
   {
-    firstLoopThroughTempScreen = false;
-    
-    M5.Lcd.setTextSize(3);
-    M5.Lcd.setTextFont(1);
-    M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
-    M5.Lcd.setCursor(0, 5);
-  
-    // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
-    M5.Lcd.printf ("Next:\n\n%i) %s", nextWaypoint-currentDiveWaypoints+1, nextWaypoint->_m5label); // needs to change to use navigation waypoints master _m5label
-  
-    // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
-    publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);      // needs to change to send only the waypoint code
+    while (*next && *next != '\n')
+      *draw++ = *next++;
+
+    if (*next == '\n')
+      next++;
+
+    if (draw      != line &&    // must not be empty string
+        *(draw-1) == '\n')      // if previous char a newline, then substitutes a null terminator in place of the newline
+        *(draw-1) = '\0';
+    else
+      *draw = '\0';             // otherwise appends null terminator.
+
+    if (*line != '\0')
+    {
+      M5.Lcd.drawString(line,xpos,ypos);
+      ypos += lineAdvance;
+    }
+    draw = line;
+    lines++;
   }
-    
-  if (millis() > showTempDisplayEndTime)
-  {
-    showTempDisplayEndTime = disabledTempDisplayEndTime;
-    display_to_show = display_to_revert_to;
-    // UPDATED NEEDED HERE /////
-    publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);      // needs to change to send only the waypoint code
-    M5.Lcd.fillScreen(TFT_BLACK);
-  }
+
+  return ypos - originalYpos;
 }
 
-void drawThisTarget()
+int buildTargetCodeAndTowards(const char* source, char* target_code, size_t& target_code_length, const size_t target_code_size, 
+                              char* towards, const size_t towards_size, const bool nextTarget)
 {
-  if (firstLoopThroughTempScreen)
-  {
-    firstLoopThroughTempScreen = false;
-    M5.Lcd.setTextSize(3);
-    M5.Lcd.setTextFont(1);
-    M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
-    M5.Lcd.setCursor(0, 5);
-  
-    // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
-    M5.Lcd.printf ("Towards\n\n%i) %s", nextWaypoint-currentDiveWaypoints+1, nextWaypoint->_m5label);  // needs to change to use navigation waypoints master _m5label
-  }
-  
-  if (millis() > showTempDisplayEndTime)
-  {
-    showTempDisplayEndTime = disabledTempDisplayEndTime;
-    display_to_show = display_to_revert_to;
+  int target_name_index = 0;
+  size_t source_index = 0;
 
-    // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
-    publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);   // needs to change to use navigation waypoints master _m5label
-    M5.Lcd.fillScreen(TFT_BLACK);
+  if (source != nullptr)
+  {
+    while (source[source_index] != '\0' &&
+           source[source_index] > ' ')
+    {
+      if (target_code_length < target_code_size - 1)
+        target_code[target_code_length++] = source[source_index];
+
+      source_index++;
+    }
+
+    while (source[source_index] != '\0' &&
+           source[source_index] <= ' ')
+      source_index++;
+
+    target_name_index = (int)source_index;
   }
+
+  target_code[target_code_length] = '\0';
+  if (nextTarget)
+    snprintf(towards, towards_size, "Next:");
+  else
+    snprintf(towards, towards_size, "To: %s", target_code);
+
+  return target_name_index;
+}
+
+void drawTargetDisplay(const uint16_t titleColour, const uint16_t targetColour, const uint16_t backColour, const bool nextTarget)
+{  
+  if (!firstLoopThroughTempScreen)
+  {
+    if (millis() > showTempDisplayEndTime)
+    {
+      showTempDisplayEndTime = disabledTempDisplayEndTime;
+      display_to_show = display_to_revert_to;
+
+      // UPDATED NEEDED HERE TO USE MASTER NAV WAYPOINTS CODE /////
+      publishToTigerAndOceanicCurrentTarget(nextWaypoint->_m5label);   // needs to change to use navigation waypoints master _m5label
+      M5.Lcd.fillScreen(TFT_BLACK);
+    }
+    
+    return;
+  }
+  
+  const uint8_t textSize=1;
+  const uint8_t textFont=4;
+  
+  firstLoopThroughTempScreen = false;
+  M5.Lcd.fillScreen(backColour);
+
+  uint8_t oldFont = M5.Lcd.textfont;
+  uint8_t oldSize = M5.Lcd.textsize;
+
+  // FreeSansBold18pt7b - 7 chars wide
+  // 
+
+  M5.Lcd.setTextSize(textSize);
+  M5.Lcd.setTextFont(textFont);
+
+  M5.Lcd.setTextDatum(TC_DATUM);
+
+  uint16_t ypos = 0, centre = M5.Lcd.width() / 2;
+
+  const uint16_t lineHeight = M5.Lcd.fontHeight();
+
+  M5.Lcd.setTextColor(titleColour, backColour);
+
+  char target_code[10], towards[20];
+  size_t target_code_length = 0, target_name_index = 0;
+  const char* source = (nextWaypoint != nullptr) ? nextWaypoint->_m5label : nullptr;
+  target_name_index = buildTargetCodeAndTowards(source, target_code, target_code_length, sizeof(target_code), towards, sizeof(towards), nextTarget);
+
+  M5.Lcd.drawString(towards,centre,ypos);
+  ypos+=lineHeight;
+
+  M5.Lcd.setFreeFont(&AidaSerifa_Condensed20pt7b);
+  
+  M5.Lcd.setTextWrap(false);
+  M5.Lcd.setTextSize(1);
+
+  M5.Lcd.setTextColor(targetColour,backColour);
+  int leadingAdjustment = -7;
+  ypos += drawMultiString(source != nullptr ? source + target_name_index : "", centre, ypos, leadingAdjustment);
+  
+  M5.Lcd.setTextDatum(BL_DATUM);
+  M5.Lcd.setTextSize(oldSize);
+  M5.Lcd.setTextFont(oldFont);
+}
+
+void drawCurrentTargetDisplay()
+{  
+  drawTargetDisplay(TFT_CYAN,TFT_YELLOW,TFT_BLACK,false);
+}
+
+void drawNextTargetDisplay()
+{  
+  drawTargetDisplay(TFT_CYAN,TFT_MAGENTA,TFT_BLACK, true);
 }
 
 void drawAudioActionDisplay()
