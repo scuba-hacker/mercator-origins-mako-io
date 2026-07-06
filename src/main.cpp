@@ -584,6 +584,59 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
 };
 */
 
+
+// Dive 1 - 2026-07-07
+NavigationWaypoint diveOneWaypoints[] =
+{
+  { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
+  { ._label = "10N Bus 2m", ._m5label = "10N\n\nBus\n\n2m", ._cat=NO_BUOY,._lat = 51.460073, ._long = -0.548515},
+  { ._label = "09P Dance Platform 6m", ._m5label = "09P 6m\nDance\nPlatform", ._cat=PLATFORM, ._lat = 51.460154, ._long = -0.548687},
+  { ._label = "08B The Hole 18m", ._m5label = "08B\nThe\nHole\n18m", ._cat=ORANGE_BUOY, ._lat = 51.4604301666667, ._long = -0.548688166666667},
+  { ._label = "13B White Boat 7m", ._m5label = "13B\nWhite\nBoat\n7m", BLUE_BUOY, ._lat = 51.4605198169044, ._long = -0.548421667307919},
+  { ._label = "X33 Reclining Bear 8m", ._m5label = "X33\nRecline\nBear 8m", ._cat=UNMARKED, ._lat = 51.460712, ._long = -0.548656},
+  { ._label = "X32 Not-A-Skiff 8m", ._m5label = "X32\nNot A\nSkiff\n8m", ._cat=UNMARKED, ._lat = 51.460753, ._long = -0.548710},
+  { ._label = "X26 The Skiff 8m", ._m5label = "X26\nThe\nSkiff\n8m",._cat=UNMARKED, ._lat = 51.4607693, ._long = -0.5486501},
+  { ._label = "X24 Cotton Reel 3m", ._m5label = "X24\nCotton\nReel\n3m", ._cat=UNMARKED, ._lat = 51.4623163, ._long = -0.5494161 }, // near canoe
+  { ._label = "01N Canoe", ._m5label = "01N\nCanoe", ._cat=NO_BUOY, ._lat = 51.4620416774194, ._long = -0.548974709677419},
+  { ._label = "12N Commer Van 6m", ._m5label = "12N\n\nCommer\nVan\n\n6m", BLUE_BUOY, ._lat = 51.4613355909091, ._long = -0.548469727272727},
+  { ._label = "X21 Memorial Stone - Kit 7.5m", ._m5label = "X21\nMem\nStone\nKit\n7.5m", ._cat=UNMARKED, ._lat = 51.460993, ._long = -0.548006}, // Near die hard taxi
+  { ._label = "24N Half Die Hard Taxi 8m", ._m5label = "24N\n\nHalf\nDie\nHard\nTaxi 8m", ._cat=NO_BUOY, ._lat = 51.460773, ._long = -0.547620875},
+  { ._label = "27B Wreck Site 6m", ._m5label = "27B\n\nWreck\nSite\n\n6m", BLUE_BUOY, ._lat = 51.4604300973436, ._long = -0.547383365365033},
+  { ._label = "21B Sticky Up Boat 5m", ._m5label = "21B\n\nSticky\nUp Boat\n\n5m", BLUE_BUOY, ._lat = 51.4602514070597, ._long = -0.54789158281982},
+  { ._label = "X12 Cement Mixer", ._m5label = "X12\nCement\nMixer\n", ._cat=UNMARKED, ._lat = 51.46020025, ._long =	-0.5478815},
+  { ._label = "18N Milk Float 6.5m", ._m5label = "18N\n\nMilk\nFloat\n\n6.5m", ._cat=NO_BUOY, ._lat = 51.4601745714286, ._long = -0.548058571428571},
+  { ._label = "15P Cargo Rusty 8m", ._m5label = "15P\nCargo\nRusty\n8m", ._cat=CONTAINER, ._lat = 51.460192, ._long = -0.548283},
+  { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
+};
+
+const uint8_t waypointCountDiveOne = sizeof(diveOneWaypoints)/sizeof(NavigationWaypoint); const uint8_t waypointExitDiveOne = waypointCountDiveOne - 1;
+
+// Dive 2 - 2026-07-07
+NavigationWaypoint diveTwoWaypoints[] =
+{
+  { ._label = "Z02 Mid Jetty", ._m5label = "Z02\n\nMid\nJetty", ._cat=JETTY, ._lat = 51.459547, ._long = -0.547461},  
+  { ._label = "X06 Collapsed Metal", ._m5label = "X06\nCollapsed\nMetal", ._cat=UNMARKED, ._lat = 51.45967075, ._long = -0.547253125},
+  { ._label = "X17 Half Buried Solo Boat", ._m5label = "X17\nHalf\nBuried\nSolo\nBoat", ._cat=UNMARKED, ._lat = 51.4596635, ._long = -0.54706025},
+  { ._label = "39N London Black Cab 7m", ._m5label = "39N\n\nLondon\nBlack\nCab\n\n7m", ._cat=NO_BUOY, ._lat = 51.459729, ._long = -0.546992857142857},
+  { ._label = "38B Lifeboat 6.5m", ._m5label = "38B\n\nLife\nBoat\n\n6.5m", BLUE_BUOY, ._lat = 51.459839375, ._long = -0.5469307},
+  { ._label = "46N Plane 6m", ._m5label = "46N\n\nPlane\n\n6m", ._cat=NO_BUOY, ._lat = 51.459745, ._long = -0.546649},
+  { ._label = "49B Claymore 6.5m", ._m5label = "49B\n\nClay-\n   more\n\n6.5m", BLUE_BUOY, ._lat = 51.459634435324, ._long = -0.54646635372985},
+  { ._label = "48N Holey Ship 4.5m", ._m5label = "48N\nHoley\nShip", ._cat=NO_BUOY, ._lat = 51.4594384444444, ._long = -0.5465238},
+  { ._label = "50cN Swim Through - crates 6m", ._m5label = "50cN\nSwim\nThrough\ncrates\n6m", ._cat=NO_BUOY, ._lat = 51.4592045, ._long = -0.545912625},
+  { ._label = "51B Orca Van 5.5m", ._m5label = "51B\n\nOrca\nVan\n\n5.5m", BLUE_BUOY, ._lat = 51.4591431428571, ._long = -0.545936857142857},
+  { ._label = "44N VW Camper Van and Seahorse 5.5m", ._m5label = "44N\nVW\nCamper\nVan and\nSeahors\n\n5.5m", ._cat=NO_BUOY, ._lat = 51.459368, ._long = -0.546760142857143},
+  { ._label = "X22 Fruit Machine 5.5m", ._m5label = "X22\nFruit\nMach\n5.5m", ._cat=UNMARKED, ._lat = 51.459353, ._long = -0.546939}, // By disused exit + 2 buried boats
+  { ._label = "X16 2 Buried Boats in Reeds", ._m5label = "X16\nBuried\nBoats\nIn\nWeeds", ._cat=UNMARKED, ._lat = 51.4593264705883, ._long = -0.5469361}, // By Disused exit, by fruit machine
+  { ._label = "X27 Disused Pontoon", ._m5label = "X27\nDisused\nPontoon", ._cat=UNMARKED, ._lat = 51.459277, ._long = -0.547087},
+  { ._label = "37N Dive Bell 4m", ._m5label = "37N\n\nDive\nBell\n\n4m", ._cat=NO_BUOY, ._lat = 51.4594757058824, ._long = -0.547087117647059},
+  { ._label = "33N Port Holes Toilet Boat 4.5m", ._m5label = "33N\nPort\nHoles\nToilet\nBoat 4.5m", ._cat=NO_BUOY, ._lat = 51.4595563333333, ._long = -0.547263333333333},
+  { ._label = "X19 Desk with Keyboard", ._m5label = "X19\nPC\nDesk",._cat=UNMARKED, ._lat = 51.459924, ._long = -0.547615181818182},
+  { ._label = "25N Boat In A Hole 7m", ._m5label = "25N\n\nBoat In\nA Hole\n\n7m", ._cat=NO_BUOY, ._lat = 51.4599545, ._long = -0.54755475},
+  { ._label = "X15 Fireworks Launcher", ._m5label = "X15\nFirework\nLauncher", ._cat=UNMARKED, ._lat = 51.4599975, ._long = -0.5481015},
+  { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
+};
+
+/*
 // Dive 1 - 2026-01-11
 NavigationWaypoint diveOneWaypoints[] =
 {
@@ -635,6 +688,7 @@ NavigationWaypoint diveTwoWaypoints[] =
   { ._label = "10N Bus 2m", ._m5label = "10N\n\nBus\n\n2m", ._cat=NO_BUOY,._lat = 51.460073, ._long = -0.548515},
   { ._label = "Z01 Cafe Jetty", ._m5label = "Z01\n\nCafe\nJetty", ._cat=JETTY, ._lat = 51.460015, ._long = -0.548316},
 };
+*/
 
 const uint8_t waypointCountDiveTwo =  sizeof(diveTwoWaypoints)/sizeof(NavigationWaypoint); const uint8_t waypointExitDiveTwo = waypointCountDiveTwo - 1;
 
