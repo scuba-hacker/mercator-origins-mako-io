@@ -585,6 +585,25 @@ NavigationWaypoint diveTwoWaypoints[waypointCountDiveOne] =
 */
 
 
+// Dive 1 - Tapwood Lake 2026-07-24
+NavigationWaypoint diveOneWaypoints[] =
+{
+  { ._label = "Z06 Tapwood Jetty", ._m5label = "Z06\nTapwood\nJetty", ._cat=JETTY, ._lat = 51.2433888889, ._long = -0.2349166667},
+  { ._label = "X67 Rolling Hills", ._m5label = "X67\nRolling\nHills", ._cat=ORANGE_BUOY, ._lat = 51.244039, ._long = -0.235478},
+  { ._label = "X68 The Lagoon", ._m5label = "X68\nThe\nLagoon", ._cat=ORANGE_BUOY, ._lat = 51.244616, ._long = -0.235327},
+  { ._label = "X66 Challenger Deep", ._m5label = "X66\nChallenger\nDeep", ._cat=ORANGE_BUOY, ._lat = 51.244583, ._long = -0.236639},
+  { ._label = "X62 Steep Cliffs", ._m5label = "X62\nSteep\nCliffs", ._cat=BLUE_BUOY, ._lat = 51.245327, ._long = -0.236809},
+  { ._label = "X65 The Nook", ._m5label = "X65\nThe\nNook", ._cat=BLUE_BUOY, ._lat = 51.245720, ._long = -0.238063},
+  { ._label = "X63 Shallow Shelf", ._m5label = "X63\nShallow\nShelf", ._cat=BLUE_BUOY, ._lat = 51.244818, ._long = -0.238253},
+  { ._label = "X64 The Beach", ._m5label = "X64\nThe\nBeach", ._cat=BLUE_BUOY, ._lat = 51.244648, ._long = -0.238526},
+  { ._label = "X61 Silica Works", ._m5label = "X61\nSilica\nWorks", ._cat=BLUE_BUOY, ._lat = 51.244839, ._long = -0.235003},
+  { ._label = "X60 Pool Entrance", ._m5label = "X60\nPool\nEntrance", ._cat=BLUE_BUOY, ._lat = 51.243696, ._long = -0.233490},
+  { ._label = "Z06 Tapwood Jetty", ._m5label = "Z06\nTapwood\nJetty", ._cat=JETTY, ._lat = 51.2433888889, ._long = -0.2349166667},
+};
+
+const uint8_t waypointCountDiveOne = sizeof(diveOneWaypoints)/sizeof(NavigationWaypoint); const uint8_t waypointExitDiveOne = waypointCountDiveOne - 1;
+
+/*
 // Dive 1 - 2026-07-07
 NavigationWaypoint diveOneWaypoints[] =
 {
@@ -610,7 +629,7 @@ NavigationWaypoint diveOneWaypoints[] =
 };
 
 const uint8_t waypointCountDiveOne = sizeof(diveOneWaypoints)/sizeof(NavigationWaypoint); const uint8_t waypointExitDiveOne = waypointCountDiveOne - 1;
-
+*/
 // Dive 2 - 2026-07-07
 NavigationWaypoint diveTwoWaypoints[] =
 {
