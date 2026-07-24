@@ -1,0 +1,25 @@
+{
+    "git.repositoryScanMaxDepth": -1,
+    "cmake.configureOnOpen": false,
+    "files.associations": {
+        "*.tcc": "cpp",
+        "unordered_map": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "sstream": "cpp",
+        "array": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "memory": "cpp",
+        "random": "cpp",
+        "initializer_list": "cpp",
+        "regex": "cpp",
+        "cmath": "cpp",
+        "chrono": "cpp"
+    },
+    "idf.pythonInstallPath": "/Users/mark/.platformio/penv/bin/python"
+}

@@ -1,5 +1,6 @@
 .pio/**
 .vscode/**
+!.vscode/settings.json
 .DS_Store
 src_debug/**
 src/mercator_secrets.c
